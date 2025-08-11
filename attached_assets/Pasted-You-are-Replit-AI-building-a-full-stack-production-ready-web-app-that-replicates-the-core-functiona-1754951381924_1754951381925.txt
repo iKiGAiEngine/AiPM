@@ -1,0 +1,366 @@
+You are Replit AI building a full-stack, production‑ready web app that replicates the core functionality of Field Materials (AI‑driven construction materials procurement) without copying their proprietary code, branding, or trade dress. Name the project BuildProcure AI. Deliver a working prototype with clean, modern UI, seed data, and tests.
+
+Follow the spec below exactly. Where choices are offered, pick the first option by default.
+
+1) Tech Stack & Project Layout
+
+Monorepo with /server (FastAPI + Python 3.11) and /web (React + Vite + TypeScript). Use pnpm for the frontend.
+
+Backend: FastAPI, SQLModel (SQLAlchemy), PostgreSQL (use SQLite dev fallback), Pydantic, Alembic migrations, Celery (or RQ) for async jobs, Redis for queues, python-rapidjson, python-multipart, python-jose (JWT), passlib (hashing), httpx for external calls, boto3 for S3‑compatible storage (fallback to local /uploads).
+
+OCR & Parsing: pytesseract (Tesseract) + pdfminer.six for PDFs; pluggable extractor interfaces for quotes, packing slips, invoices. Include an LLM Extractor provider interface (stub) so we can later swap to OpenAI/Anthropic; implement rule/regex-based extraction now.
+
+Frontend: React + Vite + TypeScript, TailwindCSS, shadcn/ui, react-hook-form + zod, TanStack Query, React Router, Recharts, date-fns. PWA enabled (installable, offline cache for recent requests).
+
+Auth: Email+password with RBAC roles: Admin, PM (Project Manager), Purchaser, Field, AP (Accounting). JWT with refresh tokens. Magic-link login optional (stub endpoint only).
+
+DevOps: Dockerfiles for /server and /web; docker-compose for local Postgres + Redis + MinIO. GitHub Actions (or Replit Tasks) for CI: run tests, lint, type-check. Include DB migrations and a seed script.
+
+Style: Clean, minimalist UI (Apple/Tesla‑like), mobile‑first. Left sidebar navigation and top app bar with project switcher + global search (cmd/ctrl+k).
+
+2) Core Domain & Features (MVP)
+
+A. Organizations, Projects & Zones
+
+Multitenant Organizations. Each Organization has Users, Settings, and Integrations.
+
+Projects (name, client, address, cost codes, ERP IDs).
+
+Project Zones (building/floor/area) each with sub‑budgets and BOM linkage.
+
+Assign every PO/Delivery/Invoice line to a Zone and Cost Code.
+
+B. Materials Catalog & Vendors
+
+Catalog (SKU, description, unit, category, preferred vendors, last cost, images/specs links).
+
+Vendors (company, contacts, terms, delivery regions, tax rules, email, EDI flags).
+
+Vendor Scorecard KPIs: on‑time %, accuracy %, average quote response time.
+
+C. Field Requisitions (Mobile/PWA)
+
+Field users create Requisitions: search Catalog, add quantity, target delivery date, drop pin for jobsite, attach photos.
+
+Approval routing to PM/Purchaser with notifications.
+
+D. RFQs & Quote Analysis
+
+Generate RFQs from a Requisition or BOM; select vendors; send email invites with secure vendor portal link.
+
+Vendor Portal (token link, no login): upload PDF quote or fill inline form; support alternates/substitutions.
+
+Quote Analysis Matrix: rows = items, columns = vendors; show unit price, lead time, freight, taxes; highlight best price; choose winning vendor per line; Convert selection → PO (per vendor subset).
+
+E. Purchase Orders
+
+PO header (project, zone, vendor, ship‑to, needed‑by, terms, delivery notes).
+
+PO lines (sku/desc, qty, unit price, tax, freight, cost code, zone).
+
+Generate branded PDF; email to vendor; vendor portal acknowledges, updates ETAs, backorders, substitutions.
+
+Automated reminders for unacknowledged/late items.
+
+F. Deliveries & Packing Slips
+
+Field uploads packing slip photo/PDF; capture receiver, timestamp, geo, notes; mark short/over/damaged.
+
+OCR extracts PO#, line items, quantities; reconcile to PO lines; discrepancy workflow with photo evidence + vendor notify.
+
+G. Inventory (Optional‑Lite)
+
+Per Project/Warehouse: on‑hand quantities, movement logs (receipts, issues, transfers), min/max.
+
+H. Invoices & 3‑Way Match
+
+AP uploads/forwards invoice PDFs or emails; OCR parses vendor, PO, lines, taxes/freight.
+
+Automated 3‑Way Match (PO ↔ Delivery ↔ Invoice) with tolerances (price %, qty %, tax/freight caps). Auto‑approve within tolerance; route exceptions to Exceptions Center.
+
+Export approved invoices to ERP (CSV + REST stubs); support Sage Intacct / FOUNDATION / Procore adapters (stubs).
+
+I. Budgets & Cost Controls
+
+Budgets per Project/Zone with committed vs actuals: Requisitions (pending), POs (committed), Invoices (actual).
+
+Dashboards: savings from quote analysis, invoice error detection, on‑time delivery rate.
+
+J. Global Search & Audit
+
+Global cmd/ctrl+k search across projects, vendors, SKUs, POs, invoices.
+
+Immutable AuditLog for critical entities (who/when/what before/after).
+
+3) Data Model (SQLModel/SQLAlchemy)
+
+Create tables/entities with relationships and indices. All entities include: id, organization_id, created_at, updated_at, deleted_at (soft delete).
+
+User, Role, Organization, OrganizationMembership
+
+Project, ProjectZone, Budget
+
+Material (Catalog), MaterialImage, CostHistory
+
+Vendor, VendorContact, VendorScorecard
+
+Requisition, RequisitionLine
+
+RFQ, RFQVendor, RFQLine, RFQResponse, RFQResponseLine
+
+PurchaseOrder, POLine, POEvent (ack/ship/backorder/note)
+
+Delivery, DeliveryLine, DeliveryAttachment
+
+InventoryLocation, InventoryItem, InventoryTxn
+
+Invoice, InvoiceLine, InvoiceAttachment
+
+IntegrationConfig (per ERP), ExportJob
+
+Notification, Task, AuditLog, File (S3/local)
+
+4) API Design (FastAPI)
+
+Expose RESTful endpoints under /api/v1 with JWT auth and role guards. Include OpenAPI docs.
+
+/auth/* (register/login/refresh/magic‑link stub)
+
+/projects, /projects/{id}/zones, /projects/{id}/budget
+
+/materials, /vendors, /vendors/{id}/scorecard
+
+/requisitions (CRUD, submit, approve)
+
+/rfqs (create from requisition/BOM, add vendors, send, receive response via file/email webhook)
+
+/quotes/ingest (parse vendor quote PDFs → structured lines)
+
+/purchase-orders (CRUD, email, pdf)
+
+/deliveries (create, OCR packing slip, reconcile)
+
+/invoices (upload, OCR, 3‑way match, approve, export)
+
+/inventory/*
+
+/integrations/* (Intacct, FOUNDATION, Procore stubs)
+
+/reports/* (cost, savings, exceptions)
+
+/search?q=...
+
+/files (S3/local upload, signed URLs)
+
+/notifications (list/mark read)
+
+Provide example curl requests in README.
+
+5) Services & Background Jobs
+
+Implement modular services (/server/app/services) and jobs (/server/app/jobs):
+
+OCRService: detect document type; extract PO/invoice numbers, vendor, lines.
+
+QuoteIngestService: parse quote PDFs (headers/items/alternates), normalize SKUs, crosswalk to Catalog with fuzzy match and vendor mappings.
+
+ThreeWayMatchService: match rules & tolerances; generate exceptions.
+
+ERPExportService: export approved invoices/POs to CSV + stubbed REST (per‑integration adapters).
+
+EmailService: SMTP/SendGrid integration; templated emails for RFQs, POs, reminders, exception alerts.
+
+NotificationService: in‑app + email notifications; daily digest job.
+
+VendorScoringJob: nightly KPI updates.
+
+6) Frontend UX (React)
+
+Build polished, role‑aware pages:
+
+Auth: login/register; role‑based routes.
+
+Dashboard (role‑aware): KPIs (PO cycle time, invoice savings, exceptions, open RFQs, on‑time delivery rate).
+
+Projects: list, detail, zones with budgets & BOM.
+
+Requisitions: mobile‑first form; add items; attach photos; submit.
+
+RFQs: create/send from requisition/BOM; select vendors; Quote Analysis matrix; Convert to PO.
+
+POs: list/detail; PDF preview; send/acknowledge; timeline of events.
+
+Deliveries: upload slip; OCR results; reconcile view (PO vs delivered vs remaining); mark discrepancies with photos.
+
+Invoices: upload; OCR; 3‑way match status; Exceptions Center with resolution actions.
+
+Vendors: directory, contacts, scorecard KPIs.
+
+Reports: Cost vs Budget, Savings, Exceptions, Inventory.
+
+Global Search and Notification Center.
+
+Settings: org, tax rates, tolerances, integrations (API keys), templates.
+
+Use Tailwind + shadcn/ui to make it beautiful: Cards with soft shadows, 2xl rounded corners, sticky table headers, column resizing, CSV export buttons.
+
+7) Document Templates & PDFs
+
+Use reportlab (server) to render branded PDFs and HTML email versions:
+
+RFQ package (cover + line items)
+
+Purchase Order
+
+Delivery Receipt
+
+Invoice Approval Report
+
+8) Import/Export & Integrations
+
+CSV importers: Materials, Vendors, BOM, Historical POs.
+
+Exports: Approved Invoices, PO ledger, Exceptions log (CSV).
+
+Integration stubs: Sage Intacct, FOUNDATION (FoundationSoft), Procore. Create adapters with .send_po(), .export_invoice(), .sync_vendor(). Include README mapping.
+
+9) Security & Compliance
+
+Pydantic validation; rate limiting on auth and uploads; file size/type validation (PDF/JPG/PNG). Virus scan hook (stub).
+
+Row‑level security by organization_id.
+
+Full audit trail for critical entities; immutable approval event logs.
+
+10) Seed Data & Demo Path
+
+Seed 3 vendors, 1 warehouse, 2 projects (each with 3 zones), 150 catalog items across Division 10/MEP categories.
+
+Flow: 2 requisitions → 1 RFQ → multiple vendor quotes (attach sample PDFs) → Convert to POs.
+
+3 deliveries with packing slip images.
+
+2 invoices (one within tolerance → auto‑approve; one price error → exception).
+
+Provide /scripts/demo_walkthrough.md with click‑by‑click steps and test users for each role.
+
+11) Testing & Quality
+
+Backend: Pytest for services and API; 80% coverage target on core modules.
+
+Frontend: Playwright for auth → requisition → RFQ → quote analysis → PO → delivery upload → invoice upload → match.
+
+ESLint + Prettier + TypeScript strict mode.
+
+12) SUCCESS CRITERIA (Base)
+
+Log in as Field user, create a requisition on mobile, and submit.
+
+As Purchaser, generate RFQs to 3 vendors, ingest two PDF quotes, compare in matrix, and convert selected lines to POs.
+
+Email the PO to a vendor and capture acknowledgement.
+
+Upload a packing slip image; see OCR extraction and reconciliation to the PO.
+
+Upload two invoices; watch 3‑way match auto‑approve one and flag the other.
+
+View budget vs actuals with variances by Zone.
+
+Export approved invoices to CSV for ERP.
+
+13) DIVISION 10 PRESETS & NBS TAILORING (Add‑On)
+
+13.1 Division 10–Focused Presets
+
+Catalog Seeds (Division 10 heavy): load 150+ SKUs covering toilet accessories (Bobrick‑lean), fire protection cabinets/extinguishers, lockers (plastic & phenolic), bath partitions, signage (stub), wall/door protection, cubicle hardware, misc. specialties.
+
+Catalog Fields: sku, mfr, model, description, unit, category, finish, mounting, ADA_flags, lead_time_days, last_cost, min_order_qty, substitutable, ofci (bool), images[], spec_url.
+
+Cost History: track vendor_id, unit_price, freight, quote_date, terms, lead_time_days per SKU to power quote matrix deltas.
+
+Standards: default non‑peened grab bars unless spec calls otherwise → org_prefs.use_peened_grab_bars=false.
+
+Room/Zone BOM helpers: seed restroom kits: TA02 – Tissue Dispenser, TA03 – Paper Towel, TA04 – Seat Cover, TA05 – Waste Receptacle, TA06 – Sanitary Napkin Disposal, GB36, GB42, GBL – L‑Bar. Provide BOM Kit Builder UI (+ JSON import).
+
+Janitor Rooms: auto‑suggest a mop rack when room_type=mop_sink.
+
+13.2 Taxes & ZIP Logic
+
+TaxRateService: resolve local tax by project ZIP and cache. Surface tax on RFQ/PO/Invoice lines; allow per‑vendor overrides. Summary page shows project ZIP‑derived tax; allow override with reason + audit log.
+
+13.3 ERP Field Mapping (Sage Intacct)
+
+Create adapters with explicit field maps and CSV exports.
+
+Sage Intacct AP Bill Export (CSV)
+
+Header: vendorid, datecreated, ponumber, invoice_no, termname, total, description.
+
+Lines: invoice_no, line_no, itemid?, memo, amount, qty, unit, unit_price, tax, locationid (Project), departmentid?, customerid?, classid?, glaccountno, costcode.
+
+Mapping: locationid ← Project.erp.intacct_location_id, glaccountno ← org_prefs.intacct_gl, costcode ← InvoiceLine.cost_code, customerid ← Project.client_code?.
+
+Validation: block export if required Intacct IDs missing; provide inline fix‑up modal.
+
+Common
+
+Field Mapper UI under Settings → Integrations to map internal → ERP fields with saved presets per org.
+
+Exports downloadable + webhook‑ready; jobs retriable with progress logs.
+
+13.4 RFQ Email Style & Templates (NBS‑Ready)
+
+Templated emails (SMTP/SendGrid/Resend) with variables. Provide dark/light HTML + plaintext.
+
+Subject: {{project_name}} – {{scope_of_work}} – {{vendor_name}}
+
+HTML Body:
+
+Good {{time_of_day}} {{contact_first}},
+
+We’re requesting material pricing for the project below. Please submit by <b>{{bid_due_date}}</b>.
+
+<b>Scope of Work:</b> {{scope_of_work}}
+<b>Ship To:</b> {{ship_to_line}}
+<b>Due Date:</b> {{bid_due_date}}
+
+<b>Material Pricing Needed For:</b>
+{{html_table_of_lines}} <!-- bordered table: Description | Model | Qty -->
+
+Notes:
+- Please exclude unit pricing, freight estimate, lead time, and substitutions unless requested.
+- Reply to this email with your quote PDF, or use the secure link below.
+
+Vendor Portal: {{secure_rfq_link}}
+
+Regards,
+{{requester_name}}
+{{requester_title}}
+{{org_signature_block}}
+
+Dynamic Rules
+
+Greeting switches between Good morning/afternoon by user local time.
+
+If Ship To blank → replace with: “Direct to Site – Please see plans for jobsite address.”
+
+Pull bid_due_date from Summary!C3 when available; otherwise user input.
+
+Log send time on RFQ; (if spreadsheet integration present) color associated worksheet tab orange on send.
+
+RFQ vendor checkbox in Column B: non‑blank → send=true; blank → ignore.
+
+13.5 Exceptions & 3‑Way Match Tolerances
+
+Org settings:
+
+price_tolerance_percent (default 2%)
+
+qty_tolerance_percent (default 1%)
+
+tax_freight_caps (absolute or %)
+Auto‑approve within tolerance; exceptions route to Exceptions Center with actions: request credit memo, vendor dispute email, internal note. Provide downloadable audit snapshots (JSON & PDF).
+
+13.6 Additional Acceptance Criteria (Tailored)
+
+Division 10 catalog appears with Bobrick‑forward seeds and typical kits; peened grab bars excluded by default.
