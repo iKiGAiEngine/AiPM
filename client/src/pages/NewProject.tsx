@@ -103,42 +103,7 @@ export default function NewProject() {
     }
   };
 
-  // Date formatting helpers for short dates (2-digit year)
-  const formatDateToShort = (dateString: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const year = date.getFullYear().toString().slice(-2);
-    return `${month}/${day}/${year}`;
-  };
 
-  const parseDateFromShort = (shortDateString: string) => {
-    if (!shortDateString) return '';
-    const parts = shortDateString.split('/');
-    if (parts.length !== 3) return '';
-    const [month, day, year] = parts;
-    const fullYear = year.length === 2 ? `20${year}` : year;
-    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  };
-
-  const handleDateInput = (value: string, maxLength: number = 8) => {
-    // Remove non-numeric characters except /
-    const cleaned = value.replace(/[^\d\/]/g, '');
-    
-    // Auto-format as user types
-    let formatted = cleaned;
-    if (cleaned.length >= 2 && !cleaned.includes('/')) {
-      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
-    }
-    if (cleaned.length >= 5 && cleaned.split('/').length === 2) {
-      const parts = cleaned.split('/');
-      formatted = parts[0] + '/' + parts[1].slice(0, 2) + '/' + parts[1].slice(2);
-    }
-    
-    return formatted.slice(0, maxLength);
-  };
 
   // Division 10 Equipment phase codes (condensed for better visibility)
   const phaseCodeOptions = [
@@ -570,24 +535,16 @@ export default function NewProject() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="startDate">Start Date *</Label>
-                    <Input
-                      id="startDate"
-                      type="text"
-                      placeholder="MM/DD/YY"
-                      value={formatDateToShort(form.watch("startDate") || "")}
-                      onChange={(e) => {
-                        const formatted = handleDateInput(e.target.value);
-                        const fullDate = parseDateFromShort(formatted);
-                        form.setValue("startDate", fullDate);
-                        form.trigger("startDate");
-                        // Update the input to show formatted value
-                        e.target.value = formatted;
-                      }}
-                      className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
-                      data-testid="input-start-date"
-                      onKeyDown={(e) => handleEnterKeyNavigation(e, "endDate")}
-                      maxLength={8}
-                    />
+                    <div className="relative">
+                      <Input
+                        {...form.register("startDate")}
+                        id="startDate"
+                        type="date"
+                        className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
+                        data-testid="input-start-date"
+                        onKeyDown={(e) => handleEnterKeyNavigation(e, "endDate")}
+                      />
+                    </div>
                     {form.formState.errors.startDate && (
                       <p className="text-sm text-destructive">
                         {form.formState.errors.startDate.message}
@@ -597,24 +554,16 @@ export default function NewProject() {
 
                   <div className="space-y-2">
                     <Label htmlFor="endDate">End Date *</Label>
-                    <Input
-                      id="endDate"
-                      type="text"
-                      placeholder="MM/DD/YY"
-                      value={formatDateToShort(form.watch("endDate") || "")}
-                      onChange={(e) => {
-                        const formatted = handleDateInput(e.target.value);
-                        const fullDate = parseDateFromShort(formatted);
-                        form.setValue("endDate", fullDate);
-                        form.trigger("endDate");
-                        // Update the input to show formatted value
-                        e.target.value = formatted;
-                      }}
-                      className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
-                      data-testid="input-end-date"
-                      onKeyDown={(e) => handleEnterKeyNavigation(e)}
-                      maxLength={8}
-                    />
+                    <div className="relative">
+                      <Input
+                        {...form.register("endDate")}
+                        id="endDate"
+                        type="date"
+                        className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
+                        data-testid="input-end-date"
+                        onKeyDown={(e) => handleEnterKeyNavigation(e)}
+                      />
+                    </div>
                     {form.formState.errors.endDate && (
                       <p className="text-sm text-destructive">
                         {form.formState.errors.endDate.message}
