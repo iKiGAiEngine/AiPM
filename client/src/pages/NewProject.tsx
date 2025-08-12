@@ -124,13 +124,8 @@ export default function NewProject() {
         erpIds: null,
       };
       
-      return apiRequest("/api/projects", {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest("POST", "/api/projects", payload);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
