@@ -21,7 +21,7 @@ import {
   requisitions, requisitionLines, rfqs, rfqLines,
   quotes, quoteLines, purchaseOrders, purchaseOrderLines,
   deliveries, deliveryLines, invoices, invoiceLines,
-  notifications
+  notifications, projectMaterials
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, inArray } from "drizzle-orm";
@@ -124,6 +124,13 @@ export interface IStorage {
   createNotification(notification: InsertNotification): Promise<Notification>;
   getNotificationsByUser(userId: string): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<void>;
+  
+  // Project Materials
+  getProjectMaterialsByProject(projectId: string, organizationId: string, filters?: {
+    category?: string;
+    costCode?: string; 
+    search?: string;
+  }): Promise<any[]>;
   
   // Global Search
   globalSearch(organizationId: string, query: string): Promise<any[]>;
@@ -460,6 +467,43 @@ export class DatabaseStorage implements IStorage {
 
   async markNotificationAsRead(id: string): Promise<void> {
     await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  }
+
+  // Project Materials
+  async getProjectMaterialsByProject(
+    projectId: string, 
+    organizationId: string, 
+    filters?: { category?: string; costCode?: string; search?: string }
+  ): Promise<any[]> {
+    const conditions = [
+      eq(projectMaterials.projectId, projectId),
+      eq(projectMaterials.organizationId, organizationId),
+      sql`deleted_at IS NULL`
+    ];
+
+    if (filters?.category) {
+      conditions.push(eq(projectMaterials.category, filters.category));
+    }
+    
+    if (filters?.costCode) {
+      conditions.push(eq(projectMaterials.costCode, filters.costCode));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(or(
+        like(projectMaterials.description, searchTerm),
+        like(projectMaterials.manufacturer, searchTerm),
+        like(projectMaterials.model, searchTerm),
+        like(projectMaterials.sku, searchTerm)
+      ));
+    }
+
+    return await db
+      .select()
+      .from(projectMaterials)
+      .where(and(...conditions))
+      .orderBy(asc(projectMaterials.description));
   }
 
   // Global Search

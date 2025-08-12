@@ -1,0 +1,181 @@
+You are Replit AI. Extend my app with an Excel import step in the Project Creation wizard. After “Project Information” and “Budget & Cost Codes,” add a new step: **Import Materials (Excel)**. Users will upload an .xlsx of materials per category (e.g., Toilet Accessories) and map each row into the correct cost code (e.g., 102800). After upload, show a **Material Approval** page to review/adjust before saving. On approval, create Project Materials that can be used in RFQs and POs.
+
+## Goals
+- Add an **Excel import step** to the project creation flow.
+- Auto-populate **Project Code** (e.g., 23479024) on each imported record.
+- Map each row to a **Cost Code** (via column in file or via category → default code rules).
+- Show a **review/approval table**; PM can edit, fix mappings, delete rows.
+- On approval, persist to **Project Materials** (and aggregate to cost-code budgets).
+- Approved materials become selectable in **RFQs** and **POs**.
+
+## Tech/Packages
+- Frontend: React, Tailwind, shadcn/ui.
+- Backend: Node/Express (or your current server), TypeScript.
+- DB: PostgreSQL (Drizzle/Prisma – match the project).
+- Excel: **xlsx** (SheetJS) to parse .xlsx in the server worker (preferred) or client side if needed.
+- File upload: to temp folder or S3; max 20MB; accept `.xlsx`.
+
+## Data Model (add or extend)
+Create new tables (or Prisma/Drizzle models). Migrate accordingly.
+
+- MaterialImportRun {
+  id, projectId, uploadedByUserId, sourceFilename, status: 'PENDING'|'REVIEW'|'APPROVED'|'REJECTED',
+  createdAt, updatedAt, rowCount, warningsJson?
+}
+
+- MaterialImportLine {
+  id, runId -> MaterialImportRun.id,
+  // raw
+  rawRowJson,
+  // normalized fields
+  category, manufacturer, model, sku, description, unit, qty, unitPrice, costCode, phaseCode?,
+  projectCode, // auto from project
+  // status
+  valid: boolean, errorsJson?, suggestionsJson?,
+  createdAt, updatedAt
+}
+
+- ProjectMaterial {
+  id, projectId,
+  category, manufacturer, model, sku, description, unit,
+  qty, unitPrice, costCode, phaseCode?, projectCode,
+  source: 'manual'|'import',
+  importRunId?, // backref
+  createdAt, updatedAt, deletedAt?
+}
+
+- Optional: ProjectBudgetRollup (if you keep cost aggregates)
+  id, projectId, costCode, totalBudget, totalMaterialsValue, updatedAt
+
+Add useful indexes: (projectId, costCode), (projectId, sku), (projectId, category).
+
+## Routing & API
+Add endpoints (JWT-protected; org-scoped):
+- POST `/api/projects/:projectId/material-import/upload`
+  Multipart upload: `file` (.xlsx). Creates MaterialImportRun (status=PENDING), stores file, enqueues parse.
+  Returns { runId }.
+
+- POST `/api/material-imports/:runId/parse`
+  (If not auto from upload) Parse the file, create MaterialImportLine rows. Default mappings below.
+  Status -> REVIEW.
+
+- GET `/api/material-imports/:runId`
+  Returns run summary + lines for review table (paginated).
+
+- PATCH `/api/material-imports/:runId/line/:lineId`
+  Update a line (e.g., change costCode, qty, unitPrice, description).
+
+- POST `/api/material-imports/:runId/approve`
+  Validates lines; writes approved lines into ProjectMaterial; updates budgets; status -> APPROVED.
+
+- POST `/api/material-imports/:runId/reject`
+  status -> REJECTED and soft-delete lines.
+
+## Parsing & Normalization (server)
+Use **xlsx** package to read first sheet. Expected columns (support header mapping in UI):
+- Required: Category, Description, Qty, Unit (EA/LF/BOX/etc.)
+- Optional: Manufacturer, Model, SKU, Unit Price, Cost Code, Phase Code
+- Derived: projectCode (auto: project.projectCode)
+- If Cost Code is missing: apply **Category → Default Cost Code** map (editable later):
+  - "Toilet Accessories" => 102800
+  - "Partitions" => 102813
+  - "Fire Extinguishers/Cabinets" => 105100
+  - "Lockers" => 105113
+  - "Signage" => 101400
+  (Store this default map in code under `config/cost-code-map.ts` and allow Admin to edit later.)
+
+Validation during parse:
+- qty is number >= 0
+- unitPrice is number >= 0 (default 0 if blank)
+- costCode present after applying defaults
+- text fields trimmed; collapse whitespace
+- set `valid=false` if any validation fails, and add messages in `errorsJson`
+
+## Project Creation Wizard – New Step
+After “Budget & Cost Codes”, add a step called **Import Materials (Excel)**:
+UI:
+- Drag-and-drop zone for `.xlsx`
+- Button: “Download Template (.xlsx)” (generate from server with correct headers)
+- On upload: show a quick header mapping modal (source column ⇒ target field with dropdowns). Remember mappings per user.
+- After parse: navigate to **Material Approval** page.
+
+## Material Approval Page
+Path (example): `/projects/:projectId/imports/:runId/review`
+UI (shadcn DataTable):
+- Columns: Category, Manufacturer, Model, SKU, Description, Unit, Qty, Unit Price, Cost Code, Phase Code, Project Code
+- Badges on invalid rows (hover to see error)
+- Inline editing for: qty, unitPrice, costCode, description, category, sku/model
+- Bulk actions: set costCode for selected, delete selected, move to category X
+- Totals by costCode (sidebar): sum(qty*unitPrice)
+- Buttons:
+  - “Approve & Create Project Materials” → calls `/approve`
+  - “Reject Import”
+- On approve:
+  - Upsert into ProjectMaterial
+  - Update ProjectBudgetRollup (sum materials by costCode)
+  - Mark run APPROVED
+  - Redirect to `/projects/:projectId/materials`
+
+## Make Approved Materials Usable in RFQs & POs
+- RFQ creation page: Add a tab “From Project Materials” → searchable picklist (category/sku/desc). Selected items create RFQ lines.
+- PO creation: If an RFQ is won, PO lines inherit from the chosen ProjectMaterials (qty, unit, description, costCode). If no RFQ, allow “Add from Project Materials.”
+
+## Files to Add / Modify (generate full code in these files)
+[CODE ⬇] `server/routes/material-imports.ts`
+- Express router: upload, parse, get run, patch line, approve, reject.
+- Use multer or busboy for file upload.
+- Use xlsx to parse; implement header mapping; populate MaterialImportLine.
+
+[CODE ⬇] `server/services/materialImportService.ts`
+- Business logic for parse, validate, normalize, default cost code mapping, and approval (writes to ProjectMaterial, updates rollups).
+
+[CODE ⬇] `server/config/cost-code-map.ts`
+- Export a default JS object: { 'Toilet Accessories': '102800', 'Partitions': '102813', ... }
+
+[CODE ⬇] `db/migrations/*` (Drizzle/Prisma)
+- Create MaterialImportRun, MaterialImportLine, ProjectMaterial (+ optional rollup).
+
+[CODE ⬇] `web/app/projects/[projectId]/create/ImportMaterialsStep.tsx`
+- UI for drag-drop upload, template download, header mapping, progress indicator.
+
+[CODE ⬇] `web/app/projects/[projectId]/imports/[runId]/review/page.tsx`
+- Approval table with inline edits, validation badges, totals by cost code, Approve/Reject buttons.
+
+[CODE ⬇] `web/app/projects/[projectId]/materials/page.tsx`
+- List approved Project Materials with filters (costCode, category, manufacturer), CSV export.
+
+[CODE ⬇] `web/app/rfqs/new/page.tsx` (or RFQ create flow)
+- “From Project Materials” picker to add line items.
+
+[CODE ⬇] `web/app/purchase-orders/new/page.tsx`
+- If created from RFQ, inherit lines; otherwise “Add from Project Materials.”
+
+[CODE ⬇] `web/components/ExcelTemplateButton.tsx`
+- Calls server to generate a simple .xlsx with headers: Category, Description, Qty, Unit, Manufacturer, Model, SKU, Unit Price, Cost Code, Phase Code
+
+## Security & Limits
+- Only project members (PM, Purchaser, Admin) can import.
+- Validate org/project ownership on every route.
+- File limit 20MB; type check `.xlsx`.
+- Sanitize description HTML (if any); we only store plain text by default.
+
+## Acceptance Criteria
+1) Wizard shows **Import Materials (Excel)** after Budget & Cost Codes.
+2) Uploading `.xlsx` parses rows, applies cost-code defaults (e.g., Toilet Accessories ⇒ 102800), and auto-sets Project Code.
+3) Material Approval page lists all rows; invalid rows are clearly flagged; inline edits save.
+4) “Approve” writes ProjectMaterials and updates budget rollups.
+5) Approved materials are visible on the project materials page and selectable in RFQ/PO creation.
+6) Re-importing creates a new run; no duplicates unless user approves both.
+7) Performance: 5k rows import and render acceptably (server pagination OK).
+8) Audit: store run metadata and who approved.
+
+## Tests
+- Unit: parsing & default cost-code mapping; rejecting invalid rows; approval writes correct totals.
+- E2E: upload template, map headers, review, approve, then create RFQ from approved materials.
+
+## Questions (answer with reasonable defaults if not specified)
+- If both “Cost Code” column and category default exist, prefer the explicit **Cost Code** in the file.
+- If Unit Price missing, default to 0 and allow editing on approval page.
+- If Category unknown, mark invalid and require user to pick or map.
+
+Now implement all the above. Generate full code for the [CODE ⬇] files, run migrations, and wire routes and links into the wizard and navigation. After build, I should be able to create a project, import an .xlsx, review, approve, and then use those materials in RFQs and POs.

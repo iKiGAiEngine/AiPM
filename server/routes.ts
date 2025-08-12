@@ -16,6 +16,7 @@ import { threeWayMatchService } from "./services/three-way-match";
 import { emailService } from "./services/email";
 import { ocrService } from "./services/ocr";
 import { PDFService } from "./services/pdf";
+import materialImportsRouter from "./routes/material-imports";
 
 const pdfService = new PDFService();
 
@@ -602,6 +603,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch dashboard stats" });
     }
   });
+
+  // Project Materials routes
+  app.get("/api/projects/:projectId/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { projectId } = req.params;
+      const { category, costCode, search } = req.query;
+      
+      const materials = await storage.getProjectMaterialsByProject(projectId, req.user!.organizationId, {
+        category: category as string,
+        costCode: costCode as string,
+        search: search as string
+      });
+      
+      res.json(materials);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch project materials" });
+    }
+  });
+
+  // Material Imports routes
+  app.use("/api", materialImportsRouter);
 
   const httpServer = createServer(app);
   return httpServer;

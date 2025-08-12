@@ -10,7 +10,8 @@ import {
   jsonb, 
   integer,
   pgEnum,
-  index
+  index,
+  unique
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -664,6 +665,129 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   })
 }));
 
+// Material Import tables
+export const materialImportRuns = pgTable('material_import_runs', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid('project_id').notNull().references(() => projects.id),
+  uploadedByUserId: uuid('uploaded_by_user_id').notNull().references(() => users.id),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  sourceFilename: text('source_filename').notNull(),
+  status: text('status').notNull().default('pending'), // 'pending', 'review', 'approved', 'rejected'
+  rowCount: integer('row_count').default(0),
+  warningsJson: jsonb('warnings_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const materialImportLines = pgTable('material_import_lines', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  runId: uuid('run_id').notNull().references(() => materialImportRuns.id),
+  rawRowJson: jsonb('raw_row_json'),
+  // normalized fields
+  category: text('category'),
+  manufacturer: text('manufacturer'),
+  model: text('model'), 
+  sku: text('sku'),
+  description: text('description'),
+  unit: text('unit'),
+  qty: numeric('qty', { precision: 10, scale: 3 }),
+  unitPrice: numeric('unit_price', { precision: 10, scale: 2 }),
+  costCode: text('cost_code'),
+  phaseCode: text('phase_code'),
+  projectCode: text('project_code'),
+  // status
+  valid: boolean('valid').default(false),
+  errorsJson: jsonb('errors_json'),
+  suggestionsJson: jsonb('suggestions_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const projectMaterials = pgTable('project_materials', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid('project_id').notNull().references(() => projects.id),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  category: text('category'),
+  manufacturer: text('manufacturer'),
+  model: text('model'),
+  sku: text('sku'),
+  description: text('description').notNull(),
+  unit: text('unit').notNull(),
+  qty: numeric('qty', { precision: 10, scale: 3 }).notNull(),
+  unitPrice: numeric('unit_price', { precision: 10, scale: 2 }).default('0'),
+  costCode: text('cost_code'),
+  phaseCode: text('phase_code'),
+  projectCode: text('project_code'),
+  source: text('source').default('manual'), // 'manual' or 'import'
+  importRunId: uuid('import_run_id').references(() => materialImportRuns.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const projectBudgetRollups = pgTable('project_budget_rollups', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid('project_id').notNull().references(() => projects.id),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  costCode: text('cost_code').notNull(),
+  totalBudget: numeric('total_budget', { precision: 12, scale: 2 }).default('0'),
+  totalMaterialsValue: numeric('total_materials_value', { precision: 12, scale: 2 }).default('0'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueProjectCostCode: unique().on(table.projectId, table.costCode),
+}));
+
+// Relations for new tables
+export const materialImportRunsRelations = relations(materialImportRuns, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [materialImportRuns.projectId],
+    references: [projects.id]
+  }),
+  organization: one(organizations, {
+    fields: [materialImportRuns.organizationId],
+    references: [organizations.id]
+  }),
+  uploadedBy: one(users, {
+    fields: [materialImportRuns.uploadedByUserId],
+    references: [users.id]
+  }),
+  lines: many(materialImportLines),
+  projectMaterials: many(projectMaterials)
+}));
+
+export const materialImportLinesRelations = relations(materialImportLines, ({ one }) => ({
+  run: one(materialImportRuns, {
+    fields: [materialImportLines.runId],
+    references: [materialImportRuns.id]
+  })
+}));
+
+export const projectMaterialsRelations = relations(projectMaterials, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectMaterials.projectId],
+    references: [projects.id]
+  }),
+  organization: one(organizations, {
+    fields: [projectMaterials.organizationId],
+    references: [organizations.id]
+  }),
+  importRun: one(materialImportRuns, {
+    fields: [projectMaterials.importRunId],
+    references: [materialImportRuns.id]
+  })
+}));
+
+export const projectBudgetRollupsRelations = relations(projectBudgetRollups, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectBudgetRollups.projectId],
+    references: [projects.id]
+  }),
+  organization: one(organizations, {
+    fields: [projectBudgetRollups.organizationId],
+    references: [organizations.id]
+  })
+}));
+
 // Insert schemas
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({
   id: true,
@@ -775,6 +899,29 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true
 });
 
+export const insertMaterialImportRunSchema = createInsertSchema(materialImportRuns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertMaterialImportLineSchema = createInsertSchema(materialImportLines).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertProjectMaterialSchema = createInsertSchema(projectMaterials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertProjectBudgetRollupSchema = createInsertSchema(projectBudgetRollups).omit({
+  id: true,
+  updatedAt: true
+});
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -832,3 +979,15 @@ export type InsertInvoiceLine = z.infer<typeof insertInvoiceLineSchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type MaterialImportRun = typeof materialImportRuns.$inferSelect;
+export type InsertMaterialImportRun = z.infer<typeof insertMaterialImportRunSchema>;
+
+export type MaterialImportLine = typeof materialImportLines.$inferSelect;
+export type InsertMaterialImportLine = z.infer<typeof insertMaterialImportLineSchema>;
+
+export type ProjectMaterial = typeof projectMaterials.$inferSelect;
+export type InsertProjectMaterial = z.infer<typeof insertProjectMaterialSchema>;
+
+export type ProjectBudgetRollup = typeof projectBudgetRollups.$inferSelect;
+export type InsertProjectBudgetRollup = z.infer<typeof insertProjectBudgetRollupSchema>;

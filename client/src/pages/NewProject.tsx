@@ -32,6 +32,7 @@ import {
   Save,
   ArrowRight
 } from "lucide-react";
+import { ProjectMaterialsStep } from "@/components/forms/ProjectMaterialsStep";
 
 const costCodeSchema = z.object({
   scope: z.string().min(1, "Scope is required"),
@@ -61,7 +62,8 @@ export default function NewProject() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [currentStep, setCurrentStep] = useState<'info' | 'budget'>('info');
+  const [currentStep, setCurrentStep] = useState<'info' | 'budget' | 'materials'>('info');
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [costCodeForm, setCostCodeForm] = useState<CostCode>({
     scope: "",
     projectNumber: "",
@@ -127,13 +129,14 @@ export default function NewProject() {
       const response = await apiRequest("POST", "/api/projects", payload);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setCreatedProjectId(data.id);
+      setCurrentStep('materials');
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({
         title: "Project Created",
-        description: "Your new project has been created successfully.",
+        description: "Project created successfully. Now add materials to complete setup.",
       });
-      navigate("/projects");
     },
     onError: () => {
       toast({
@@ -241,7 +244,15 @@ export default function NewProject() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => currentStep === 'info' ? navigate("/projects") : setCurrentStep('info')}
+          onClick={() => {
+            if (currentStep === 'info') {
+              navigate("/projects");
+            } else if (currentStep === 'budget') {
+              setCurrentStep('info');
+            } else if (currentStep === 'materials') {
+              setCurrentStep('budget');
+            }
+          }}
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -249,12 +260,13 @@ export default function NewProject() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            {currentStep === 'info' ? 'Project Information' : 'Budget & Cost Codes'}
+            {currentStep === 'info' ? 'Project Information' : 
+             currentStep === 'budget' ? 'Budget & Cost Codes' : 'Project Materials'}
           </h1>
           <p className="text-muted-foreground">
-            {currentStep === 'info' 
-              ? 'Enter basic project details and contract information' 
-              : 'Configure cost codes and budget allocation'
+            {currentStep === 'info' ? 'Enter basic project details and contract information' : 
+             currentStep === 'budget' ? 'Configure cost codes and budget allocation' :
+             'Import or add materials for your project'
             }
           </p>
         </div>
@@ -279,7 +291,9 @@ export default function NewProject() {
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
             currentStep === 'budget' 
               ? 'bg-primary text-primary-foreground' 
-              : 'bg-muted text-muted-foreground'
+              : currentStep === 'materials'
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                : 'bg-muted text-muted-foreground'
           }`}>
             2
           </div>
@@ -287,19 +301,47 @@ export default function NewProject() {
             Budget & Cost Codes
           </span>
         </div>
+        <div className="flex-1 h-0.5 bg-muted"></div>
+        <div className="flex items-center space-x-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+            currentStep === 'materials' 
+              ? 'bg-primary text-primary-foreground' 
+              : 'bg-muted text-muted-foreground'
+          }`}>
+            3
+          </div>
+          <span className={`text-sm font-medium ${currentStep === 'materials' ? 'text-foreground' : 'text-muted-foreground'}`}>
+            Materials
+          </span>
+        </div>
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col">
+      {currentStep === 'materials' ? (
         <div className="flex-1">
-          {currentStep === 'info' ? (
-            // Project Information Step
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <Building className="w-6 h-6" />
-                  Basic Project Details
-                </CardTitle>
-              </CardHeader>
+          {createdProjectId ? (
+            <ProjectMaterialsStep 
+              projectId={createdProjectId}
+              onNext={() => navigate("/projects")}
+              onPrevious={() => setCurrentStep('budget')}
+            />
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Please complete the project creation steps first.</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col">
+          <div className="flex-1">
+            {currentStep === 'info' ? (
+              // Project Information Step
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Building className="w-6 h-6" />
+                    Basic Project Details
+                  </CardTitle>
+                </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -482,149 +524,109 @@ export default function NewProject() {
                       </div>
                     </div>
                     <div>
-                      <div className="text-sm text-muted-foreground">Allocated Budget</div>
-                      <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                      <div className="text-sm text-muted-foreground">Budget Allocated</div>
+                      <div className="text-xl font-bold text-green-600 dark:text-green-400">
                         ${allocatedBudget.toLocaleString()}
                       </div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">Remaining Budget</div>
-                      <div className={`text-xl font-bold ${remainingBudget === 0 ? 'text-green-600 dark:text-green-400' : remainingBudget < 0 ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                      <div className={`text-xl font-bold ${remainingBudget >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         ${remainingBudget.toLocaleString()}
                       </div>
                     </div>
                   </div>
-                  {remainingBudget === 0 && (
-                    <div className="mt-2 text-center text-sm text-green-600 dark:text-green-400 font-medium">
-                      ✓ Budget is fully allocated and balanced
-                    </div>
-                  )}
-                  {remainingBudget < 0 && (
-                    <div className="mt-2 text-center text-sm text-red-600 dark:text-red-400 font-medium">
-                      ⚠ Budget is over-allocated by ${Math.abs(remainingBudget).toLocaleString()}
-                    </div>
-                  )}
                 </div>
 
-                <div className="space-y-4">
-                  <Label className="text-lg font-semibold">Add Cost Codes</Label>
-                  <div className="space-y-4">
-                    {/* Scope Field */}
+                {/* Cost Code Form */}
+                <div className="bg-muted/30 p-6 rounded-lg border space-y-4">
+                  <h4 className="font-medium text-lg">Add Cost Code</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="space-y-2">
-                      <Label>Scope (Work Description)</Label>
-                      <Input
-                        value={costCodeForm.scope}
-                        onChange={(e) => setCostCodeForm(prev => ({ ...prev, scope: e.target.value }))}
-                        placeholder="e.g., Toilet Accessories, Fire Extinguishers, Cast-in-Place Concrete"
-                        className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
-                        data-testid="input-cost-code-scope"
-                      />
+                      <Label htmlFor="phaseCode">Phase Code *</Label>
+                      <Select
+                        value={costCodeForm.phaseCode}
+                        onValueChange={(value) => {
+                          setCostCodeForm({ ...costCodeForm, phaseCode: value, scope: getScopeFromPhaseCode(value) });
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-phase-code">
+                          <SelectValue placeholder="Select phase" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {phaseCodeOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     
-                    {/* Cost Code Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <Label>Project Number</Label>
-                        <Input
-                          value={form.watch("projectNumber") || sessionProjectNumber}
-                          readOnly
-                          placeholder="Project number will auto-fill"
-                          className="h-12 text-base font-mono bg-muted text-muted-foreground"
-                          data-testid="input-project-number"
+                    <div className="space-y-2">
+                      <Label htmlFor="costBudget">Budget Amount *</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground text-base font-medium z-10">
+                          $
+                        </span>
+                        <CurrencyInput
+                          id="costBudget"
+                          value={costCodeForm.budget}
+                          onChange={(value) => setCostCodeForm({ ...costCodeForm, budget: value })}
+                          placeholder="25,000.00"
+                          className="pl-8"
+                          data-testid="input-cost-budget"
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Phase Code</Label>
-                        <Select
-                          value={costCodeForm.phaseCode}
-                          onValueChange={(value) => {
-                            setCostCodeForm(prev => ({ 
-                              ...prev, 
-                              phaseCode: value,
-                              scope: getScopeFromPhaseCode(value) || prev.scope
-                            }));
-                          }}
-                        >
-                          <SelectTrigger className="h-12 bg-slate-900 text-slate-100 border-slate-700 focus:border-slate-500 focus:ring-0" data-testid="select-phase-code">
-                            <SelectValue placeholder="Select phase code" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {phaseCodeOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Standard Code</Label>
-                        <Input
-                          value={costCodeForm.standardCode}
-                          onChange={(e) => setCostCodeForm(prev => ({ ...prev, standardCode: e.target.value }))}
-                          placeholder="71130"
-                          className="h-12 text-base font-mono bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
-                          data-testid="input-standard-code"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Budget ($)</Label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-100 text-base font-medium z-10">
-                            $
-                          </span>
-                          <CurrencyInput
-                            value={costCodeForm.budget}
-                            onChange={(value) => setCostCodeForm(prev => ({ ...prev, budget: value }))}
-                            placeholder="50,000.00"
-                            className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
-                            data-testid="input-cost-code-budget"
-                          />
-                        </div>
-                        {costCodeForm.budget && parseFloat(costCodeForm.budget) > 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            Amount: ${formatCurrency(costCodeForm.budget)}
-                          </p>
-                        )}
                       </div>
                     </div>
-                    
-                    <div className="flex gap-3">
+
+                    <div className="flex items-end">
                       <Button
                         type="button"
                         onClick={addCostCode}
-                        disabled={!costCodeForm.scope.trim() || !(form.watch("projectNumber") || sessionProjectNumber) || !costCodeForm.phaseCode.trim() || !costCodeForm.standardCode.trim() || !costCodeForm.budget.trim()}
-                        className="h-12 px-6"
+                        disabled={!costCodeForm.phaseCode || !costCodeForm.budget}
+                        className="w-full"
                         data-testid="button-add-cost-code"
                       >
-                        <Plus className="w-5 h-5 mr-2" />
-                        {editingIndex !== null ? 'Update Cost Code' : 'Add Cost Code'}
+                        {editingIndex !== null ? (
+                          <>
+                            <Save className="w-4 h-4 mr-2" />
+                            Update
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add
+                          </>
+                        )}
                       </Button>
-                      {editingIndex !== null && (
+                    </div>
+                    
+                    {editingIndex !== null && (
+                      <div className="flex items-end">
                         <Button
                           type="button"
                           variant="outline"
                           onClick={cancelEdit}
-                          className="h-12 px-6"
+                          className="w-full"
                           data-testid="button-cancel-edit"
                         >
-                          Cancel Edit
+                          <X className="w-4 h-4 mr-2" />
+                          Cancel
                         </Button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                  
-                  {/* Display Cost Codes */}
-                  {form.watch("costCodes") && form.watch("costCodes")!.length > 0 && (
-                    <div className="space-y-4 mt-6">
-                      <Label className="text-lg font-semibold">Added Cost Codes</Label>
-                      <div className="space-y-3">
-                        {form.watch("costCodes")!.map((costCode, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border"
-                            data-testid={`cost-code-item-${index}`}
-                          >
+                </div>
+
+                {/* Cost Codes List */}
+                <div>
+                  {form.watch("costCodes")?.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-lg">Cost Codes</h4>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {form.watch("costCodes")?.map((costCode, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
                             <div className="flex-1">
                               <div className="font-semibold text-lg">{costCode.scope}</div>
                               <div className="text-sm text-muted-foreground font-mono">
@@ -663,50 +665,51 @@ export default function NewProject() {
               </CardContent>
             </Card>
           )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-6 mt-auto">
-          {currentStep === 'info' ? (
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-6 mt-auto">
+            {currentStep === 'info' ? (
+              <Button
+                type="submit"
+                className="flex-1 h-12 text-base"
+                data-testid="button-next"
+              >
+                Next: Budget & Cost Codes
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={createProjectMutation.isPending}
+                className="flex-1 h-12 text-base"
+                data-testid="button-create-project"
+              >
+                {createProjectMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Create Project
+                  </>
+                )}
+              </Button>
+            )}
             <Button
-              type="submit"
-              className="flex-1 h-12 text-base"
-              data-testid="button-next"
+              type="button"
+              variant="outline"
+              onClick={() => currentStep === 'info' ? navigate("/projects") : setCurrentStep('info')}
+              className="h-12 text-base"
+              data-testid="button-cancel"
             >
-              Next: Budget & Cost Codes
-              <ArrowRight className="w-4 h-4 ml-2" />
+              {currentStep === 'info' ? 'Cancel' : 'Back'}
             </Button>
-          ) : (
-            <Button
-              type="submit"
-              disabled={createProjectMutation.isPending}
-              className="flex-1 h-12 text-base"
-              data-testid="button-create-project"
-            >
-              {createProjectMutation.isPending ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Create Project
-                </>
-              )}
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => currentStep === 'info' ? navigate("/projects") : setCurrentStep('info')}
-            className="h-12 text-base"
-            data-testid="button-cancel"
-          >
-            {currentStep === 'info' ? 'Cancel' : 'Back'}
-          </Button>
-        </div>
-      </form>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
