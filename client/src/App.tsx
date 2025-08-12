@@ -13,6 +13,7 @@ import NewRFQ from "@/pages/NewRFQ";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import Deliveries from "@/pages/Deliveries";
 import Invoices from "@/pages/Invoices";
+import InvoiceDetail from "@/pages/InvoiceDetail";
 import Materials from "@/pages/Materials";
 import Vendors from "@/pages/Vendors";
 import Projects from "@/pages/Projects";
@@ -152,6 +153,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <Invoices />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/invoices/:id"
+                element={
+                  <ProtectedRoute>
+                    <InvoiceDetail />
                   </ProtectedRoute>
                 }
               />
