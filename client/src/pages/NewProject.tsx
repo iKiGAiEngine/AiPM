@@ -61,10 +61,18 @@ export default function NewProject() {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: ProjectFormData) => {
-      return apiRequest('POST', '/api/projects', {
-        ...data,
-        budget: parseFloat(data.budget).toString(),
-      });
+      // Only send fields that match the database schema
+      const projectData = {
+        name: data.name,
+        client: data.client || null,
+        address: data.address || null,
+        status: data.status,
+        budget: data.budget ? parseFloat(data.budget).toString() : null,
+        costCodes: data.costCodes || [],
+        erpIds: null, // Can be set later when ERP integration is implemented
+      };
+      
+      return apiRequest('POST', '/api/projects', projectData);
     },
     onSuccess: () => {
       toast({
