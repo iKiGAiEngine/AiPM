@@ -367,10 +367,8 @@ async function seedDatabase() {
 }
 
 // Run seeding if this file is executed directly
-if (require.main === module) {
-  seedDatabase()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
-}
+seedDatabase()
+  .then(() => process.exit(0))
+  .catch(() => process.exit(1));
 
 export { seedDatabase };
