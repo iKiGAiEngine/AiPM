@@ -33,7 +33,9 @@ import {
 
 const costCodeSchema = z.object({
   scope: z.string().min(1, "Scope is required"),
-  code: z.string().min(1, "Cost code is required"),
+  projectNumber: z.string().min(1, "Project number is required"),
+  phaseCode: z.string().min(1, "Phase code is required"),
+  standardCode: z.string().min(1, "Standard code is required"),
   budget: z.string().min(1, "Budget is required"),
 });
 
@@ -59,9 +61,28 @@ export default function NewProject() {
   const [currentStep, setCurrentStep] = useState<'info' | 'budget'>('info');
   const [costCodeForm, setCostCodeForm] = useState<CostCode>({
     scope: "",
-    code: "",
+    projectNumber: "",
+    phaseCode: "",
+    standardCode: "71130",
     budget: "",
   });
+
+  // Phase code options with auto-population for scope
+  const phaseCodeOptions = [
+    { value: "102800", label: "102800 - Toilet Accessories" },
+    { value: "104400", label: "104400 - Fire Extinguishers" },
+    { value: "033000", label: "033000 - Cast-in-Place Concrete" },
+    { value: "055000", label: "055000 - Metal Fabrications" },
+    { value: "061000", label: "061000 - Rough Carpentry" },
+    { value: "072100", label: "072100 - Thermal Insulation" },
+    { value: "092900", label: "092900 - Gypsum Board" },
+    { value: "099100", label: "099100 - Painting" },
+  ];
+
+  const getScopeFromPhaseCode = (phaseCode: string) => {
+    const option = phaseCodeOptions.find(opt => opt.value === phaseCode);
+    return option ? option.label.split(" - ")[1] : "";
+  };
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -86,7 +107,7 @@ export default function NewProject() {
         address: data.address || null,
         status: data.status,
         budget: data.budget ? parseFloat(data.budget).toString() : null,
-        costCodes: data.costCodes?.map(cc => `${cc.scope} - ${cc.code}`) || [],
+        costCodes: data.costCodes?.map(cc => `${cc.scope} - ${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}`) || [],
         erpIds: null,
       };
       
@@ -125,17 +146,29 @@ export default function NewProject() {
   };
 
   const addCostCode = () => {
-    if (costCodeForm.scope.trim() && costCodeForm.code.trim() && costCodeForm.budget.trim()) {
+    if (costCodeForm.scope.trim() && costCodeForm.projectNumber.trim() && costCodeForm.phaseCode.trim() && costCodeForm.standardCode.trim() && costCodeForm.budget.trim()) {
       const currentCodes = form.getValues("costCodes") || [];
       const newCode = { ...costCodeForm };
       
-      const exists = currentCodes.some(cc => cc.code === newCode.code);
+      const fullCode = `${newCode.projectNumber}-${newCode.phaseCode}-${newCode.standardCode}`;
+      const exists = currentCodes.some(cc => `${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}` === fullCode);
       if (!exists) {
         form.setValue("costCodes", [...currentCodes, newCode]);
-        setCostCodeForm({ scope: "", code: "", budget: "" });
+        setCostCodeForm({ 
+          scope: "", 
+          projectNumber: "", 
+          phaseCode: "", 
+          standardCode: "71130", 
+          budget: "" 
+        });
       }
     }
   };
+
+  // Calculate budget totals
+  const totalContractValue = parseFloat(form.watch("budget") || "0");
+  const allocatedBudget = (form.watch("costCodes") || []).reduce((sum, cc) => sum + parseFloat(cc.budget || "0"), 0);
+  const remainingBudget = totalContractValue - allocatedBudget;
 
   const removeCostCode = (indexToRemove: number) => {
     const currentCodes = form.getValues("costCodes") || [];
@@ -351,31 +384,103 @@ export default function NewProject() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Budget Summary */}
+                <div className="bg-muted/30 p-4 rounded-lg border">
+                  <h3 className="font-semibold text-lg mb-3">Budget Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-sm text-muted-foreground">Total Contract Value</div>
+                      <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                        ${totalContractValue.toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Allocated Budget</div>
+                      <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                        ${allocatedBudget.toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Remaining Budget</div>
+                      <div className={`text-xl font-bold ${remainingBudget === 0 ? 'text-green-600 dark:text-green-400' : remainingBudget < 0 ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                        ${remainingBudget.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  {remainingBudget === 0 && (
+                    <div className="mt-2 text-center text-sm text-green-600 dark:text-green-400 font-medium">
+                      ✓ Budget is fully allocated and balanced
+                    </div>
+                  )}
+                  {remainingBudget < 0 && (
+                    <div className="mt-2 text-center text-sm text-red-600 dark:text-red-400 font-medium">
+                      ⚠ Budget is over-allocated by ${Math.abs(remainingBudget).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-4">
                   <Label className="text-lg font-semibold">Add Cost Codes</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-4">
+                    {/* Scope Field */}
                     <div className="space-y-2">
-                      <Label>Scope</Label>
+                      <Label>Scope (Work Description)</Label>
                       <Input
                         value={costCodeForm.scope}
                         onChange={(e) => setCostCodeForm(prev => ({ ...prev, scope: e.target.value }))}
-                        placeholder="e.g., Concrete Work, Electrical Systems, Plumbing"
+                        placeholder="e.g., Toilet Accessories, Fire Extinguishers, Cast-in-Place Concrete"
                         className="h-12 text-base"
                         data-testid="input-cost-code-scope"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Cost Code</Label>
-                      <Input
-                        value={costCodeForm.code}
-                        onChange={(e) => setCostCodeForm(prev => ({ ...prev, code: e.target.value }))}
-                        placeholder="e.g., 23479024-102800-71130"
-                        className="h-12 text-base font-mono"
-                        data-testid="input-cost-code-code"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 space-y-2">
+                    
+                    {/* Cost Code Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <Label>Project Number</Label>
+                        <Input
+                          value={costCodeForm.projectNumber}
+                          onChange={(e) => setCostCodeForm(prev => ({ ...prev, projectNumber: e.target.value }))}
+                          placeholder="e.g., 23479024"
+                          className="h-12 text-base font-mono"
+                          data-testid="input-project-number"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Phase Code</Label>
+                        <Select
+                          value={costCodeForm.phaseCode}
+                          onValueChange={(value) => {
+                            setCostCodeForm(prev => ({ 
+                              ...prev, 
+                              phaseCode: value,
+                              scope: getScopeFromPhaseCode(value) || prev.scope
+                            }));
+                          }}
+                        >
+                          <SelectTrigger className="h-12" data-testid="select-phase-code">
+                            <SelectValue placeholder="Select phase code" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {phaseCodeOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Standard Code</Label>
+                        <Input
+                          value={costCodeForm.standardCode}
+                          onChange={(e) => setCostCodeForm(prev => ({ ...prev, standardCode: e.target.value }))}
+                          placeholder="71130"
+                          className="h-12 text-base font-mono"
+                          data-testid="input-standard-code"
+                        />
+                      </div>
+                      <div className="space-y-2">
                         <Label>Budget ($)</Label>
                         <Input
                           value={costCodeForm.budget}
@@ -387,17 +492,19 @@ export default function NewProject() {
                           data-testid="input-cost-code-budget"
                         />
                       </div>
-                      <div className="flex items-end">
-                        <Button
-                          type="button"
-                          onClick={addCostCode}
-                          disabled={!costCodeForm.scope.trim() || !costCodeForm.code.trim() || !costCodeForm.budget.trim()}
-                          className="h-12 px-4"
-                          data-testid="button-add-cost-code"
-                        >
-                          <Plus className="w-5 h-5" />
-                        </Button>
-                      </div>
+                    </div>
+                    
+                    <div className="flex justify-start">
+                      <Button
+                        type="button"
+                        onClick={addCostCode}
+                        disabled={!costCodeForm.scope.trim() || !costCodeForm.projectNumber.trim() || !costCodeForm.phaseCode.trim() || !costCodeForm.standardCode.trim() || !costCodeForm.budget.trim()}
+                        className="h-12 px-6"
+                        data-testid="button-add-cost-code"
+                      >
+                        <Plus className="w-5 h-5 mr-2" />
+                        Add Cost Code
+                      </Button>
                     </div>
                   </div>
                   
@@ -414,7 +521,9 @@ export default function NewProject() {
                           >
                             <div className="flex-1">
                               <div className="font-semibold text-lg">{costCode.scope}</div>
-                              <div className="text-sm text-muted-foreground font-mono">{costCode.code}</div>
+                              <div className="text-sm text-muted-foreground font-mono">
+                                {costCode.projectNumber}-{costCode.phaseCode}-{costCode.standardCode}
+                              </div>
                               <div className="text-base font-semibold text-green-600 dark:text-green-400">
                                 ${parseFloat(costCode.budget).toLocaleString()}
                               </div>
