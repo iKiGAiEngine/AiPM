@@ -60,6 +60,7 @@ export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
   name: text("name").notNull(),
+  projectNumber: text("project_number"),
   client: text("client"),
   address: text("address"),
   status: projectStatusEnum("status").default('active'),

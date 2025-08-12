@@ -42,6 +42,7 @@ const costCodeSchema = z.object({
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
+  projectNumber: z.string().min(1, "Project number is required"),
   client: z.string().min(1, "Client is required"),
   address: z.string().min(1, "Address is required"),
   budget: z.string().min(1, "Budget is required"),
@@ -70,42 +71,22 @@ export default function NewProject() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [sessionProjectNumber, setSessionProjectNumber] = useState<string>("");
 
-  // Division 10 Equipment phase codes per construction standards
+  // Division 10 Equipment phase codes (condensed for better visibility)
   const phaseCodeOptions = [
-    { value: "101000", label: "101000 - Visual Display Boards" },
+    { value: "102800", label: "102800 - Toilet Accessories" },
+    { value: "104416", label: "104416 - Fire Extinguishers" },
+    { value: "105113", label: "105113 - Metal Lockers" },
+    { value: "102113", label: "102113 - Metal Toilet Compartments" },
+    { value: "104413", label: "104413 - Fire Extinguisher Cabinets" },
+    { value: "108300", label: "108300 - Mirrors" },
     { value: "101100", label: "101100 - Chalkboards" },
     { value: "101200", label: "101200 - Marker Boards" },
-    { value: "101300", label: "101300 - Directory Boards" },
     { value: "101400", label: "101400 - Bulletin Boards" },
-    { value: "101600", label: "101600 - Magnetic Boards" },
-    { value: "102100", label: "102100 - Compartments and Cubicles" },
-    { value: "102113", label: "102113 - Metal Toilet Compartments" },
-    { value: "102213", label: "102213 - Plastic-Laminate-Clad Toilet Compartments" },
-    { value: "102219", label: "102219 - Solid Phenolic Core Toilet Compartments" },
-    { value: "102226", label: "102226 - Plastic Toilet Compartments" },
-    { value: "102800", label: "102800 - Toilet, Bath, and Laundry Accessories" },
-    { value: "103000", label: "103000 - Fireplaces and Stoves" },
     { value: "103100", label: "103100 - Manufactured Fireplaces" },
-    { value: "103200", label: "103200 - Fireplace Specialties" },
-    { value: "103300", label: "103300 - Stoves" },
-    { value: "104000", label: "104000 - Safety Specialties" },
-    { value: "104100", label: "104100 - Safety Specialties" },
-    { value: "104400", label: "104400 - Fire Protection Specialties" },
-    { value: "104413", label: "104413 - Fire Extinguisher Cabinets" },
-    { value: "104416", label: "104416 - Fire Extinguishers" },
-    { value: "105000", label: "105000 - Storage Specialties" },
-    { value: "105113", label: "105113 - Metal Lockers" },
     { value: "105500", label: "105500 - Postal Specialties" },
     { value: "106000", label: "106000 - Service Wall Systems" },
-    { value: "107000", label: "107000 - Exterior Protection" },
-    { value: "107100", label: "107100 - Exterior Sun Control Devices" },
-    { value: "107113", label: "107113 - Metal Exterior Sun Control Devices" },
-    { value: "107200", label: "107200 - Exterior Protective Covers" },
-    { value: "107300", label: "107300 - Protective Covers" },
-    { value: "108000", label: "108000 - Other Specialties" },
+    { value: "107100", label: "107100 - Exterior Sun Control" },
     { value: "108113", label: "108113 - Metal Flagpoles" },
-    { value: "108213", label: "108213 - Fiberglass Flagpoles" },
-    { value: "108300", label: "108300 - Mirrors" },
   ];
 
   const getScopeFromPhaseCode = (phaseCode: string) => {
@@ -117,6 +98,7 @@ export default function NewProject() {
     resolver: zodResolver(projectSchema),
     defaultValues: {
       name: "",
+      projectNumber: "",
       client: "",
       address: "",
       budget: "",
@@ -132,6 +114,7 @@ export default function NewProject() {
     mutationFn: async (data: ProjectFormData) => {
       const payload = {
         name: data.name,
+        projectNumber: data.projectNumber,
         client: data.client || null,
         address: data.address || null,
         status: data.status,
@@ -168,8 +151,13 @@ export default function NewProject() {
   const onSubmit = (data: ProjectFormData) => {
     if (currentStep === 'info') {
       // Validate project info fields before proceeding
-      const hasErrors = form.formState.errors.name || form.formState.errors.client || form.formState.errors.address || form.formState.errors.budget || form.formState.errors.startDate || form.formState.errors.endDate;
+      const hasErrors = form.formState.errors.name || form.formState.errors.projectNumber || form.formState.errors.client || form.formState.errors.address || form.formState.errors.budget || form.formState.errors.startDate || form.formState.errors.endDate;
       if (!hasErrors) {
+        // Set session project number and initialize cost code form
+        if (data.projectNumber && !sessionProjectNumber) {
+          setSessionProjectNumber(data.projectNumber);
+          setCostCodeForm(prev => ({ ...prev, projectNumber: data.projectNumber }));
+        }
         setCurrentStep('budget');
       }
     } else {
@@ -178,14 +166,13 @@ export default function NewProject() {
   };
 
   const addCostCode = () => {
-    if (costCodeForm.scope.trim() && costCodeForm.projectNumber.trim() && costCodeForm.phaseCode.trim() && costCodeForm.standardCode.trim() && costCodeForm.budget.trim()) {
+    const projectNumber = form.watch("projectNumber") || sessionProjectNumber;
+    if (costCodeForm.scope.trim() && projectNumber && costCodeForm.phaseCode.trim() && costCodeForm.standardCode.trim() && costCodeForm.budget.trim()) {
       const currentCodes = form.getValues("costCodes") || [];
       const newCode = { ...costCodeForm };
       
-      // Set session project number on first entry
-      if (!sessionProjectNumber && newCode.projectNumber) {
-        setSessionProjectNumber(newCode.projectNumber);
-      }
+      // Use the project number from the form
+      newCode.projectNumber = projectNumber;
       
       if (editingIndex !== null) {
         // Update existing cost code
@@ -204,7 +191,7 @@ export default function NewProject() {
       
       setCostCodeForm({ 
         scope: "", 
-        projectNumber: sessionProjectNumber, 
+        projectNumber: projectNumber, 
         phaseCode: "", 
         standardCode: "71130", 
         budget: "" 
@@ -222,9 +209,10 @@ export default function NewProject() {
 
   const cancelEdit = () => {
     setEditingIndex(null);
+    const projectNumber = form.watch("projectNumber") || sessionProjectNumber;
     setCostCodeForm({ 
       scope: "", 
-      projectNumber: sessionProjectNumber, 
+      projectNumber: projectNumber, 
       phaseCode: "", 
       standardCode: "71130", 
       budget: "" 
@@ -324,7 +312,7 @@ export default function NewProject() {
                       {...form.register("name")}
                       id="name"
                       placeholder="Downtown Office Complex"
-                      className="h-12 text-base"
+                      className="h-12 text-base text-foreground bg-background"
                       data-testid="input-name"
                     />
                     {form.formState.errors.name && (
@@ -340,7 +328,7 @@ export default function NewProject() {
                       {...form.register("client")}
                       id="client"
                       placeholder="ABC Construction Company"
-                      className="h-12 text-base"
+                      className="h-12 text-base text-foreground bg-background"
                       data-testid="input-client"
                     />
                     {form.formState.errors.client && (
@@ -352,12 +340,28 @@ export default function NewProject() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="projectNumber">Project Number *</Label>
+                  <Input
+                    {...form.register("projectNumber")}
+                    id="projectNumber"
+                    placeholder="e.g., 23479024"
+                    className="h-12 text-base text-foreground bg-background font-mono"
+                    data-testid="input-project-number-main"
+                  />
+                  {form.formState.errors.projectNumber && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.projectNumber.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="address">Project Address *</Label>
                   <Input
                     {...form.register("address")}
                     id="address"
                     placeholder="123 Main Street, City, State, ZIP"
-                    className="h-12 text-base"
+                    className="h-12 text-base text-foreground bg-background"
                     data-testid="input-address"
                   />
                   {form.formState.errors.address && (
@@ -379,7 +383,7 @@ export default function NewProject() {
                       type="number"
                       step="0.01"
                       placeholder="500,000.00"
-                      className="h-12 text-base pl-8"
+                      className="h-12 text-base pl-8 text-foreground bg-background"
                       data-testid="input-budget"
                       onChange={(e) => {
                         const value = e.target.value;
@@ -530,17 +534,10 @@ export default function NewProject() {
                       <div className="space-y-2">
                         <Label>Project Number</Label>
                         <Input
-                          value={costCodeForm.projectNumber}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setCostCodeForm(prev => ({ ...prev, projectNumber: value }));
-                            // Set session project number on first entry
-                            if (!sessionProjectNumber && value) {
-                              setSessionProjectNumber(value);
-                            }
-                          }}
-                          placeholder={sessionProjectNumber || "e.g., 23479024"}
-                          className="h-12 text-base font-mono"
+                          value={form.watch("projectNumber") || sessionProjectNumber}
+                          readOnly
+                          placeholder="Project number will auto-fill"
+                          className="h-12 text-base font-mono bg-muted text-muted-foreground"
                           data-testid="input-project-number"
                         />
                       </div>
@@ -590,7 +587,7 @@ export default function NewProject() {
                             type="number"
                             step="0.01"
                             placeholder="50,000.00"
-                            className="h-12 text-base pl-8"
+                            className="h-12 text-base pl-8 text-foreground bg-background"
                             data-testid="input-cost-code-budget"
                           />
                         </div>
@@ -606,7 +603,7 @@ export default function NewProject() {
                       <Button
                         type="button"
                         onClick={addCostCode}
-                        disabled={!costCodeForm.scope.trim() || !costCodeForm.projectNumber.trim() || !costCodeForm.phaseCode.trim() || !costCodeForm.standardCode.trim() || !costCodeForm.budget.trim()}
+                        disabled={!costCodeForm.scope.trim() || !(form.watch("projectNumber") || sessionProjectNumber) || !costCodeForm.phaseCode.trim() || !costCodeForm.standardCode.trim() || !costCodeForm.budget.trim()}
                         className="h-12 px-6"
                         data-testid="button-add-cost-code"
                       >
