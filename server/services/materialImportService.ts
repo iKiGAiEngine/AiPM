@@ -70,7 +70,7 @@ export class MaterialImportService {
     return { ...run, lines };
   }
   
-  // Parse Excel file and create import lines
+  // Parse Excel/CSV file and create import lines
   async parseExcelFile(
     runId: string, 
     fileBuffer: Buffer, 
@@ -78,11 +78,20 @@ export class MaterialImportService {
     projectCode?: string
   ): Promise<{ success: boolean; message: string; lineCount: number }> {
     try {
-      // Parse Excel file
-      const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+      // Parse file (supports Excel and CSV)
+      const workbook = XLSX.read(fileBuffer, { 
+        type: 'buffer',
+        cellDates: true,
+        cellNF: false,
+        cellText: false
+      });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        defval: '',
+        blankrows: false
+      });
       
       if (jsonData.length < 2) {
         return { success: false, message: 'File must contain at least a header row and one data row', lineCount: 0 };

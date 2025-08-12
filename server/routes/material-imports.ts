@@ -14,11 +14,21 @@ const upload = multer({
     fileSize: 20 * 1024 * 1024, // 20MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-        file.originalname.endsWith('.xlsx')) {
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv', // .csv
+      'application/csv' // Alternative CSV mime type
+    ];
+    
+    const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+    const hasValidType = allowedTypes.includes(file.mimetype);
+    const hasValidExtension = allowedExtensions.some(ext => file.originalname.toLowerCase().endsWith(ext));
+    
+    if (hasValidType || hasValidExtension) {
       cb(null, true);
     } else {
-      cb(new Error('Only .xlsx files are allowed'));
+      cb(new Error('Only .xlsx, .xls, and .csv files are allowed'));
     }
   }
 });
@@ -46,7 +56,7 @@ router.post('/projects/:projectId/material-import/upload', authenticateToken, up
     // In a real app, you'd fetch this from the projects table
     const projectCode = projectId.slice(0, 8); // Mock project code
 
-    // Parse the Excel file immediately
+    // Parse the file immediately (supports Excel and CSV)
     const parseResult = await materialImportService.parseExcelFile(
       run.id,
       file.buffer,

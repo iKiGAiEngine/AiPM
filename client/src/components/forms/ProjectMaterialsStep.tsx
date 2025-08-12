@@ -114,9 +114,12 @@ export function ProjectMaterialsStep({
   // Mutations for file upload and processing
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      setUploadProgress(10); // Start progress
       const formData = new FormData();
       formData.append("file", file);
 
+      setUploadProgress(30); // File prepared
+      
       const response = await fetch(
         `/api/projects/${projectId}/material-import/upload`,
         {
@@ -128,14 +131,19 @@ export function ProjectMaterialsStep({
         },
       );
 
+      setUploadProgress(70); // Upload complete, processing
+
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        console.error("Upload error:", errorText);
+        throw new Error(errorText);
       }
 
+      setUploadProgress(90); // Response received
       return response.json();
     },
     onSuccess: async (data) => {
-      setUploadProgress(100);
+      setUploadProgress(95);
       // Fetch the import run details
       const runResponse = await fetch(`/api/material-imports/${data.runId}`, {
         headers: {
@@ -146,10 +154,13 @@ export function ProjectMaterialsStep({
         const runData = await runResponse.json();
         setCurrentRun(runData);
       }
+      setUploadProgress(100);
       setIsUploadDialogOpen(false);
     },
     onError: (error: any) => {
       console.error("Upload failed:", error);
+      setUploadProgress(0);
+      alert(`Upload failed: ${error.message || "Unknown error"}`);
     },
   });
 
@@ -460,6 +471,19 @@ export function ProjectMaterialsStep({
                   <p className="text-sm text-muted-foreground">
                     Supports .xlsx, .xls, .csv files up to 20MB
                   </p>
+                  {uploadMutation.isPending && (
+                    <div className="mt-4">
+                      <div className="text-sm text-muted-foreground mb-2">
+                        Processing file...
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
