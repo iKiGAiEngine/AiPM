@@ -1,27 +1,34 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { 
-  ArrowLeft, 
-  Plus, 
-  Building, 
-  MapPin, 
-  DollarSign, 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ArrowLeft,
+  Building,
+  DollarSign,
   Calendar,
+  Tag,
+  Plus,
   X,
-  Save
+  Save,
+  ArrowRight
 } from "lucide-react";
 
 const costCodeSchema = z.object({
@@ -49,6 +56,7 @@ export default function NewProject() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [currentStep, setCurrentStep] = useState<'info' | 'budget'>('info');
   const [costCodeForm, setCostCodeForm] = useState<CostCode>({
     scope: "",
     code: "",
@@ -72,39 +80,48 @@ export default function NewProject() {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: ProjectFormData) => {
-      // Only send fields that match the database schema
-      const projectData = {
+      const payload = {
         name: data.name,
         client: data.client || null,
         address: data.address || null,
         status: data.status,
         budget: data.budget ? parseFloat(data.budget).toString() : null,
         costCodes: data.costCodes?.map(cc => `${cc.scope} - ${cc.code}`) || [],
-        erpIds: null, // Can be set later when ERP integration is implemented
+        erpIds: null,
       };
       
-      console.log('Sending project data:', projectData);
-      return apiRequest('POST', '/api/projects', projectData);
+      return apiRequest("/api/projects", {
+        method: "POST",
+        body: payload,
+      });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({
         title: "Project Created",
-        description: "Your project has been successfully created",
+        description: "Your new project has been created successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       navigate("/projects");
     },
-    onError: (error: any) => {
+    onError: () => {
       toast({
-        title: "Failed to Create Project",
-        description: error.message || "Please try again later",
+        title: "Error",
+        description: "Failed to create project. Please try again.",
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: ProjectFormData) => {
-    createProjectMutation.mutate(data);
+    if (currentStep === 'info') {
+      // Validate project info fields before proceeding
+      const hasErrors = form.formState.errors.name || form.formState.errors.client || form.formState.errors.address || form.formState.errors.budget || form.formState.errors.startDate || form.formState.errors.endDate;
+      if (!hasErrors) {
+        setCurrentStep('budget');
+      }
+    } else {
+      createProjectMutation.mutate(data);
+    }
   };
 
   const addCostCode = () => {
@@ -112,7 +129,6 @@ export default function NewProject() {
       const currentCodes = form.getValues("costCodes") || [];
       const newCode = { ...costCodeForm };
       
-      // Check if cost code already exists
       const exists = currentCodes.some(cc => cc.code === newCode.code);
       if (!exists) {
         form.setValue("costCodes", [...currentCodes, newCode]);
@@ -127,275 +143,341 @@ export default function NewProject() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 min-h-screen flex flex-col max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 mb-6">
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate("/projects")}
-          data-testid="button-back-to-projects"
+          onClick={() => currentStep === 'info' ? navigate("/projects") : setCurrentStep('info')}
+          data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Projects
+          {currentStep === 'info' ? 'Back to Projects' : 'Back'}
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Create New Project</h1>
-          <p className="text-muted-foreground">Set up a new construction project with budget tracking</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {currentStep === 'info' ? 'Project Information' : 'Budget & Cost Codes'}
+          </h1>
+          <p className="text-muted-foreground">
+            {currentStep === 'info' 
+              ? 'Enter basic project details and contract information' 
+              : 'Configure cost codes and budget allocation'
+            }
+          </p>
         </div>
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="w-5 h-5" />
-                Project Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Project Name *</Label>
-                <Input
-                  {...form.register("name")}
-                  id="name"
-                  placeholder="Metro Plaza Office Tower"
-                  data-testid="input-project-name"
-                />
-                {form.formState.errors.name && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.name.message}
-                  </p>
-                )}
-              </div>
+      {/* Progress Indicator */}
+      <div className="flex items-center space-x-4 mb-8">
+        <div className="flex items-center space-x-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+            currentStep === 'info' 
+              ? 'bg-primary text-primary-foreground' 
+              : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+          }`}>
+            1
+          </div>
+          <span className={`text-sm font-medium ${currentStep === 'info' ? 'text-foreground' : 'text-muted-foreground'}`}>
+            Project Information
+          </span>
+        </div>
+        <div className="flex-1 h-0.5 bg-muted"></div>
+        <div className="flex items-center space-x-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+            currentStep === 'budget' 
+              ? 'bg-primary text-primary-foreground' 
+              : 'bg-muted text-muted-foreground'
+          }`}>
+            2
+          </div>
+          <span className={`text-sm font-medium ${currentStep === 'budget' ? 'text-foreground' : 'text-muted-foreground'}`}>
+            Budget & Cost Codes
+          </span>
+        </div>
+      </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="client">Client *</Label>
-                <Input
-                  {...form.register("client")}
-                  id="client"
-                  placeholder="Metro Construction Corp"
-                  data-testid="input-client"
-                />
-                {form.formState.errors.client && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.client.message}
-                  </p>
-                )}
-              </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col">
+        <div className="flex-1">
+          {currentStep === 'info' ? (
+            // Project Information Step
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Building className="w-6 h-6" />
+                  Basic Project Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Project Name *</Label>
+                    <Input
+                      {...form.register("name")}
+                      id="name"
+                      placeholder="Downtown Office Complex"
+                      className="h-12 text-base"
+                      data-testid="input-name"
+                    />
+                    {form.formState.errors.name && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.name.message}
+                      </p>
+                    )}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Project Address *</Label>
-                <Textarea
-                  {...form.register("address")}
-                  id="address"
-                  placeholder="123 Main Street, Anytown, ST 12345"
-                  data-testid="input-address"
-                />
-                {form.formState.errors.address && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.address.message}
-                  </p>
-                )}
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="client">Client *</Label>
+                    <Input
+                      {...form.register("client")}
+                      id="client"
+                      placeholder="ABC Construction Company"
+                      className="h-12 text-base"
+                      data-testid="input-client"
+                    />
+                    {form.formState.errors.client && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.client.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="status">Project Status</Label>
-                <Select
-                  value={form.watch("status")}
-                  onValueChange={(value: "active" | "on_hold" | "completed" | "cancelled") => 
-                    form.setValue("status", value)
-                  }
-                >
-                  <SelectTrigger data-testid="select-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="on_hold">On Hold</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Textarea
-                  {...form.register("description")}
-                  id="description"
-                  placeholder="Project description and notes..."
-                  data-testid="input-description"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Budget & Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
-                Budget & Timeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="budget">Total Budget *</Label>
-                <Input
-                  {...form.register("budget")}
-                  id="budget"
-                  type="number"
-                  step="0.01"
-                  placeholder="500000.00"
-                  data-testid="input-budget"
-                />
-                {form.formState.errors.budget && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.budget.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date *</Label>
+                  <Label htmlFor="address">Project Address *</Label>
                   <Input
-                    {...form.register("startDate")}
-                    id="startDate"
-                    type="date"
-                    data-testid="input-start-date"
+                    {...form.register("address")}
+                    id="address"
+                    placeholder="123 Main Street, City, State, ZIP"
+                    className="h-12 text-base"
+                    data-testid="input-address"
                   />
-                  {form.formState.errors.startDate && (
+                  {form.formState.errors.address && (
                     <p className="text-sm text-destructive">
-                      {form.formState.errors.startDate.message}
+                      {form.formState.errors.address.message}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">End Date *</Label>
+                  <Label htmlFor="budget">Total Contract Value *</Label>
                   <Input
-                    {...form.register("endDate")}
-                    id="endDate"
-                    type="date"
-                    data-testid="input-end-date"
+                    {...form.register("budget")}
+                    id="budget"
+                    type="number"
+                    step="0.01"
+                    placeholder="500000.00"
+                    className="h-12 text-base"
+                    data-testid="input-budget"
                   />
-                  {form.formState.errors.endDate && (
+                  {form.formState.errors.budget && (
                     <p className="text-sm text-destructive">
-                      {form.formState.errors.endDate.message}
+                      {form.formState.errors.budget.message}
                     </p>
                   )}
                 </div>
-              </div>
 
-              {/* Cost Codes */}
-              <div className="space-y-3">
-                <Label>Cost Codes</Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Start Date *</Label>
                     <Input
-                      value={costCodeForm.scope}
-                      onChange={(e) => setCostCodeForm(prev => ({ ...prev, scope: e.target.value }))}
-                      placeholder="Scope (e.g., Concrete Work)"
-                      data-testid="input-cost-code-scope"
+                      {...form.register("startDate")}
+                      id="startDate"
+                      type="date"
+                      className="h-12 text-base"
+                      data-testid="input-start-date"
                     />
+                    {form.formState.errors.startDate && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.startDate.message}
+                      </p>
+                    )}
                   </div>
-                  <div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">End Date *</Label>
                     <Input
-                      value={costCodeForm.code}
-                      onChange={(e) => setCostCodeForm(prev => ({ ...prev, code: e.target.value }))}
-                      placeholder="Cost Code (e.g., 23479024-102800-71130)"
-                      data-testid="input-cost-code-code"
+                      {...form.register("endDate")}
+                      id="endDate"
+                      type="date"
+                      className="h-12 text-base"
+                      data-testid="input-end-date"
                     />
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={costCodeForm.budget}
-                      onChange={(e) => setCostCodeForm(prev => ({ ...prev, budget: e.target.value }))}
-                      type="number"
-                      step="0.01"
-                      placeholder="Budget ($)"
-                      data-testid="input-cost-code-budget"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={addCostCode}
-                      disabled={!costCodeForm.scope.trim() || !costCodeForm.code.trim() || !costCodeForm.budget.trim()}
-                      data-testid="button-add-cost-code"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
+                    {form.formState.errors.endDate && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.endDate.message}
+                      </p>
+                    )}
                   </div>
                 </div>
-                
-                {/* Display Cost Codes */}
-                {form.watch("costCodes") && form.watch("costCodes")!.length > 0 && (
-                  <div className="space-y-2 mt-3">
-                    <Label className="text-sm text-muted-foreground">Added Cost Codes:</Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Project Status</Label>
+                  <Select
+                    value={form.watch("status")}
+                    onValueChange={(value: any) => form.setValue("status", value)}
+                  >
+                    <SelectTrigger className="h-12" data-testid="select-status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Textarea
+                    {...form.register("description")}
+                    id="description"
+                    placeholder="Project description and notes..."
+                    className="min-h-24"
+                    data-testid="input-description"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Budget & Cost Codes Step
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Tag className="w-6 h-6" />
+                  Cost Codes & Budget Allocation
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <Label className="text-lg font-semibold">Add Cost Codes</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      {form.watch("costCodes")!.map((costCode, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border"
-                          data-testid={`cost-code-item-${index}`}
+                      <Label>Scope</Label>
+                      <Input
+                        value={costCodeForm.scope}
+                        onChange={(e) => setCostCodeForm(prev => ({ ...prev, scope: e.target.value }))}
+                        placeholder="e.g., Concrete Work, Electrical Systems, Plumbing"
+                        className="h-12 text-base"
+                        data-testid="input-cost-code-scope"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cost Code</Label>
+                      <Input
+                        value={costCodeForm.code}
+                        onChange={(e) => setCostCodeForm(prev => ({ ...prev, code: e.target.value }))}
+                        placeholder="e.g., 23479024-102800-71130"
+                        className="h-12 text-base font-mono"
+                        data-testid="input-cost-code-code"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1 space-y-2">
+                        <Label>Budget ($)</Label>
+                        <Input
+                          value={costCodeForm.budget}
+                          onChange={(e) => setCostCodeForm(prev => ({ ...prev, budget: e.target.value }))}
+                          type="number"
+                          step="0.01"
+                          placeholder="50000.00"
+                          className="h-12 text-base"
+                          data-testid="input-cost-code-budget"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          onClick={addCostCode}
+                          disabled={!costCodeForm.scope.trim() || !costCodeForm.code.trim() || !costCodeForm.budget.trim()}
+                          className="h-12 px-4"
+                          data-testid="button-add-cost-code"
                         >
-                          <div className="flex-1">
-                            <div className="font-medium">{costCode.scope}</div>
-                            <div className="text-sm text-muted-foreground">{costCode.code}</div>
-                            <div className="text-sm font-medium text-green-600 dark:text-green-400">
-                              ${parseFloat(costCode.budget).toLocaleString()}
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeCostCode(index)}
-                            data-testid={`button-remove-cost-code-${index}`}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
+                          <Plus className="w-5 h-5" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  
+                  {/* Display Cost Codes */}
+                  {form.watch("costCodes") && form.watch("costCodes")!.length > 0 && (
+                    <div className="space-y-4 mt-6">
+                      <Label className="text-lg font-semibold">Added Cost Codes</Label>
+                      <div className="space-y-3">
+                        {form.watch("costCodes")!.map((costCode, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border"
+                            data-testid={`cost-code-item-${index}`}
+                          >
+                            <div className="flex-1">
+                              <div className="font-semibold text-lg">{costCode.scope}</div>
+                              <div className="text-sm text-muted-foreground font-mono">{costCode.code}</div>
+                              <div className="text-base font-semibold text-green-600 dark:text-green-400">
+                                ${parseFloat(costCode.budget).toLocaleString()}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeCostCode(index)}
+                              data-testid={`button-remove-cost-code-${index}`}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-6">
-          <Button
-            type="submit"
-            disabled={createProjectMutation.isPending}
-            className="flex-1"
-            data-testid="button-create-project"
-          >
-            {createProjectMutation.isPending ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                Creating...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Create Project
-              </>
-            )}
-          </Button>
+        <div className="flex gap-3 pt-6 mt-auto">
+          {currentStep === 'info' ? (
+            <Button
+              type="submit"
+              className="flex-1 h-12 text-base"
+              data-testid="button-next"
+            >
+              Next: Budget & Cost Codes
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              disabled={createProjectMutation.isPending}
+              className="flex-1 h-12 text-base"
+              data-testid="button-create-project"
+            >
+              {createProjectMutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Create Project
+                </>
+              )}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/projects")}
+            onClick={() => currentStep === 'info' ? navigate("/projects") : setCurrentStep('info')}
+            className="h-12 text-base"
             data-testid="button-cancel"
           >
-            Cancel
+            {currentStep === 'info' ? 'Cancel' : 'Back'}
           </Button>
         </div>
       </form>
