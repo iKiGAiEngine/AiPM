@@ -148,17 +148,23 @@ export default function NewProject() {
     mutationFn: async (data: ProjectFormData) => {
       const payload = {
         name: data.name,
-        projectNumber: data.projectNumber,
+        projectNumber: data.projectNumber || null,
         client: data.client || null,
         address: data.address || null,
         status: data.status,
-        budget: data.budget ? parseFloat(data.budget).toString() : null,
+        budget: data.budget ? parseFloat(data.budget) : null,
         costCodes: data.costCodes?.map(cc => `${cc.scope} - ${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}`) || [],
         erpIds: null,
       };
       
+      console.log('Sending project payload:', payload);
       const response = await apiRequest("POST", "/api/projects", payload);
-      return await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Project creation error:', errorText);
+        throw new Error(errorText);
+      }
+      return response.json();
     },
     onSuccess: (data) => {
       setCreatedProjectId(data.id);
@@ -478,7 +484,7 @@ export default function NewProject() {
                       placeholder="500,000.00"
                       className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-budget"
-                      onKeyDown={(e) => handleEnterKeyNavigation(e, "startDate")}
+
                     />
                   </div>
                   {form.formState.errors.budget && (
@@ -641,12 +647,7 @@ export default function NewProject() {
                           placeholder="25,000.00"
                           className="pl-8"
                           data-testid="input-cost-budget"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              addCostCode();
-                            }
-                          }}
+
                         />
                       </div>
                     </div>
