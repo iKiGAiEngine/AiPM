@@ -81,6 +81,28 @@ export default function NewProject() {
   const [sessionProjectNumber, setSessionProjectNumber] = useState<string>("");
   const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload');
 
+  // Keyboard navigation helper
+  const handleEnterKeyNavigation = (e: React.KeyboardEvent, nextFieldId?: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (nextFieldId) {
+        const nextField = document.getElementById(nextFieldId);
+        if (nextField) {
+          nextField.focus();
+        }
+      } else {
+        // Move to next focusable element
+        const focusableElements = document.querySelectorAll(
+          'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])'
+        );
+        const currentIndex = Array.from(focusableElements).indexOf(document.activeElement as Element);
+        if (currentIndex > -1 && currentIndex < focusableElements.length - 1) {
+          (focusableElements[currentIndex + 1] as HTMLElement).focus();
+        }
+      }
+    }
+  };
+
   // Division 10 Equipment phase codes (condensed for better visibility)
   const phaseCodeOptions = [
     { value: "102800", label: "102800 - Toilet Accessories" },
@@ -416,6 +438,7 @@ export default function NewProject() {
                       placeholder="Downtown Office Complex"
                       className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-name"
+                      onKeyDown={(e) => handleEnterKeyNavigation(e, "client")}
                     />
                     {form.formState.errors.name && (
                       <p className="text-sm text-destructive">
@@ -432,6 +455,7 @@ export default function NewProject() {
                       placeholder="ABC Construction Company"
                       className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-client"
+                      onKeyDown={(e) => handleEnterKeyNavigation(e, "projectNumber")}
                     />
                     {form.formState.errors.client && (
                       <p className="text-sm text-destructive">
@@ -449,6 +473,7 @@ export default function NewProject() {
                     placeholder="e.g., 23479024"
                     className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                     data-testid="input-project-number-main"
+                    onKeyDown={(e) => handleEnterKeyNavigation(e, "address")}
                   />
                   {form.formState.errors.projectNumber && (
                     <p className="text-sm text-destructive">
@@ -465,6 +490,7 @@ export default function NewProject() {
                     placeholder="123 Main Street, City, State, ZIP"
                     className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                     data-testid="input-address"
+                    onKeyDown={(e) => handleEnterKeyNavigation(e, "budget")}
                   />
                   {form.formState.errors.address && (
                     <p className="text-sm text-destructive">
@@ -489,6 +515,7 @@ export default function NewProject() {
                       placeholder="500,000.00"
                       className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-budget"
+                      onKeyDown={(e) => handleEnterKeyNavigation(e, "startDate")}
                     />
                   </div>
                   {form.formState.errors.budget && (
@@ -512,6 +539,7 @@ export default function NewProject() {
                       type="date"
                       className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-start-date"
+                      onKeyDown={(e) => handleEnterKeyNavigation(e, "endDate")}
                     />
                     {form.formState.errors.startDate && (
                       <p className="text-sm text-destructive">
@@ -528,6 +556,7 @@ export default function NewProject() {
                       type="date"
                       className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-end-date"
+                      onKeyDown={(e) => handleEnterKeyNavigation(e)}
                     />
                     {form.formState.errors.endDate && (
                       <p className="text-sm text-destructive">
@@ -563,6 +592,11 @@ export default function NewProject() {
                     placeholder="Project description and notes..."
                     className="min-h-24"
                     data-testid="input-description"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        handleEnterKeyNavigation(e);
+                      }
+                    }}
                   />
                 </div>
               </CardContent>
@@ -640,6 +674,12 @@ export default function NewProject() {
                           placeholder="25,000.00"
                           className="pl-8"
                           data-testid="input-cost-budget"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addCostCode();
+                            }
+                          }}
                         />
                       </div>
                     </div>
