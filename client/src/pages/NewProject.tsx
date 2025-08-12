@@ -159,7 +159,11 @@ export default function NewProject() {
         }
         setCurrentStep('budget');
       }
+    } else if (currentStep === 'budget') {
+      // Move from budget step to materials step without creating project yet
+      setCurrentStep('materials');
     } else {
+      // Only create project at the final materials step
       createProjectMutation.mutate(data);
     }
   };
@@ -621,7 +625,7 @@ export default function NewProject() {
 
                 {/* Cost Codes List */}
                 <div>
-                  {form.watch("costCodes")?.length > 0 && (
+                  {(form.watch("costCodes")?.length || 0) > 0 && (
                     <div className="space-y-2">
                       <h4 className="font-medium text-lg">Cost Codes</h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -676,6 +680,15 @@ export default function NewProject() {
                 data-testid="button-next"
               >
                 Next: Budget & Cost Codes
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            ) : currentStep === 'budget' ? (
+              <Button
+                type="submit"
+                className="flex-1 h-12 text-base"
+                data-testid="button-next-materials"
+              >
+                Next: Materials Import
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
