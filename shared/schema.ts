@@ -65,12 +65,35 @@ export const projects = pgTable("projects", {
   address: text("address"),
   status: projectStatusEnum("status").default('active'),
   budget: numeric("budget", { precision: 12, scale: 2 }),
+  contractValue: numeric("contract_value", { precision: 12, scale: 2 }),
   costCodes: text("cost_codes").array(),
   erpIds: jsonb("erp_ids"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 }, (table) => ({
   orgIdx: index("projects_org_idx").on(table.organizationId)
+}));
+
+// Contract Estimates - awarded estimates that become part of the contract
+export const contractEstimates = pgTable("contract_estimates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  estimateNumber: text("estimate_number").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  costCode: text("cost_code").notNull(),
+  awardedValue: numeric("awarded_value", { precision: 12, scale: 2 }).notNull(),
+  estimatedQuantity: numeric("estimated_quantity", { precision: 10, scale: 2 }),
+  unit: text("unit"),
+  materialCategory: text("material_category"),
+  awardDate: timestamp("award_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  projectIdx: index("estimates_project_idx").on(table.projectId),
+  costCodeIdx: index("estimates_cost_code_idx").on(table.costCode)
 }));
 
 // Vendors
@@ -125,6 +148,7 @@ export const requisitions = pgTable("requisitions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
   projectId: uuid("project_id").references(() => projects.id).notNull(),
+  contractEstimateId: uuid("contract_estimate_id").references(() => contractEstimates.id),
   requesterId: uuid("requester_id").references(() => users.id).notNull(),
   number: text("number").notNull().unique(),
   title: text("title").notNull(),
@@ -141,7 +165,8 @@ export const requisitions = pgTable("requisitions", {
 }, (table) => ({
   orgIdx: index("requisitions_org_idx").on(table.organizationId),
   projectIdx: index("requisitions_project_idx").on(table.projectId),
-  numberIdx: index("requisitions_number_idx").on(table.number)
+  numberIdx: index("requisitions_number_idx").on(table.number),
+  estimateIdx: index("requisitions_estimate_idx").on(table.contractEstimateId)
 }));
 
 // Requisition Lines
@@ -153,6 +178,8 @@ export const requisitionLines = pgTable("requisition_lines", {
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
   unit: text("unit").notNull(),
   estimatedCost: numeric("estimated_cost", { precision: 10, scale: 2 }),
+  budgetedCost: numeric("budgeted_cost", { precision: 10, scale: 2 }),
+  costCode: text("cost_code"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow()
 }, (table) => ({
@@ -397,9 +424,22 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     fields: [projects.organizationId],
     references: [organizations.id]
   }),
+  contractEstimates: many(contractEstimates),
   requisitions: many(requisitions),
   rfqs: many(rfqs),
   purchaseOrders: many(purchaseOrders)
+}));
+
+export const contractEstimatesRelations = relations(contractEstimates, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [contractEstimates.organizationId],
+    references: [organizations.id]
+  }),
+  project: one(projects, {
+    fields: [contractEstimates.projectId],
+    references: [projects.id]
+  }),
+  requisitions: many(requisitions)
 }));
 
 export const vendorsRelations = relations(vendors, ({ one, many }) => ({
@@ -431,6 +471,10 @@ export const requisitionsRelations = relations(requisitions, ({ one, many }) => 
   project: one(projects, {
     fields: [requisitions.projectId],
     references: [projects.id]
+  }),
+  contractEstimate: one(contractEstimates, {
+    fields: [requisitions.contractEstimateId],
+    references: [contractEstimates.id]
   }),
   requester: one(users, {
     fields: [requisitions.requesterId],
@@ -641,6 +685,12 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   updatedAt: true
 });
 
+export const insertContractEstimateSchema = createInsertSchema(contractEstimates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 export const insertVendorSchema = createInsertSchema(vendors).omit({
   id: true,
   createdAt: true,
@@ -735,6 +785,9 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Project = typeof projects.$inferSelect;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
+
+export type ContractEstimate = typeof contractEstimates.$inferSelect;
+export type InsertContractEstimate = z.infer<typeof insertContractEstimateSchema>;
 
 export type Vendor = typeof vendors.$inferSelect;
 export type InsertVendor = z.infer<typeof insertVendorSchema>;

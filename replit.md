@@ -1,6 +1,6 @@
 # Overview
 
-This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
+This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract estimates, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
 # User Preferences
 
@@ -31,6 +31,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema Management**: Drizzle Kit for migrations and schema management
 - **Connection**: Neon serverless PostgreSQL for production scalability
 - **Multi-tenancy**: Organization-based data isolation with shared schema approach
+- **Contract Integration**: Contract estimates table links requisitions to awarded GC estimates for accurate budget tracking
 
 ## External Dependencies
 - **Database**: Neon PostgreSQL serverless database
