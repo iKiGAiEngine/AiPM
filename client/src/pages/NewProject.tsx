@@ -152,7 +152,7 @@ export default function NewProject() {
         client: data.client || null,
         address: data.address || null,
         status: data.status,
-        budget: data.budget ? parseFloat(data.budget) : null,
+        budget: data.budget || null,
         costCodes: data.costCodes?.map(cc => `${cc.scope} - ${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}`) || [],
         erpIds: null,
       };

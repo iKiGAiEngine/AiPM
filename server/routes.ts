@@ -151,7 +151,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.status(201).json(project);
     } catch (error) {
-      console.error('Project validation error:', error);
+      console.error('Project validation error details:', error);
+      if (error && typeof error === 'object' && 'issues' in error) {
+        console.log('Validation issues:', JSON.stringify((error as any).issues, null, 2));
+      }
       if (error instanceof Error) {
         res.status(400).json({ error: error.message });
       } else {
