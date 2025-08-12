@@ -27,6 +27,7 @@ import {
   Tag,
   Plus,
   X,
+  Edit,
   Save,
   ArrowRight
 } from "lucide-react";
@@ -66,17 +67,45 @@ export default function NewProject() {
     standardCode: "71130",
     budget: "",
   });
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [sessionProjectNumber, setSessionProjectNumber] = useState<string>("");
 
-  // Phase code options with auto-population for scope
+  // Division 10 Equipment phase codes per construction standards
   const phaseCodeOptions = [
-    { value: "102800", label: "102800 - Toilet Accessories" },
-    { value: "104400", label: "104400 - Fire Extinguishers" },
-    { value: "033000", label: "033000 - Cast-in-Place Concrete" },
-    { value: "055000", label: "055000 - Metal Fabrications" },
-    { value: "061000", label: "061000 - Rough Carpentry" },
-    { value: "072100", label: "072100 - Thermal Insulation" },
-    { value: "092900", label: "092900 - Gypsum Board" },
-    { value: "099100", label: "099100 - Painting" },
+    { value: "101000", label: "101000 - Visual Display Boards" },
+    { value: "101100", label: "101100 - Chalkboards" },
+    { value: "101200", label: "101200 - Marker Boards" },
+    { value: "101300", label: "101300 - Directory Boards" },
+    { value: "101400", label: "101400 - Bulletin Boards" },
+    { value: "101600", label: "101600 - Magnetic Boards" },
+    { value: "102100", label: "102100 - Compartments and Cubicles" },
+    { value: "102113", label: "102113 - Metal Toilet Compartments" },
+    { value: "102213", label: "102213 - Plastic-Laminate-Clad Toilet Compartments" },
+    { value: "102219", label: "102219 - Solid Phenolic Core Toilet Compartments" },
+    { value: "102226", label: "102226 - Plastic Toilet Compartments" },
+    { value: "102800", label: "102800 - Toilet, Bath, and Laundry Accessories" },
+    { value: "103000", label: "103000 - Fireplaces and Stoves" },
+    { value: "103100", label: "103100 - Manufactured Fireplaces" },
+    { value: "103200", label: "103200 - Fireplace Specialties" },
+    { value: "103300", label: "103300 - Stoves" },
+    { value: "104000", label: "104000 - Safety Specialties" },
+    { value: "104100", label: "104100 - Safety Specialties" },
+    { value: "104400", label: "104400 - Fire Protection Specialties" },
+    { value: "104413", label: "104413 - Fire Extinguisher Cabinets" },
+    { value: "104416", label: "104416 - Fire Extinguishers" },
+    { value: "105000", label: "105000 - Storage Specialties" },
+    { value: "105113", label: "105113 - Metal Lockers" },
+    { value: "105500", label: "105500 - Postal Specialties" },
+    { value: "106000", label: "106000 - Service Wall Systems" },
+    { value: "107000", label: "107000 - Exterior Protection" },
+    { value: "107100", label: "107100 - Exterior Sun Control Devices" },
+    { value: "107113", label: "107113 - Metal Exterior Sun Control Devices" },
+    { value: "107200", label: "107200 - Exterior Protective Covers" },
+    { value: "107300", label: "107300 - Protective Covers" },
+    { value: "108000", label: "108000 - Other Specialties" },
+    { value: "108113", label: "108113 - Metal Flagpoles" },
+    { value: "108213", label: "108213 - Fiberglass Flagpoles" },
+    { value: "108300", label: "108300 - Mirrors" },
   ];
 
   const getScopeFromPhaseCode = (phaseCode: string) => {
@@ -113,7 +142,10 @@ export default function NewProject() {
       
       return apiRequest("/api/projects", {
         method: "POST",
-        body: payload,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
     },
     onSuccess: () => {
@@ -150,19 +182,62 @@ export default function NewProject() {
       const currentCodes = form.getValues("costCodes") || [];
       const newCode = { ...costCodeForm };
       
-      const fullCode = `${newCode.projectNumber}-${newCode.phaseCode}-${newCode.standardCode}`;
-      const exists = currentCodes.some(cc => `${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}` === fullCode);
-      if (!exists) {
-        form.setValue("costCodes", [...currentCodes, newCode]);
-        setCostCodeForm({ 
-          scope: "", 
-          projectNumber: "", 
-          phaseCode: "", 
-          standardCode: "71130", 
-          budget: "" 
-        });
+      // Set session project number on first entry
+      if (!sessionProjectNumber && newCode.projectNumber) {
+        setSessionProjectNumber(newCode.projectNumber);
       }
+      
+      if (editingIndex !== null) {
+        // Update existing cost code
+        const updatedCodes = [...currentCodes];
+        updatedCodes[editingIndex] = newCode;
+        form.setValue("costCodes", updatedCodes);
+        setEditingIndex(null);
+      } else {
+        // Add new cost code
+        const fullCode = `${newCode.projectNumber}-${newCode.phaseCode}-${newCode.standardCode}`;
+        const exists = currentCodes.some(cc => `${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}` === fullCode);
+        if (!exists) {
+          form.setValue("costCodes", [...currentCodes, newCode]);
+        }
+      }
+      
+      setCostCodeForm({ 
+        scope: "", 
+        projectNumber: sessionProjectNumber, 
+        phaseCode: "", 
+        standardCode: "71130", 
+        budget: "" 
+      });
     }
+  };
+
+  const editCostCode = (index: number) => {
+    const costCode = form.getValues("costCodes")?.[index];
+    if (costCode) {
+      setCostCodeForm(costCode);
+      setEditingIndex(index);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setCostCodeForm({ 
+      scope: "", 
+      projectNumber: sessionProjectNumber, 
+      phaseCode: "", 
+      standardCode: "71130", 
+      budget: "" 
+    });
+  };
+
+  // Format currency input with commas
+  const formatCurrency = (value: string) => {
+    const num = parseFloat(value || "0");
+    return num.toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
   };
 
   // Calculate budget totals
@@ -456,8 +531,15 @@ export default function NewProject() {
                         <Label>Project Number</Label>
                         <Input
                           value={costCodeForm.projectNumber}
-                          onChange={(e) => setCostCodeForm(prev => ({ ...prev, projectNumber: e.target.value }))}
-                          placeholder="e.g., 23479024"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setCostCodeForm(prev => ({ ...prev, projectNumber: value }));
+                            // Set session project number on first entry
+                            if (!sessionProjectNumber && value) {
+                              setSessionProjectNumber(value);
+                            }
+                          }}
+                          placeholder={sessionProjectNumber || "e.g., 23479024"}
                           className="h-12 text-base font-mono"
                           data-testid="input-project-number"
                         />
@@ -498,19 +580,29 @@ export default function NewProject() {
                       </div>
                       <div className="space-y-2">
                         <Label>Budget ($)</Label>
-                        <Input
-                          value={costCodeForm.budget}
-                          onChange={(e) => setCostCodeForm(prev => ({ ...prev, budget: e.target.value }))}
-                          type="number"
-                          step="0.01"
-                          placeholder="50000.00"
-                          className="h-12 text-base"
-                          data-testid="input-cost-code-budget"
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-base font-medium">
+                            $
+                          </span>
+                          <Input
+                            value={costCodeForm.budget}
+                            onChange={(e) => setCostCodeForm(prev => ({ ...prev, budget: e.target.value }))}
+                            type="number"
+                            step="0.01"
+                            placeholder="50,000.00"
+                            className="h-12 text-base pl-8"
+                            data-testid="input-cost-code-budget"
+                          />
+                        </div>
+                        {costCodeForm.budget && parseFloat(costCodeForm.budget) > 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            Amount: ${formatCurrency(costCodeForm.budget)}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
-                    <div className="flex justify-start">
+                    <div className="flex gap-3">
                       <Button
                         type="button"
                         onClick={addCostCode}
@@ -519,8 +611,19 @@ export default function NewProject() {
                         data-testid="button-add-cost-code"
                       >
                         <Plus className="w-5 h-5 mr-2" />
-                        Add Cost Code
+                        {editingIndex !== null ? 'Update Cost Code' : 'Add Cost Code'}
                       </Button>
+                      {editingIndex !== null && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={cancelEdit}
+                          className="h-12 px-6"
+                          data-testid="button-cancel-edit"
+                        >
+                          Cancel Edit
+                        </Button>
+                      )}
                     </div>
                   </div>
                   
@@ -544,15 +647,26 @@ export default function NewProject() {
                                 ${parseFloat(costCode.budget).toLocaleString()}
                               </div>
                             </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeCostCode(index)}
-                              data-testid={`button-remove-cost-code-${index}`}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => editCostCode(index)}
+                                data-testid={`button-edit-cost-code-${index}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeCostCode(index)}
+                                data-testid={`button-remove-cost-code-${index}`}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
