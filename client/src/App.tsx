@@ -7,6 +7,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Requisitions from "@/pages/Requisitions";
 import RFQs from "@/pages/RFQs";
+import NewRFQ from "@/pages/NewRFQ";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import Deliveries from "@/pages/Deliveries";
 import Invoices from "@/pages/Invoices";
@@ -114,6 +115,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <RFQs />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/rfqs/new"
+                element={
+                  <ProtectedRoute>
+                    <NewRFQ />
                   </ProtectedRoute>
                 }
               />
