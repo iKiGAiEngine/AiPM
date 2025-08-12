@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthProvider } from "@/context/auth-context";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Requisitions from "@/pages/Requisitions";
@@ -33,6 +35,8 @@ const queryClient = new QueryClient({
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -55,8 +59,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-      <MobileNav />
-      <GlobalSearch />
+      <MobileNav isOpen={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} />
+      <GlobalSearch isOpen={isGlobalSearchOpen} onClose={() => setIsGlobalSearchOpen(false)} />
     </div>
   );
 }
@@ -82,8 +86,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <Router>
+      <AuthProvider>
+        <ThemeProvider>
+          <Router>
           <div className="min-h-screen bg-background">
             <Routes>
               <Route
@@ -197,6 +202,7 @@ export default function App() {
           <Toaster />
         </Router>
       </ThemeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
