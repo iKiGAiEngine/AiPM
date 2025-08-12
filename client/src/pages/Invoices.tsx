@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ const matchStatusColors = {
 };
 
 export default function Invoices() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -93,6 +94,10 @@ export default function Invoices() {
     }
   };
 
+  const handleUploadInvoice = () => {
+    navigate("/invoices/upload");
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -127,7 +132,7 @@ export default function Invoices() {
           <h1 className="text-2xl font-bold text-foreground">Invoices</h1>
           <p className="text-muted-foreground">Process and match vendor invoices with 3-way verification</p>
         </div>
-        <Button data-testid="button-upload-invoice">
+        <Button onClick={handleUploadInvoice} data-testid="button-upload-invoice">
           <Upload className="w-4 h-4 mr-2" />
           Upload Invoice
         </Button>

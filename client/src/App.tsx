@@ -14,6 +14,7 @@ import PurchaseOrders from "@/pages/PurchaseOrders";
 import Deliveries from "@/pages/Deliveries";
 import Invoices from "@/pages/Invoices";
 import InvoiceDetail from "@/pages/InvoiceDetail";
+import InvoiceUpload from "@/pages/InvoiceUpload";
 import Materials from "@/pages/Materials";
 import Vendors from "@/pages/Vendors";
 import Projects from "@/pages/Projects";
@@ -153,6 +154,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <Invoices />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/invoices/upload"
+                element={
+                  <ProtectedRoute>
+                    <InvoiceUpload />
                   </ProtectedRoute>
                 }
               />
