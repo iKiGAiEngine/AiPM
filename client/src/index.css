@@ -124,6 +124,34 @@
     background-color: rgb(15 23 42) !important; /* slate-900 */
     color: rgb(241 245 249) !important; /* slate-100 */
   }
+
+  /* Enhanced date picker icon styling */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    background-color: transparent;
+    color: rgb(241 245 249); /* slate-100 */
+    cursor: pointer;
+    filter: invert(1);
+    font-size: 1.2em;
+    width: 1.2em;
+    height: 1.2em;
+    padding: 0;
+    margin-right: 4px;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.8;
+  }
+
+  /* Firefox date picker icon */
+  input[type="date"]::-moz-calendar-picker-indicator {
+    background-color: transparent;
+    color: rgb(241 245 249); /* slate-100 */
+    cursor: pointer;
+    filter: invert(1);
+    font-size: 1.2em;
+    width: 1.2em;
+    height: 1.2em;
+  }
 }
 
 @layer components {

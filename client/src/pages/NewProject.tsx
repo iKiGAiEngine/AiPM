@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -374,23 +375,19 @@ export default function NewProject() {
                 <div className="space-y-2">
                   <Label htmlFor="budget">Total Contract Value *</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-base font-medium">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-100 text-base font-medium z-10">
                       $
                     </span>
-                    <Input
-                      {...form.register("budget")}
+                    <CurrencyInput
                       id="budget"
-                      type="number"
-                      step="0.01"
+                      value={form.watch("budget") || ""}
+                      onChange={(value) => {
+                        form.setValue("budget", value);
+                        form.trigger("budget");
+                      }}
                       placeholder="500,000.00"
                       className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-budget"
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        form.setValue("budget", value);
-                        // Trigger re-render for budget calculations
-                        form.trigger("budget");
-                      }}
                     />
                   </div>
                   {form.formState.errors.budget && (
@@ -428,7 +425,7 @@ export default function NewProject() {
                       {...form.register("endDate")}
                       id="endDate"
                       type="date"
-                      className="h-12 text-base"
+                      className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-end-date"
                     />
                     {form.formState.errors.endDate && (
@@ -578,14 +575,12 @@ export default function NewProject() {
                       <div className="space-y-2">
                         <Label>Budget ($)</Label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-base font-medium">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-100 text-base font-medium z-10">
                             $
                           </span>
-                          <Input
+                          <CurrencyInput
                             value={costCodeForm.budget}
-                            onChange={(e) => setCostCodeForm(prev => ({ ...prev, budget: e.target.value }))}
-                            type="number"
-                            step="0.01"
+                            onChange={(value) => setCostCodeForm(prev => ({ ...prev, budget: value }))}
                             placeholder="50,000.00"
                             className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                             data-testid="input-cost-code-budget"
