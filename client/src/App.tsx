@@ -18,6 +18,7 @@ import InvoiceDetail from "@/pages/InvoiceDetail";
 import InvoiceUpload from "@/pages/InvoiceUpload";
 import Materials from "@/pages/Materials";
 import NewMaterial from "@/pages/NewMaterial";
+import ImportMaterials from "@/pages/ImportMaterials";
 import Vendors from "@/pages/Vendors";
 import Projects from "@/pages/Projects";
 import NewProject from "@/pages/NewProject";
@@ -201,6 +202,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <NewMaterial />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/materials/import"
+                element={
+                  <ProtectedRoute>
+                    <ImportMaterials />
                   </ProtectedRoute>
                 }
               />

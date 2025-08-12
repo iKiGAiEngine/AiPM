@@ -237,6 +237,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/materials/import", requireRole(['Admin', 'PM', 'Purchaser']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { organizationId, materials } = req.body;
+      
+      if (organizationId !== req.user!.organizationId) {
+        return res.status(403).json({ error: "Organization mismatch" });
+      }
+
+      const results = {
+        success: 0,
+        errors: [] as Array<{ row: number; error: string; data: any }>
+      };
+
+      for (let i = 0; i < materials.length; i++) {
+        try {
+          const materialData = insertMaterialSchema.parse({
+            ...materials[i],
+            organizationId: req.user!.organizationId
+          });
+          
+          await storage.createMaterial(materialData);
+          results.success++;
+        } catch (error) {
+          results.errors.push({
+            row: i + 1,
+            error: error instanceof Error ? error.message : "Invalid material data",
+            data: materials[i]
+          });
+        }
+      }
+
+      res.json(results);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid import data" });
+    }
+  });
+
   // Requisition routes
   app.get("/api/requisitions", async (req: AuthenticatedRequest, res) => {
     try {

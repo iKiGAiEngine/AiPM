@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Eye, Package, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Search, Eye, Package, CheckCircle, AlertCircle, Upload } from "lucide-react";
 import type { Material } from "@shared/schema";
 
 export default function Materials() {
@@ -80,12 +80,20 @@ export default function Materials() {
           <h1 className="text-2xl font-bold text-foreground">Materials Catalog</h1>
           <p className="text-muted-foreground">Browse and manage construction materials and specifications</p>
         </div>
-        <Button asChild data-testid="button-new-material">
-          <Link to="/materials/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Material
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild data-testid="button-new-material">
+            <Link to="/materials/new">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Material
+            </Link>
+          </Button>
+          <Button asChild variant="outline" data-testid="button-import-materials">
+            <Link to="/materials/import">
+              <Upload className="w-4 h-4 mr-2" />
+              Import CSV
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

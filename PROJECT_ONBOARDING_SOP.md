@@ -86,7 +86,22 @@ Your Excel file likely contains columns like:
 
 ## Step 4: Set Up Materials Catalog
 
-### For Each Material in Your Excel:
+### **Option A: Bulk CSV Import (Recommended)**
+
+1. **Prepare Your Excel File:**
+   - Save your Excel as CSV format
+   - Required columns: SKU, Description, Unit, LastCost, LeadTimeDays
+   - Optional columns: Manufacturer, Model, Category, Finish, MinOrderQty
+
+2. **Import to BuildProcure AI:**
+   - Click "Materials" in the left sidebar
+   - Click "Import CSV" button
+   - Download template if needed for reference
+   - Upload your prepared CSV file
+   - Review the preview of materials
+   - Click "Import All Materials"
+
+### **Option B: Manual Entry (For Small Lists)**
 
 1. **Navigate to Materials**
    - Click "Materials" in the left sidebar
