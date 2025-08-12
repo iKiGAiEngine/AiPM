@@ -312,7 +312,7 @@ export default function NewProject() {
                       {...form.register("name")}
                       id="name"
                       placeholder="Downtown Office Complex"
-                      className="h-12 text-base text-foreground bg-background"
+                      className="h-12 text-base"
                       data-testid="input-name"
                     />
                     {form.formState.errors.name && (
@@ -328,7 +328,7 @@ export default function NewProject() {
                       {...form.register("client")}
                       id="client"
                       placeholder="ABC Construction Company"
-                      className="h-12 text-base text-foreground bg-background"
+                      className="h-12 text-base"
                       data-testid="input-client"
                     />
                     {form.formState.errors.client && (
@@ -345,7 +345,7 @@ export default function NewProject() {
                     {...form.register("projectNumber")}
                     id="projectNumber"
                     placeholder="e.g., 23479024"
-                    className="h-12 text-base text-foreground bg-background font-mono"
+                    className="h-12 text-base"
                     data-testid="input-project-number-main"
                   />
                   {form.formState.errors.projectNumber && (
@@ -361,7 +361,7 @@ export default function NewProject() {
                     {...form.register("address")}
                     id="address"
                     placeholder="123 Main Street, City, State, ZIP"
-                    className="h-12 text-base text-foreground bg-background"
+                    className="h-12 text-base"
                     data-testid="input-address"
                   />
                   {form.formState.errors.address && (
@@ -383,7 +383,7 @@ export default function NewProject() {
                       type="number"
                       step="0.01"
                       placeholder="500,000.00"
-                      className="h-12 text-base pl-8 text-foreground bg-background"
+                      className="h-12 text-base pl-8"
                       data-testid="input-budget"
                       onChange={(e) => {
                         const value = e.target.value;
@@ -587,7 +587,7 @@ export default function NewProject() {
                             type="number"
                             step="0.01"
                             placeholder="50,000.00"
-                            className="h-12 text-base pl-8 text-foreground bg-background"
+                            className="h-12 text-base pl-8"
                             data-testid="input-cost-code-budget"
                           />
                         </div>
