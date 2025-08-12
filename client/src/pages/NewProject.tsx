@@ -162,12 +162,15 @@ export default function NewProject() {
     },
     onSuccess: (data) => {
       setCreatedProjectId(data.id);
-      setCurrentStep('materials');
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({
         title: "Project Created",
         description: "Project created successfully. Now add materials to complete setup.",
       });
+      // Move to materials step after project creation if coming from budget step
+      if (currentStep === 'budget') {
+        setCurrentStep('materials');
+      }
     },
     onError: () => {
       toast({
@@ -191,11 +194,11 @@ export default function NewProject() {
         setCurrentStep('budget');
       }
     } else if (currentStep === 'budget') {
-      // Move from budget step to materials step without creating project yet
-      setCurrentStep('materials');
-    } else {
-      // Only create project at the final materials step
+      // Create project when moving to materials step so we have a projectId
       createProjectMutation.mutate(data);
+    } else {
+      // Final step - navigate to projects list
+      navigate("/projects");
     }
   };
 

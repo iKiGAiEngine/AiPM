@@ -99,6 +99,17 @@ export function ProjectMaterialsStep({
   onNext,
   onPrevious,
 }: ProjectMaterialsStepProps) {
+  // Safety check for projectId
+  if (!projectId) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <div className="text-center">
+          <p className="text-lg text-muted-foreground">Loading project...</p>
+          <p className="text-sm text-muted-foreground mt-2">Please wait while the project is being created.</p>
+        </div>
+      </div>
+    );
+  }
   const [activeTab, setActiveTab] = useState<"upload" | "manual">("upload");
   const [currentRun, setCurrentRun] = useState<MaterialImportRunDetails | null>(
     null,
