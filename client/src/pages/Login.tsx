@@ -110,7 +110,20 @@ export default function Login() {
                 )}
               </div>
 
-
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  {...form.register("password")}
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  data-testid="input-password"
+                />
+                {form.formState.errors.password && (
+                  <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
+                )}
+              </div>
 
               <Button
                 type="submit"
