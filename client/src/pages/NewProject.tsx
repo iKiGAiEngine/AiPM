@@ -24,6 +24,12 @@ import {
   Save
 } from "lucide-react";
 
+const costCodeSchema = z.object({
+  scope: z.string().min(1, "Scope is required"),
+  code: z.string().min(1, "Cost code is required"),
+  budget: z.string().min(1, "Budget is required"),
+});
+
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
   client: z.string().min(1, "Client is required"),
@@ -32,17 +38,22 @@ const projectSchema = z.object({
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
   description: z.string().optional(),
-  costCodes: z.array(z.string()).optional(),
+  costCodes: z.array(costCodeSchema).optional(),
   status: z.enum(["active", "on_hold", "completed", "cancelled"]),
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
+type CostCode = z.infer<typeof costCodeSchema>;
 
 export default function NewProject() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [costCodeInput, setCostCodeInput] = useState("");
+  const [costCodeForm, setCostCodeForm] = useState<CostCode>({
+    scope: "",
+    code: "",
+    budget: "",
+  });
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -68,7 +79,7 @@ export default function NewProject() {
         address: data.address || null,
         status: data.status,
         budget: data.budget ? parseFloat(data.budget).toString() : null,
-        costCodes: data.costCodes || [],
+        costCodes: data.costCodes?.map(cc => `${cc.scope} - ${cc.code}`) || [],
         erpIds: null, // Can be set later when ERP integration is implemented
       };
       
@@ -97,25 +108,22 @@ export default function NewProject() {
   };
 
   const addCostCode = () => {
-    if (costCodeInput.trim()) {
+    if (costCodeForm.scope.trim() && costCodeForm.code.trim() && costCodeForm.budget.trim()) {
       const currentCodes = form.getValues("costCodes") || [];
-      if (!currentCodes.includes(costCodeInput.trim())) {
-        form.setValue("costCodes", [...currentCodes, costCodeInput.trim()]);
-        setCostCodeInput("");
+      const newCode = { ...costCodeForm };
+      
+      // Check if cost code already exists
+      const exists = currentCodes.some(cc => cc.code === newCode.code);
+      if (!exists) {
+        form.setValue("costCodes", [...currentCodes, newCode]);
+        setCostCodeForm({ scope: "", code: "", budget: "" });
       }
     }
   };
 
-  const removeCostCode = (codeToRemove: string) => {
+  const removeCostCode = (indexToRemove: number) => {
     const currentCodes = form.getValues("costCodes") || [];
-    form.setValue("costCodes", currentCodes.filter(code => code !== codeToRemove));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addCostCode();
-    }
+    form.setValue("costCodes", currentCodes.filter((_, index) => index !== indexToRemove));
   };
 
   return (
@@ -284,50 +292,76 @@ export default function NewProject() {
               </div>
 
               {/* Cost Codes */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>Cost Codes</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={costCodeInput}
-                    onChange={(e) => setCostCodeInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Enter cost code (e.g., 03300-CONCRETE)"
-                    data-testid="input-cost-code"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addCostCode}
-                    disabled={!costCodeInput.trim()}
-                    data-testid="button-add-cost-code"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <Input
+                      value={costCodeForm.scope}
+                      onChange={(e) => setCostCodeForm(prev => ({ ...prev, scope: e.target.value }))}
+                      placeholder="Scope (e.g., Concrete Work)"
+                      data-testid="input-cost-code-scope"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      value={costCodeForm.code}
+                      onChange={(e) => setCostCodeForm(prev => ({ ...prev, code: e.target.value }))}
+                      placeholder="Cost Code (e.g., 23479024-102800-71130)"
+                      data-testid="input-cost-code-code"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={costCodeForm.budget}
+                      onChange={(e) => setCostCodeForm(prev => ({ ...prev, budget: e.target.value }))}
+                      type="number"
+                      step="0.01"
+                      placeholder="Budget ($)"
+                      data-testid="input-cost-code-budget"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addCostCode}
+                      disabled={!costCodeForm.scope.trim() || !costCodeForm.code.trim() || !costCodeForm.budget.trim()}
+                      data-testid="button-add-cost-code"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
                 
                 {/* Display Cost Codes */}
                 {form.watch("costCodes") && form.watch("costCodes")!.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {form.watch("costCodes")!.map((code) => (
-                      <Badge
-                        key={code}
-                        variant="outline"
-                        className="flex items-center gap-1"
-                        data-testid={`cost-code-${code}`}
-                      >
-                        {code}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-0 ml-1"
-                          onClick={() => removeCostCode(code)}
-                          data-testid={`button-remove-cost-code-${code}`}
+                  <div className="space-y-2 mt-3">
+                    <Label className="text-sm text-muted-foreground">Added Cost Codes:</Label>
+                    <div className="space-y-2">
+                      {form.watch("costCodes")!.map((costCode, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border"
+                          data-testid={`cost-code-item-${index}`}
                         >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </Badge>
-                    ))}
+                          <div className="flex-1">
+                            <div className="font-medium">{costCode.scope}</div>
+                            <div className="text-sm text-muted-foreground">{costCode.code}</div>
+                            <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                              ${parseFloat(costCode.budget).toLocaleString()}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeCostCode(index)}
+                            data-testid={`button-remove-cost-code-${index}`}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

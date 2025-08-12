@@ -41,12 +41,12 @@ export default function Projects() {
       if (!response.ok) throw new Error('Failed to fetch projects');
       const projectsData = await response.json();
       
-      // In a real app, this would be calculated from actual data
+      // Return projects without mock spending data
       return projectsData.map((project: Project) => ({
         ...project,
-        spent: Math.random() * parseFloat(project.budget || '0') * 0.7,
-        commitments: Math.random() * parseFloat(project.budget || '0') * 0.2,
-        completionPercentage: Math.floor(Math.random() * 100),
+        spent: 0, // Will be calculated from actual requisitions/POs
+        commitments: 0, // Will be calculated from active POs
+        completionPercentage: 0, // Will be calculated from delivery status
       }));
     },
   });

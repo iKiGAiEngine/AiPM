@@ -19,6 +19,7 @@ import Materials from "@/pages/Materials";
 import Vendors from "@/pages/Vendors";
 import Projects from "@/pages/Projects";
 import NewProject from "@/pages/NewProject";
+import ProjectDetail from "@/pages/ProjectDetail";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
@@ -203,6 +204,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <NewProject />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:id"
+                element={
+                  <ProtectedRoute>
+                    <ProjectDetail />
                   </ProtectedRoute>
                 }
               />
