@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   CheckCircle, 
   AlertTriangle, 
@@ -114,12 +115,33 @@ const getStatusTextColor = (status: Invoice['status']) => {
 };
 
 export default function InvoiceProcessing() {
+  const navigate = useNavigate();
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
     }).format(amount);
+  };
+
+  const handleUploadInvoice = () => {
+    navigate("/invoices");
+  };
+
+  const handleReviewException = (invoiceId: string) => {
+    navigate(`/invoices/${invoiceId}`);
+  };
+
+  const handleApproveOverride = (invoiceId: string) => {
+    // In a real app, this would make an API call to approve the override
+    console.log(`Approving override for invoice ${invoiceId}`);
+    // Then navigate to invoices page or refresh data
+    navigate("/invoices");
+  };
+
+  const handleViewExceptionCenter = () => {
+    navigate("/invoices?tab=exceptions");
   };
 
   return (
@@ -129,7 +151,7 @@ export default function InvoiceProcessing() {
           <CardTitle>Invoice Processing & 3-Way Match</CardTitle>
           <p className="text-sm text-muted-foreground">Recent invoice submissions with automated matching</p>
         </div>
-        <Button data-testid="button-upload-invoice">
+        <Button onClick={handleUploadInvoice} data-testid="button-upload-invoice">
           <Upload className="w-4 h-4 mr-2" />
           Upload New Invoice
         </Button>
@@ -254,11 +276,20 @@ export default function InvoiceProcessing() {
                         <span className="font-medium">Exception:</span> {invoice.exceptions[0]}
                       </div>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" data-testid={`button-review-exception-${invoice.id}`}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleReviewException(invoice.id)}
+                          data-testid={`button-review-exception-${invoice.id}`}
+                        >
                           <Eye className="w-4 h-4 mr-2" />
                           Review
                         </Button>
-                        <Button size="sm" data-testid={`button-approve-override-${invoice.id}`}>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleApproveOverride(invoice.id)}
+                          data-testid={`button-approve-override-${invoice.id}`}
+                        >
                           <Check className="w-4 h-4 mr-2" />
                           Approve Override
                         </Button>
@@ -289,7 +320,12 @@ export default function InvoiceProcessing() {
         <div className="pt-6 border-t border-border">
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-semibold text-foreground">Exception Center Summary</h4>
-            <Button variant="ghost" size="sm" data-testid="button-view-exception-center">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleViewExceptionCenter}
+              data-testid="button-view-exception-center"
+            >
               View Exception Center
             </Button>
           </div>
