@@ -294,18 +294,34 @@ export default function NewProject() {
 
                 <div className="space-y-2">
                   <Label htmlFor="budget">Total Contract Value *</Label>
-                  <Input
-                    {...form.register("budget")}
-                    id="budget"
-                    type="number"
-                    step="0.01"
-                    placeholder="500000.00"
-                    className="h-12 text-base"
-                    data-testid="input-budget"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-base font-medium">
+                      $
+                    </span>
+                    <Input
+                      {...form.register("budget")}
+                      id="budget"
+                      type="number"
+                      step="0.01"
+                      placeholder="500,000.00"
+                      className="h-12 text-base pl-8"
+                      data-testid="input-budget"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        form.setValue("budget", value);
+                        // Trigger re-render for budget calculations
+                        form.trigger("budget");
+                      }}
+                    />
+                  </div>
                   {form.formState.errors.budget && (
                     <p className="text-sm text-destructive">
                       {form.formState.errors.budget.message}
+                    </p>
+                  )}
+                  {form.watch("budget") && parseFloat(form.watch("budget")) > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Contract Value: ${parseFloat(form.watch("budget")).toLocaleString()}
                     </p>
                   )}
                 </div>
