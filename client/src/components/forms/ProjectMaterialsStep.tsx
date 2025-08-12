@@ -1,25 +1,60 @@
-import React, { useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import React, { useState } from "react";
+import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle, X, Edit, Trash2 } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Download,
+  Upload,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle,
+  X,
+  Edit,
+  Trash2,
+} from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface MaterialImportRun {
   id: string;
   sourceFilename: string;
-  status: 'pending' | 'review' | 'approved' | 'rejected';
+  status: "pending" | "review" | "approved" | "rejected";
   rowCount: number;
   warningsJson?: any;
   createdAt: string;
@@ -59,33 +94,44 @@ interface ProjectMaterialsStepProps {
   onPrevious: () => void;
 }
 
-export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectMaterialsStepProps) {
-  const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload');
-  const [currentRun, setCurrentRun] = useState<MaterialImportRunDetails | null>(null);
+export function ProjectMaterialsStep({
+  projectId,
+  onNext,
+  onPrevious,
+}: ProjectMaterialsStepProps) {
+  const [activeTab, setActiveTab] = useState<"upload" | "manual">("upload");
+  const [currentRun, setCurrentRun] = useState<MaterialImportRunDetails | null>(
+    null,
+  );
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [editingLine, setEditingLine] = useState<MaterialImportLine | null>(null);
-  
+  const [editingLine, setEditingLine] = useState<MaterialImportLine | null>(
+    null,
+  );
+
   const queryClient = useQueryClient();
 
   // Mutations for file upload and processing
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch(`/api/projects/${projectId}/material-import/upload`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      
+      formData.append("file", file);
+
+      const response = await fetch(
+        `/api/projects/${projectId}/material-import/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        },
+      );
+
       if (!response.ok) {
         throw new Error(await response.text());
       }
-      
+
       return response.json();
     },
     onSuccess: async (data) => {
@@ -93,8 +139,8 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
       // Fetch the import run details
       const runResponse = await fetch(`/api/material-imports/${data.runId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
       });
       if (runResponse.ok) {
         const runData = await runResponse.json();
@@ -103,75 +149,83 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
       setIsUploadDialogOpen(false);
     },
     onError: (error: any) => {
-      console.error('Upload failed:', error);
-    }
+      console.error("Upload failed:", error);
+    },
   });
 
   const approveMutation = useMutation({
     mutationFn: async (runId: string) => {
       const response = await fetch(`/api/material-imports/${runId}/approve`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          "Content-Type": "application/json",
+        },
       });
-      
+
       if (!response.ok) {
         throw new Error(await response.text());
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/materials`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/projects/${projectId}/materials`],
+      });
       setCurrentRun(null);
-    }
+    },
   });
 
   // Handle file drop
-  const onDrop = React.useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      setUploadProgress(0);
-      setIsUploadDialogOpen(true);
-      uploadMutation.mutate(file);
-    }
-  }, [uploadMutation]);
+  const onDrop = React.useCallback(
+    (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        setUploadProgress(0);
+        setIsUploadDialogOpen(true);
+        uploadMutation.mutate(file);
+      }
+    },
+    [uploadMutation],
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xlsx']
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"],
     },
     maxFiles: 1,
-    multiple: false
+    multiple: false,
   });
 
   const downloadTemplate = async () => {
     try {
-      const response = await fetch('/api/material-import/template', {
-        method: 'GET',
+      const response = await fetch("/api/material-import/template", {
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
       });
-      
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
+        const a = document.createElement("a");
+        a.style.display = "none";
         a.href = url;
-        a.download = 'material-import-template.xlsx';
+        a.download = "material-import-template.xlsx";
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
     } catch (error) {
-      console.error('Failed to download template:', error);
+      console.error("Failed to download template:", error);
     }
   };
 
@@ -185,16 +239,25 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
           <CardTitle className="flex items-center justify-between">
             Import Results: {currentRun.sourceFilename}
             <div className="flex gap-2">
-              <Badge variant={currentRun.status === 'approved' ? 'default' : 'secondary'}>
+              <Badge
+                variant={
+                  currentRun.status === "approved" ? "default" : "secondary"
+                }
+              >
                 {currentRun.status}
               </Badge>
-              {currentRun.status === 'pending' && (
-                <Button 
+              {currentRun.status === "pending" && (
+                <Button
                   onClick={() => approveMutation.mutate(currentRun.id)}
-                  disabled={approveMutation.isPending || currentRun.summary.invalidLines > 0}
+                  disabled={
+                    approveMutation.isPending ||
+                    currentRun.summary.invalidLines > 0
+                  }
                   data-testid="button-approve-import"
                 >
-                  {approveMutation.isPending ? 'Approving...' : 'Approve Import'}
+                  {approveMutation.isPending
+                    ? "Approving..."
+                    : "Approve Import"}
                 </Button>
               )}
             </div>
@@ -207,15 +270,21 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{currentRun.summary.validLines}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {currentRun.summary.validLines}
+              </div>
               <div className="text-sm text-muted-foreground">Valid Items</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{currentRun.summary.invalidLines}</div>
+              <div className="text-2xl font-bold text-red-600">
+                {currentRun.summary.invalidLines}
+              </div>
               <div className="text-sm text-muted-foreground">Invalid Items</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">{currentRun.summary.totalLines}</div>
+              <div className="text-2xl font-bold">
+                {currentRun.summary.totalLines}
+              </div>
               <div className="text-sm text-muted-foreground">Total Items</div>
             </div>
           </div>
@@ -227,15 +296,22 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
             <div>
               <h4 className="font-medium mb-2">Cost Code Summary</h4>
               <div className="grid gap-2">
-                {Object.entries(currentRun.summary.costCodeTotals).map(([costCode, totals]) => (
-                  <div key={costCode} className="flex justify-between items-center p-2 bg-muted rounded">
-                    <span className="font-medium">{costCode}</span>
-                    <div className="text-sm">
-                      <span className="mr-4">Qty: {totals.qty.toFixed(2)}</span>
-                      <span>Value: ${totals.value.toFixed(2)}</span>
+                {Object.entries(currentRun.summary.costCodeTotals).map(
+                  ([costCode, totals]) => (
+                    <div
+                      key={costCode}
+                      className="flex justify-between items-center p-2 bg-muted rounded"
+                    >
+                      <span className="font-medium">{costCode}</span>
+                      <div className="text-sm">
+                        <span className="mr-4">
+                          Qty: {totals.qty.toFixed(2)}
+                        </span>
+                        <span>Value: ${totals.value.toFixed(2)}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             </div>
           )}
@@ -261,7 +337,10 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
                 </TableHeader>
                 <TableBody>
                   {currentRun.lines.slice(0, 20).map((line) => (
-                    <TableRow key={line.id} data-testid={`row-material-${line.id}`}>
+                    <TableRow
+                      key={line.id}
+                      data-testid={`row-material-${line.id}`}
+                    >
                       <TableCell>
                         {line.valid ? (
                           <CheckCircle className="h-4 w-4 text-green-600" />
@@ -269,11 +348,17 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
                           <AlertCircle className="h-4 w-4 text-red-600" />
                         )}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate">{line.description}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {line.description}
+                      </TableCell>
                       <TableCell>{line.manufacturer}</TableCell>
                       <TableCell>{line.unit}</TableCell>
                       <TableCell>{line.qty}</TableCell>
-                      <TableCell>{line.unitPrice ? `$${Number(line.unitPrice).toFixed(2)}` : '-'}</TableCell>
+                      <TableCell>
+                        {line.unitPrice
+                          ? `$${Number(line.unitPrice).toFixed(2)}`
+                          : "-"}
+                      </TableCell>
                       <TableCell>{line.costCode}</TableCell>
                       <TableCell>
                         <Button
@@ -306,14 +391,22 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
       <div>
         <h2 className="text-2xl font-semibold mb-2">Project Materials</h2>
         <p className="text-muted-foreground">
-          Add materials to your project by importing an Excel file or entering them manually.
+          Add materials to your project by importing an Excel file or entering
+          them manually.
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'manual')}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as "upload" | "manual")}
+      >
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="upload" data-testid="tab-upload">Import from Excel</TabsTrigger>
-          <TabsTrigger value="manual" data-testid="tab-manual">Manual Entry</TabsTrigger>
+          <TabsTrigger value="upload" data-testid="tab-upload">
+            Import from Excel
+          </TabsTrigger>
+          <TabsTrigger value="manual" data-testid="tab-manual">
+            Manual Entry
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="upload" className="space-y-4">
@@ -325,12 +418,13 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
                   Excel Import
                 </CardTitle>
                 <CardDescription>
-                  Upload an Excel file containing your project materials. Download our template to ensure proper formatting.
+                  Upload an Excel file containing your project materials.
+                  Download our template to ensure proper formatting.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={downloadTemplate}
                   data-testid="button-download-template"
                 >
@@ -341,14 +435,18 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
                 <div
                   {...getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                    isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
+                    isDragActive
+                      ? "border-primary bg-primary/5"
+                      : "border-muted-foreground/25"
                   }`}
                   data-testid="dropzone-upload"
                 >
                   <input {...getInputProps()} />
                   <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-lg font-medium mb-2">
-                    {isDragActive ? 'Drop your Excel file here' : 'Drop Excel file here or click to browse'}
+                    {isDragActive
+                      ? "Drop your Excel file here"
+                      : "Drop Excel file here or click to browse"}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Supports .xlsx files up to 20MB
@@ -373,11 +471,19 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="description">Description *</Label>
-                  <Input id="description" placeholder="Material description" data-testid="input-description" />
+                  <Input
+                    id="description"
+                    placeholder="Material description"
+                    data-testid="input-description"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="manufacturer">Manufacturer</Label>
-                  <Input id="manufacturer" placeholder="Manufacturer name" data-testid="input-manufacturer" />
+                  <Input
+                    id="manufacturer"
+                    placeholder="Manufacturer name"
+                    data-testid="input-manufacturer"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="unit">Unit *</Label>
@@ -397,15 +503,29 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
                 </div>
                 <div>
                   <Label htmlFor="qty">Quantity *</Label>
-                  <Input id="qty" type="number" placeholder="0" data-testid="input-qty" />
+                  <Input
+                    id="qty"
+                    type="number"
+                    placeholder="0"
+                    data-testid="input-qty"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="unitPrice">Unit Price</Label>
-                  <Input id="unitPrice" type="number" placeholder="0.00" data-testid="input-unit-price" />
+                  <Input
+                    id="unitPrice"
+                    type="number"
+                    placeholder="0.00"
+                    data-testid="input-unit-price"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="costCode">Cost Code</Label>
-                  <Input id="costCode" placeholder="Cost code" data-testid="input-cost-code" />
+                  <Input
+                    id="costCode"
+                    placeholder="Cost code"
+                    data-testid="input-cost-code"
+                  />
                 </div>
               </div>
               <div className="mt-4">
@@ -418,7 +538,11 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
 
       {/* Navigation */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious} data-testid="button-previous">
+        <Button
+          variant="outline"
+          onClick={onPrevious}
+          data-testid="button-previous"
+        >
           Previous
         </Button>
         <Button onClick={onNext} data-testid="button-next">
@@ -438,7 +562,9 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
           <div className="py-4">
             <Progress value={uploadProgress} className="mb-2" />
             <p className="text-sm text-muted-foreground text-center">
-              {uploadProgress < 100 ? 'Uploading and parsing...' : 'Processing complete!'}
+              {uploadProgress < 100
+                ? "Uploading and parsing..."
+                : "Processing complete!"}
             </p>
           </div>
         </DialogContent>
@@ -457,51 +583,51 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="edit-description">Description</Label>
-                <Input 
-                  id="edit-description" 
-                  defaultValue={editingLine.description} 
+                <Input
+                  id="edit-description"
+                  defaultValue={editingLine.description}
                   data-testid="input-edit-description"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-manufacturer">Manufacturer</Label>
-                <Input 
-                  id="edit-manufacturer" 
-                  defaultValue={editingLine.manufacturer} 
+                <Input
+                  id="edit-manufacturer"
+                  defaultValue={editingLine.manufacturer}
                   data-testid="input-edit-manufacturer"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-unit">Unit</Label>
-                <Input 
-                  id="edit-unit" 
-                  defaultValue={editingLine.unit} 
+                <Input
+                  id="edit-unit"
+                  defaultValue={editingLine.unit}
                   data-testid="input-edit-unit"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-qty">Quantity</Label>
-                <Input 
-                  id="edit-qty" 
-                  type="number" 
-                  defaultValue={editingLine.qty} 
+                <Input
+                  id="edit-qty"
+                  type="number"
+                  defaultValue={editingLine.qty}
                   data-testid="input-edit-qty"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-unitPrice">Unit Price</Label>
-                <Input 
-                  id="edit-unitPrice" 
-                  type="number" 
-                  defaultValue={editingLine.unitPrice} 
+                <Input
+                  id="edit-unitPrice"
+                  type="number"
+                  defaultValue={editingLine.unitPrice}
                   data-testid="input-edit-unit-price"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-costCode">Cost Code</Label>
-                <Input 
-                  id="edit-costCode" 
-                  defaultValue={editingLine.costCode} 
+                <Input
+                  id="edit-costCode"
+                  defaultValue={editingLine.costCode}
                   data-testid="input-edit-cost-code"
                 />
               </div>
@@ -511,9 +637,7 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
             <Button variant="outline" onClick={() => setEditingLine(null)}>
               Cancel
             </Button>
-            <Button data-testid="button-save-changes">
-              Save Changes
-            </Button>
+            <Button data-testid="button-save-changes">Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
