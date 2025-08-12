@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { Search, Bell, Menu, Command } from "lucide-react";
+import { Search, Bell, Menu, Command, LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/context/auth-context";
 
 interface TopAppBarProps {
   onMobileMenuToggle?: () => void;
@@ -11,8 +19,12 @@ interface TopAppBarProps {
 }
 
 export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen }: TopAppBarProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [notifications] = useState(true); // Mock notification state
+
+  const handleLogout = () => {
+    logout();
+  };
 
   const currentPage = "Dashboard";
   const currentProject = "Metro Plaza Office Tower";
@@ -89,20 +101,54 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen }: To
           </Button>
 
           {/* User Menu */}
-          <Button
-            variant="ghost"
-            className="flex items-center space-x-3 p-2 h-auto"
-            data-testid="button-user-menu"
-          >
-            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-foreground">
-                {user ? `${user.firstName[0]}${user.lastName[0]}` : 'U'}
-              </span>
-            </div>
-            <span className="hidden sm:block text-sm font-medium text-foreground">
-              {user ? `${user.firstName} ${user.lastName}` : 'User'}
-            </span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-3 p-2 h-auto"
+                data-testid="button-user-menu"
+              >
+                <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                  <span className="text-sm font-medium text-foreground">
+                    {user ? `${user.firstName[0]}${user.lastName[0]}` : 'U'}
+                  </span>
+                </div>
+                <span className="hidden sm:block text-sm font-medium text-foreground">
+                  {user ? `${user.firstName} ${user.lastName}` : 'User'}
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {user ? `${user.firstName} ${user.lastName}` : 'User'}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email || 'user@example.com'}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem data-testid="menu-item-profile">
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem data-testid="menu-item-settings">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={handleLogout}
+                className="text-destructive focus:text-destructive"
+                data-testid="menu-item-logout"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
