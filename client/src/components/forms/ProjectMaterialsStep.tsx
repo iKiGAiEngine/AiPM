@@ -78,7 +78,7 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
         method: 'POST',
         body: formData,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
       });
       
@@ -93,7 +93,7 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
       // Fetch the import run details
       const runResponse = await fetch(`/api/material-imports/${data.runId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
       });
       if (runResponse.ok) {
@@ -112,7 +112,7 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
       const response = await fetch(`/api/material-imports/${runId}/approve`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -152,7 +152,7 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
       const response = await fetch('/api/material-import/template', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
       });
       
