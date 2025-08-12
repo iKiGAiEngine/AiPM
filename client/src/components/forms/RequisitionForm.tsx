@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,10 +66,10 @@ export default function RequisitionForm() {
     }
   });
 
-  const { fields, append, remove } = form.useWatch({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'lines'
-  }) || { fields: [], append: () => {}, remove: () => {} };
+  });
 
   const onSubmit = async (data: RequisitionFormData) => {
     try {
@@ -88,21 +88,16 @@ export default function RequisitionForm() {
   };
 
   const addLineItem = () => {
-    const currentLines = form.getValues('lines') || [];
-    form.setValue('lines', [
-      ...currentLines,
-      {
-        description: '',
-        quantity: 1,
-        unit: 'Each',
-      }
-    ]);
+    append({
+      description: '',
+      quantity: 1,
+      unit: 'Each',
+    });
   };
 
   const removeLineItem = (index: number) => {
-    const currentLines = form.getValues('lines') || [];
-    if (currentLines.length > 1) {
-      form.setValue('lines', currentLines.filter((_, i) => i !== index));
+    if (fields.length > 1) {
+      remove(index);
     }
   };
 
