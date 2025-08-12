@@ -142,9 +142,11 @@ export function ProjectMaterialsStep({ projectId, onNext, onPrevious }: ProjectM
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xlsx']
     },
-    maxFiles: 1
+    maxFiles: 1,
+    multiple: false
   });
 
   const downloadTemplate = async () => {
