@@ -6,13 +6,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -30,7 +32,11 @@ import {
   X,
   Edit,
   Save,
-  ArrowRight
+  ArrowRight,
+  FileSpreadsheet,
+  Download,
+  Upload,
+  AlertCircle
 } from "lucide-react";
 import { ProjectMaterialsStep } from "@/components/forms/ProjectMaterialsStep";
 
@@ -73,6 +79,7 @@ export default function NewProject() {
   });
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [sessionProjectNumber, setSessionProjectNumber] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload');
 
   // Division 10 Equipment phase codes (condensed for better visibility)
   const phaseCodeOptions = [
@@ -322,17 +329,70 @@ export default function NewProject() {
 
       {currentStep === 'materials' ? (
         <div className="flex-1">
-          {createdProjectId ? (
-            <ProjectMaterialsStep 
-              projectId={createdProjectId}
-              onNext={() => navigate("/projects")}
-              onPrevious={() => setCurrentStep('budget')}
-            />
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Please complete the project creation steps first.</p>
-            </div>
-          )}
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <FileSpreadsheet className="w-6 h-6" />
+                Project Materials
+              </CardTitle>
+              <CardDescription>
+                Import materials from Excel or add them manually. This step is optional - you can create the project without materials and add them later.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'manual')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="upload">Excel Import</TabsTrigger>
+                  <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="upload" className="space-y-4">
+                  <div className="text-center py-12 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                    <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">Import Materials from Excel</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Upload your materials Excel file to automatically import and validate materials
+                    </p>
+                    <div className="space-y-2">
+                      <Button variant="outline" className="mr-2">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Template
+                      </Button>
+                      <Button>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Excel File
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-4">
+                      Supported format: .xlsx files up to 20MB
+                    </p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="manual" className="space-y-4">
+                  <div className="text-center py-12 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                    <div className="w-12 h-12 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+                      <Edit className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Add Materials Manually</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Create individual material entries one at a time
+                    </p>
+                    <Button>
+                      Add Material
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Optional Step:</strong> You can create the project now and add materials later, or upload materials first to include them in the initial project setup.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
         </div>
       ) : (
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col">
