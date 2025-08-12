@@ -179,12 +179,17 @@ export function ProjectMaterialsStep({
 
   // Handle file drop
   const onDrop = React.useCallback(
-    (acceptedFiles: File[]) => {
+    (acceptedFiles: File[], rejectedFiles: any[]) => {
+      console.log('Files dropped:', { acceptedFiles, rejectedFiles });
       const file = acceptedFiles[0];
       if (file) {
+        console.log('Processing file:', file.name, file.type, file.size);
         setUploadProgress(0);
         setIsUploadDialogOpen(true);
         uploadMutation.mutate(file);
+      } else if (rejectedFiles.length > 0) {
+        console.error('File rejected:', rejectedFiles[0]);
+        alert(`File rejected: ${rejectedFiles[0].errors?.[0]?.message || 'Invalid file type'}`);
       }
     },
     [uploadMutation],
@@ -193,14 +198,14 @@ export function ProjectMaterialsStep({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-        ".xlsx",
-      ],
-      "application/vnd.ms-excel": [".xls"],
-      "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls", ".xlsx"],
+      "text/csv": [".csv"]
     },
     maxFiles: 1,
     multiple: false,
+    noClick: false,
+    noKeyboard: false
   });
 
   const downloadTemplate = async () => {
@@ -441,7 +446,11 @@ export function ProjectMaterialsStep({
                   }`}
                   data-testid="dropzone-upload"
                 >
-                  <input {...getInputProps()} />
+                  <input 
+                    {...getInputProps()} 
+                    accept=".xlsx,.xls,.csv"
+                    type="file"
+                  />
                   <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-lg font-medium mb-2">
                     {isDragActive
@@ -449,7 +458,7 @@ export function ProjectMaterialsStep({
                       : "Drop Excel file here or click to browse"}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Supports .xlsx files up to 20MB
+                    Supports .xlsx, .xls, .csv files up to 20MB
                   </p>
                 </div>
               </CardContent>
