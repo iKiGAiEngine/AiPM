@@ -312,7 +312,7 @@ export default function NewProject() {
                       {...form.register("name")}
                       id="name"
                       placeholder="Downtown Office Complex"
-                      className="h-12 text-base"
+                      className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-name"
                     />
                     {form.formState.errors.name && (
@@ -328,7 +328,7 @@ export default function NewProject() {
                       {...form.register("client")}
                       id="client"
                       placeholder="ABC Construction Company"
-                      className="h-12 text-base"
+                      className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-client"
                     />
                     {form.formState.errors.client && (
@@ -345,7 +345,7 @@ export default function NewProject() {
                     {...form.register("projectNumber")}
                     id="projectNumber"
                     placeholder="e.g., 23479024"
-                    className="h-12 text-base"
+                    className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                     data-testid="input-project-number-main"
                   />
                   {form.formState.errors.projectNumber && (
@@ -361,7 +361,7 @@ export default function NewProject() {
                     {...form.register("address")}
                     id="address"
                     placeholder="123 Main Street, City, State, ZIP"
-                    className="h-12 text-base"
+                    className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                     data-testid="input-address"
                   />
                   {form.formState.errors.address && (
@@ -383,7 +383,7 @@ export default function NewProject() {
                       type="number"
                       step="0.01"
                       placeholder="500,000.00"
-                      className="h-12 text-base pl-8"
+                      className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-budget"
                       onChange={(e) => {
                         const value = e.target.value;
@@ -412,7 +412,7 @@ export default function NewProject() {
                       {...form.register("startDate")}
                       id="startDate"
                       type="date"
-                      className="h-12 text-base"
+                      className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-start-date"
                     />
                     {form.formState.errors.startDate && (
@@ -524,7 +524,7 @@ export default function NewProject() {
                         value={costCodeForm.scope}
                         onChange={(e) => setCostCodeForm(prev => ({ ...prev, scope: e.target.value }))}
                         placeholder="e.g., Toilet Accessories, Fire Extinguishers, Cast-in-Place Concrete"
-                        className="h-12 text-base"
+                        className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                         data-testid="input-cost-code-scope"
                       />
                     </div>
@@ -553,7 +553,7 @@ export default function NewProject() {
                             }));
                           }}
                         >
-                          <SelectTrigger className="h-12" data-testid="select-phase-code">
+                          <SelectTrigger className="h-12 bg-slate-900 text-slate-100 border-slate-700 focus:border-slate-500 focus:ring-0" data-testid="select-phase-code">
                             <SelectValue placeholder="Select phase code" />
                           </SelectTrigger>
                           <SelectContent>
@@ -571,7 +571,7 @@ export default function NewProject() {
                           value={costCodeForm.standardCode}
                           onChange={(e) => setCostCodeForm(prev => ({ ...prev, standardCode: e.target.value }))}
                           placeholder="71130"
-                          className="h-12 text-base font-mono"
+                          className="h-12 text-base font-mono bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                           data-testid="input-standard-code"
                         />
                       </div>
@@ -587,7 +587,7 @@ export default function NewProject() {
                             type="number"
                             step="0.01"
                             placeholder="50,000.00"
-                            className="h-12 text-base pl-8"
+                            className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                             data-testid="input-cost-code-budget"
                           />
                         </div>
