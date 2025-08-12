@@ -352,74 +352,32 @@ export default function NewProject() {
       </div>
 
       {currentStep === 'materials' ? (
-        <div className="flex-1">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <FileSpreadsheet className="w-6 h-6" />
-                Project Materials
-              </CardTitle>
-              <CardDescription>
-                Import materials from Excel or add them manually. This step is optional - you can create the project without materials and add them later.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'manual')}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="upload">Excel Import</TabsTrigger>
-                  <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="upload" className="space-y-4">
-                  <div className="text-center py-12 border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                    <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Import Materials from Excel</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Upload your materials Excel file to automatically import and validate materials
-                    </p>
-                    <div className="space-y-2">
-                      <Button variant="outline" className="mr-2">
-                        <Download className="w-4 h-4 mr-2" />
-                        Download Template
-                      </Button>
-                      <Button>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload Excel File
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-4">
-                      Supported format: .xlsx files up to 20MB
-                    </p>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="manual" className="space-y-4">
-                  <div className="text-center py-12 border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                    <div className="w-12 h-12 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
-                      <Edit className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">Add Materials Manually</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Create individual material entries one at a time
-                    </p>
-                    <Button>
-                      Add Material
-                    </Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Optional Step:</strong> You can create the project now and add materials later, or upload materials first to include them in the initial project setup.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
-        </div>
+        <ProjectMaterialsStep 
+          projectId={createdProjectId!} 
+          onNext={() => navigate("/projects")}
+          onPrevious={() => setCurrentStep('budget')}
+        />
       ) : (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col">
+        <form 
+          onSubmit={form.handleSubmit(onSubmit)} 
+          className="flex-1 flex flex-col"
+          onKeyDown={(e) => {
+            // Prevent Enter key from submitting the form except when explicitly intended
+            if (e.key === 'Enter' && e.target instanceof HTMLElement) {
+              const isButton = e.target.tagName === 'BUTTON';
+              const isSubmitButton = e.target.getAttribute('type') === 'submit';
+              const isTextarea = e.target.tagName === 'TEXTAREA';
+              
+              if (!isButton && !isSubmitButton && !isTextarea) {
+                // Let handleEnterKeyNavigation handle the navigation
+                return;
+              } else if (isTextarea && !e.ctrlKey && !e.metaKey) {
+                // Allow normal Enter in textarea, unless Ctrl/Cmd+Enter
+                return;
+              }
+            }
+          }}
+        >
           <div className="flex-1">
             {currentStep === 'info' ? (
               // Project Information Step

@@ -253,7 +253,7 @@ router.post('/material-imports/:runId/reject', authenticateToken, async (req: Au
 });
 
 // Download Excel template
-router.get('/material-import/template', (req, res) => {
+router.get('/material-import/template', authenticateToken, (req: AuthenticatedRequest, res) => {
   try {
     const templateBuffer = materialImportService.generateTemplate();
     
