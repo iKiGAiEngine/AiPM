@@ -273,7 +273,7 @@ export default function Projects() {
                   <div className="pt-3 border-t border-border">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-muted-foreground">
-                        Created {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
+                        Created {project.createdAt ? formatDistanceToNow(new Date(project.createdAt), { addSuffix: true }) : 'recently'}
                       </div>
                       <Button variant="ghost" size="sm" asChild data-testid={`button-view-project-${project.id}`}>
                         <Link to={`/projects/${project.id}`}>

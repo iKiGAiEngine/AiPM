@@ -18,6 +18,7 @@ import InvoiceUpload from "@/pages/InvoiceUpload";
 import Materials from "@/pages/Materials";
 import Vendors from "@/pages/Vendors";
 import Projects from "@/pages/Projects";
+import NewProject from "@/pages/NewProject";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
@@ -194,6 +195,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <Projects />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/new"
+                element={
+                  <ProtectedRoute>
+                    <NewProject />
                   </ProtectedRoute>
                 }
               />
