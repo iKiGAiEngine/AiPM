@@ -8,9 +8,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/lib/auth";
+import { useNavigate } from "react-router-dom";
 
 export default function QuickActions() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const canAccess = (roles: string[]) => {
     return user && authService.hasRole(roles, user.role);
@@ -25,7 +27,7 @@ export default function QuickActions() {
       iconBg: "bg-primary-600",
       iconColor: "text-white",
       roles: ["Admin", "PM", "Purchaser", "Field"],
-      onClick: () => console.log("Create requisition"),
+      onClick: () => navigate("/requisitions"),
       testId: "button-new-requisition"
     },
     {
@@ -36,7 +38,7 @@ export default function QuickActions() {
       iconBg: "bg-muted-foreground",
       iconColor: "text-white",
       roles: ["Admin", "PM", "Purchaser"],
-      onClick: () => console.log("Create RFQ"),
+      onClick: () => navigate("/rfqs"),
       testId: "button-create-rfq"
     },
     {
@@ -47,7 +49,7 @@ export default function QuickActions() {
       iconBg: "bg-muted-foreground",
       iconColor: "text-white",
       roles: ["Admin", "PM", "AP"],
-      onClick: () => console.log("Upload invoice"),
+      onClick: () => navigate("/invoices"),
       testId: "button-upload-invoice"
     },
     {
@@ -58,7 +60,7 @@ export default function QuickActions() {
       iconBg: "bg-muted-foreground",
       iconColor: "text-white",
       roles: ["Admin", "PM", "Purchaser", "AP"],
-      onClick: () => console.log("View reports"),
+      onClick: () => navigate("/reports"),
       testId: "button-view-reports"
     }
   ];
