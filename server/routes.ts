@@ -141,14 +141,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
     try {
+      console.log('Raw request body:', JSON.stringify(req.body, null, 2));
       const projectData = insertProjectSchema.parse(req.body);
+      console.log('Parsed project data:', JSON.stringify(projectData, null, 2));
       const project = await storage.createProject({
         ...projectData,
         organizationId: req.user!.organizationId
       });
       res.status(201).json(project);
     } catch (error) {
-      res.status(400).json({ error: "Invalid project data" });
+      console.error('Project validation error:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: "Invalid project data" });
+      }
     }
   });
 

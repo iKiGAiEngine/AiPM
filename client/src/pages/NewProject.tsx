@@ -72,6 +72,7 @@ export default function NewProject() {
         erpIds: null, // Can be set later when ERP integration is implemented
       };
       
+      console.log('Sending project data:', projectData);
       return apiRequest('POST', '/api/projects', projectData);
     },
     onSuccess: () => {
