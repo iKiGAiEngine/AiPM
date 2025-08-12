@@ -19,9 +19,7 @@ import { getCostCodeForCategory, isValidCostCode } from '../config/cost-code-map
 
 export interface ParsedMaterialRow {
   category?: string;
-  manufacturer?: string;
   model?: string;
-  sku?: string;
   description: string;
   unit: string;
   qty: number;
@@ -115,9 +113,7 @@ export class MaterialImportService {
           runId,
           rawRowJson: this.createRowJson(headers, row),
           category: parsedRow.category,
-          manufacturer: parsedRow.manufacturer,
           model: parsedRow.model,
-          sku: parsedRow.sku,
           description: parsedRow.description,
           unit: parsedRow.unit,
           qty: parsedRow.qty.toString(),
@@ -322,9 +318,7 @@ export class MaterialImportService {
     // Map common column names
     const mappings = [
       { patterns: ['category', 'cat'], target: 'category' },
-      { patterns: ['manufacturer', 'mfr', 'brand'], target: 'manufacturer' },
-      { patterns: ['model', 'part'], target: 'model' },
-      { patterns: ['sku', 'part number', 'item', 'code'], target: 'sku' },
+      { patterns: ['model', 'model #', 'model number', 'part'], target: 'model' },
       { patterns: ['description', 'desc', 'name', 'item name'], target: 'description' },
       { patterns: ['unit', 'uom', 'unit of measure'], target: 'unit' },
       { patterns: ['qty', 'quantity', 'count', 'amount'], target: 'qty' },
@@ -366,9 +360,7 @@ export class MaterialImportService {
     };
     
     const category = this.cleanString(getValue('category'));
-    const manufacturer = this.cleanString(getValue('manufacturer'));
     const model = this.cleanString(getValue('model'));
-    const sku = this.cleanString(getValue('sku'));
     const description = this.cleanString(getValue('description'));
     const unit = this.cleanString(getValue('unit'));
     const qtyValue = getValue('qty');
@@ -424,9 +416,7 @@ export class MaterialImportService {
     
     return {
       category,
-      manufacturer,
       model,
-      sku,
       description: description || '',
       unit: unit || '',
       qty,
@@ -505,10 +495,10 @@ export class MaterialImportService {
   // Generate Excel template
   generateTemplate(): Buffer {
     const templateData = [
-      ['Category', 'Description', 'Qty', 'Unit', 'Manufacturer', 'Model', 'SKU', 'Unit Price', 'Cost Code', 'Phase Code'],
-      ['Toilet Accessories', 'Paper towel dispenser', '5', 'EA', 'Bobrick', 'B-2620', 'B2620', '85.50', '102800', ''],
-      ['Partitions', 'Toilet partition hardware', '3', 'SET', 'Bradley', 'BTP-100', 'BTP100', '125.00', '102813', ''],
-      ['Fire Extinguishers', '5lb ABC fire extinguisher', '10', 'EA', 'Amerex', 'B402', 'B402T', '45.00', '105100', '']
+      ['Category', 'Description', 'Model #', 'Qty', 'Unit', 'Unit Price', 'Cost Code', 'Phase Code'],
+      ['Toilet Accessories', 'Paper towel dispenser', 'B-2620', '5', 'EA', '85.50', '102800', ''],
+      ['Partitions', 'Toilet partition hardware', 'BTP-100', '3', 'SET', '125.00', '102813', ''],
+      ['Fire Extinguishers', '5lb ABC fire extinguisher', 'B402', '10', 'EA', '45.00', '105100', '']
     ];
     
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);

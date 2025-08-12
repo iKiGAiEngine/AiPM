@@ -64,9 +64,7 @@ interface MaterialImportLine {
   id: string;
   rawRowJson?: any;
   category?: string;
-  manufacturer?: string;
   model?: string;
-  sku?: string;
   description?: string;
   unit?: string;
   qty?: string;
@@ -354,7 +352,7 @@ export function ProjectMaterialsStep({
                   <TableRow>
                     <TableHead className="w-8"></TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead>Manufacturer</TableHead>
+                    <TableHead>Model #</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead>Qty</TableHead>
                     <TableHead>Unit Price</TableHead>
@@ -378,7 +376,7 @@ export function ProjectMaterialsStep({
                       <TableCell className="max-w-[200px] truncate">
                         {line.description}
                       </TableCell>
-                      <TableCell>{line.manufacturer}</TableCell>
+                      <TableCell>{line.model || '-'}</TableCell>
                       <TableCell>{line.unit}</TableCell>
                       <TableCell>{line.qty}</TableCell>
                       <TableCell>
@@ -634,11 +632,11 @@ export function ProjectMaterialsStep({
                 />
               </div>
               <div>
-                <Label htmlFor="edit-manufacturer">Manufacturer</Label>
+                <Label htmlFor="edit-model">Model #</Label>
                 <Input
-                  id="edit-manufacturer"
-                  defaultValue={editingLine.manufacturer}
-                  data-testid="input-edit-manufacturer"
+                  id="edit-model"
+                  defaultValue={editingLine.model}
+                  data-testid="input-edit-model"
                 />
               </div>
               <div>
