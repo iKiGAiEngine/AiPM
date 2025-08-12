@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { apiRequest } from '@/lib/queryClient';
+import { authService } from '@/lib/auth';
 import type { User, Organization } from '@shared/schema';
+import type { AuthUser } from '@/lib/auth';
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   organization: Organization | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName: string, lastName: string, organizationName: string) => Promise<void>;
@@ -14,43 +15,34 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('auth_token');
-    const storedUser = localStorage.getItem('auth_user');
-    const storedOrg = localStorage.getItem('auth_organization');
-
-    if (token && storedUser && storedOrg) {
+    // Check for existing session and get current user
+    const checkAuth = async () => {
       try {
-        setUser(JSON.parse(storedUser));
-        setOrganization(JSON.parse(storedOrg));
+        if (authService.isAuthenticated()) {
+          const currentUser = await authService.getCurrentUser();
+          setUser(currentUser);
+        }
       } catch (error) {
-        // Clear invalid stored data
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('auth_organization');
+        console.error('Failed to check auth:', error);
+        authService.logout();
+      } finally {
+        setIsLoading(false);
       }
-    }
-    
-    setIsLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiRequest('POST', '/api/v1/auth/login', { email, password });
-      const data = await response.json();
-
-      setUser(data.user);
-      setOrganization(data.organization);
-      
-      // Store auth data
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('auth_user', JSON.stringify(data.user));
-      localStorage.setItem('auth_organization', JSON.stringify(data.organization));
+      const response = await authService.login(email, password);
+      setUser(response.user);
+      // Note: Organization data would come from a separate API call if needed
     } catch (error: any) {
       throw new Error(error.message || 'Login failed');
     }
@@ -58,35 +50,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (email: string, password: string, firstName: string, lastName: string, organizationName: string) => {
     try {
-      const response = await apiRequest('POST', '/api/v1/auth/register', {
-        email,
-        password,
-        firstName,
-        lastName,
-        organizationName
-      });
-      const data = await response.json();
-
-      setUser(data.user);
-      setOrganization(data.organization);
-      
-      // Store auth data
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('auth_user', JSON.stringify(data.user));
-      localStorage.setItem('auth_organization', JSON.stringify(data.organization));
+      // Registration would be implemented in authService if needed
+      throw new Error('Registration not implemented yet');
     } catch (error: any) {
       throw new Error(error.message || 'Registration failed');
     }
   };
 
   const logout = () => {
+    authService.logout();
     setUser(null);
     setOrganization(null);
-    
-    // Clear stored auth data
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_organization');
   };
 
   return (
