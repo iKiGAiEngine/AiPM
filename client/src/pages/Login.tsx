@@ -14,6 +14,7 @@ import { AlertCircle, Building2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -27,7 +28,8 @@ export default function Login() {
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      email: "admin@metro-construction.com",
+      password: "admin123",
     },
   });
 
@@ -36,7 +38,7 @@ export default function Login() {
     setError("");
 
     try {
-      await authService.login(data.email, "password"); // Using default password since we're removing password requirement
+      await authService.login(data.email, data.password);
       toast({
         title: "Success",
         description: "Logged in successfully",
@@ -71,13 +73,10 @@ export default function Login() {
 
         {/* Demo Credentials */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Demo Login - Just Enter Email</h3>
+          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Pre-loaded Demo Login</h3>
           <div className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
-            <div>Admin: admin@metro-construction.com</div>
-            <div>PM: pm@metro-construction.com</div>
-            <div>Purchaser: purchaser@metro-construction.com</div>
-            <div>Field: field@metro-construction.com</div>
-            <div>AP: ap@metro-construction.com</div>
+            <div>Login fields are pre-filled with admin credentials for easy testing</div>
+            <div>Click "Sign In" to access the dashboard immediately</div>
           </div>
         </div>
 
