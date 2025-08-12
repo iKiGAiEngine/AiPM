@@ -38,12 +38,15 @@ export default function Login() {
     setError("");
 
     try {
-      await authService.login(data.email, data.password);
+      const response = await authService.login(data.email, data.password);
       toast({
         title: "Success",
         description: "Logged in successfully",
       });
-      navigate("/dashboard");
+      // Give a small delay to ensure auth state is updated
+      setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 100);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Login failed";
       setError(errorMessage);
