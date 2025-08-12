@@ -2,6 +2,16 @@
 
 This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract estimates, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
+## Recent Updates (August 12, 2025)
+- **Excel Import Integration**: Successfully integrated comprehensive Excel import functionality into the Project Creation wizard
+- **Multi-Step Project Creation**: Enhanced project creation workflow with three distinct steps:
+  1. Project Information (basic details and contract info)
+  2. Budget & Cost Codes (cost code configuration and budget allocation)
+  3. Materials Import (Excel upload with validation and cost code mapping)
+- **Material Import Service**: Implemented complete material import pipeline with validation, error handling, and batch processing
+- **Database Schema**: Extended schema with material_import_runs and material_import_lines tables using jsonb and uuid types
+- **API Integration**: Added material import routes with proper authentication and file upload handling
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
