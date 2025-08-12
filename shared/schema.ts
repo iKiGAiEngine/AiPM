@@ -635,6 +635,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 
 export const insertProjectSchema = createInsertSchema(projects).omit({
   id: true,
+  organizationId: true,
   createdAt: true,
   updatedAt: true
 });
