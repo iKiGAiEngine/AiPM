@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { useAuth } from "@/hooks/useAuth";
-import { AuthProvider } from "@/context/auth-context";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Requisitions from "@/pages/Requisitions";
@@ -96,10 +95,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <Router>
-          <div className="min-h-screen bg-background">
+      <ThemeProvider>
+        <Router>
+        <div className="min-h-screen bg-background">
             <Routes>
               <Route
                 path="/login"
@@ -268,7 +266,6 @@ export default function App() {
           <Toaster />
         </Router>
       </ThemeProvider>
-      </AuthProvider>
     </QueryClientProvider>
   );
 }

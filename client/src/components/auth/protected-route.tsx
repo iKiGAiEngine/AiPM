@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { Redirect } from 'wouter';
 import { Skeleton } from '@/components/ui/skeleton';
 

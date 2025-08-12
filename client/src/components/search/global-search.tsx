@@ -4,7 +4,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
 import { Search, FileText, Building, Package, ShoppingCart, Clock } from 'lucide-react';
 import type { SearchResult } from '@/types';

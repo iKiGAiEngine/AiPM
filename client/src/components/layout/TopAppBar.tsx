@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/hooks/useAuth";
 
 interface TopAppBarProps {
   onMobileMenuToggle?: () => void;
