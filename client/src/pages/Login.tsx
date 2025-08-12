@@ -14,7 +14,6 @@ import { AlertCircle, Building2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -29,7 +28,6 @@ export default function Login() {
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
-      password: "",
     },
   });
 
@@ -38,7 +36,7 @@ export default function Login() {
     setError("");
 
     try {
-      await authService.login(data.email, data.password);
+      await authService.login(data.email, "password"); // Using default password since we're removing password requirement
       toast({
         title: "Success",
         description: "Logged in successfully",
@@ -73,13 +71,13 @@ export default function Login() {
 
         {/* Demo Credentials */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Demo Login Credentials</h3>
+          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Demo Login - Just Enter Email</h3>
           <div className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
-            <div>Admin: admin@metro-construction.com / admin123</div>
-            <div>PM: pm@metro-construction.com / pm123</div>
-            <div>Purchaser: purchaser@metro-construction.com / purchaser123</div>
-            <div>Field: field@metro-construction.com / field123</div>
-            <div>AP: ap@metro-construction.com / ap123</div>
+            <div>Admin: admin@metro-construction.com</div>
+            <div>PM: pm@metro-construction.com</div>
+            <div>Purchaser: purchaser@metro-construction.com</div>
+            <div>Field: field@metro-construction.com</div>
+            <div>AP: ap@metro-construction.com</div>
           </div>
         </div>
 
