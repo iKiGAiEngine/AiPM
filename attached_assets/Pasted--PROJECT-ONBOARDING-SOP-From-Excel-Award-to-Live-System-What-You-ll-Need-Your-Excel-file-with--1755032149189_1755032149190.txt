@@ -1,0 +1,74 @@
+📋 PROJECT ONBOARDING SOP: From Excel Award to Live System
+What You'll Need:
+Your Excel file with awarded project details and materials
+BuildProcure AI login credentials
+About 1-2 hours for initial setup
+Step 1: Log In & Navigate 🚪
+Open BuildProcure AI in your web browser
+Log in with demo credentials:
+Email: admin@metro-construction.com
+Password: admin123
+Verify access - you should see the main dashboard with navigation sidebar
+Step 2: Create Your Project 🏗️
+Click "Projects" in the left sidebar
+Click "New Project" (green button, top right)
+Fill out the form with your Excel data:
+Project Name: Exact name from your award
+Project Number: GC's project number
+Client: General Contractor's company name
+Address: Job site address
+Status: Select "Active"
+Total Contract Value: Your total awarded amount
+Add Cost Codes: For each estimate line in your Excel:
+Format: Description - ProjectNumber-CostCode-Division
+Example: Toilet Accessories - 23479026-102800-71130
+Click "Create Project"
+Step 3: Set Up Your Materials 📦
+Click "Materials" in the left sidebar
+For each material in your Excel:
+Click "Add Material"
+SKU: Your part number or manufacturer SKU
+Description: Detailed description from Excel
+Manufacturer: Brand name
+Unit: Each, box, sq ft, etc.
+Category: Group by type (plumbing, electrical, etc.)
+Last Cost: Your budgeted cost from Excel
+Click "Save Material"
+Step 4: Add Your Vendors 🏢
+Click "Vendors" in the left sidebar
+For each supplier you'll use:
+Click "Add Vendor"
+Enter company name, contact info, address
+Set payment terms (Net 30, etc.)
+Click "Save Vendor"
+Step 5: Test with First Requisition ✅
+Click "Requisitions" in the left sidebar
+Click "New Requisition"
+Fill out the form:
+Project: Select your project
+Title: "Test Material Request - [Material Name]"
+Delivery Date: When you need it
+Delivery Location: Job site address
+Add a line item:
+Description, quantity, unit, estimated cost
+Click "Submit Requisition"
+Step 6: Process the Workflow 🔄
+Approval: As PM/Admin, approve the requisition
+RFQ Creation: System converts to Request for Quote
+Vendor Selection: Send RFQ to your vendors
+Quote Review: Compare vendor responses
+Award: Convert winning quote to Purchase Order
+Navigation Quick Guide 🗺️
+Section	What It Does
+Dashboard	Overview of all activity
+Projects	Manage project details
+Requisitions	Field material requests
+RFQs	Request quotes from vendors
+Purchase Orders	Formal orders to vendors
+Materials	Master catalog
+Vendors	Supplier contacts
+Reports	Budget tracking
+Status Flows 📈
+Requisitions: Draft → Submitted → Approved → Converted
+RFQs: Draft → Sent → Quoted → Closed
+Purchase Orders: Draft → Sent → Acknowledged → Received
