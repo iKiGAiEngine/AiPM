@@ -135,6 +135,8 @@ export default function RequisitionForm() {
       description: '',
       quantity: 1,
       unit: 'Each',
+      estimatedCost: 0,
+      notes: ''
     });
   };
 
@@ -225,16 +227,16 @@ export default function RequisitionForm() {
             </div>
           </div>
 
-          {/* Material Search */}
-          <div className="space-y-2">
-            <Label htmlFor="materialSearch">Available Project Materials ({projectMaterials.length})</Label>
+          {/* Available Materials */}
+          <div className="space-y-4">
+            <Label>Available Project Materials ({projectMaterials.length})</Label>
             {selectedProject ? (
               projectMaterials.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                <div className="space-y-2 max-h-80 overflow-y-auto border rounded-lg p-4">
                   {projectMaterials.map((material) => (
                     <div 
                       key={material.id} 
-                      className="p-3 border border-border rounded-lg hover:bg-muted cursor-pointer"
+                      className="material-card flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors active:bg-muted touch-manipulation"
                       onClick={() => {
                         const newLine = {
                           materialId: material.id,
@@ -245,28 +247,43 @@ export default function RequisitionForm() {
                           notes: ''
                         };
                         append(newLine);
+                        toast({
+                          title: "Material Added",
+                          description: `${material.description} added to requisition`,
+                        });
                       }}
                       data-testid={`material-card-${material.id}`}
                     >
-                      <div className="text-sm font-medium">{material.description}</div>
-                      <div className="text-xs text-muted-foreground">
-                        ${parseFloat(material.unitPrice || '0').toFixed(2)} per {material.unit || 'Each'}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium mb-1 line-clamp-2">{material.description}</div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-medium text-green-600">
+                            ${parseFloat(material.unitPrice || '0').toFixed(2)} per {material.unit || 'Each'}
+                          </span>
+                          {material.category && (
+                            <Badge variant="secondary" className="text-xs">
+                              {material.category}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      {material.category && (
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {material.category}
-                        </Badge>
-                      )}
+                      <div className="mt-2 sm:mt-0 sm:ml-4">
+                        <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto">
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-lg text-center">
-                  No materials found for this project. Upload materials first.
+                <div className="text-sm text-muted-foreground p-6 border border-dashed rounded-lg text-center">
+                  <div className="mb-2">No materials found for this project</div>
+                  <div className="text-xs">Upload materials first in Project Details</div>
                 </div>
               )
             ) : (
-              <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-lg text-center">
+              <div className="text-sm text-muted-foreground p-6 border border-dashed rounded-lg text-center">
                 Select a project to see available materials
               </div>
             )}
@@ -282,8 +299,23 @@ export default function RequisitionForm() {
               </Button>
             </div>
             
-            {form.watch('lines')?.map((line, index) => (
-              <div key={index} className="p-4 border border-border rounded-lg space-y-4">
+            {fields.map((field, index) => (
+              <div key={field.id} className="p-4 border border-border rounded-lg space-y-4 bg-card">
+                <div className="flex items-center justify-between">
+                  <h5 className="font-medium text-sm">Item #{index + 1}</h5>
+                  {fields.length > 1 && (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => removeLineItem(index)}
+                      className="text-destructive hover:text-destructive"
+                      data-testid={`button-remove-line-${index}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Description *</Label>
@@ -334,20 +366,13 @@ export default function RequisitionForm() {
                       data-testid={`input-line-cost-${index}`}
                     />
                   </div>
-                  <div className="flex items-end">
-                    {form.watch('lines')?.length > 1 && (
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => removeLineItem(index)}
-                        className="text-destructive hover:text-destructive"
-                        data-testid={`button-remove-line-${index}`}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Remove
-                      </Button>
-                    )}
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Input
+                      {...form.register(`lines.${index}.notes`)}
+                      placeholder="Special instructions or notes"
+                      data-testid={`input-line-notes-${index}`}
+                    />
                   </div>
                 </div>
 
