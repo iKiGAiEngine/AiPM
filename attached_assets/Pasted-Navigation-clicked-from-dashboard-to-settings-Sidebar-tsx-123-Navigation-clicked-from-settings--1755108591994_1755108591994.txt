@@ -1,0 +1,26 @@
+Navigation clicked: from /dashboard to /settings
+Sidebar.tsx:123 Navigation clicked: from /settings to /reports
+Sidebar.tsx:123 Navigation clicked: from /reports to /projects
+Sidebar.tsx:123 Navigation clicked: from / to /vendors
+chunk-RPCDYKBN.js?v=2d67d420:521 Warning: Cannot update a component (`Route`) while rendering a different component (`ProjectDetail`). To locate the bad setState() call inside `ProjectDetail`, follow the stack trace as described in https://reactjs.org/link/setstate-in-render
+    at ProjectDetail (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/src/pages/ProjectDetail.tsx:188:18)
+    at main
+    at div
+    at div
+    at ProtectedRoute (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/src/App.tsx?v=6DVnC03YFRPEWuBRABz3M:60:27)
+    at Route (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d67d420:323:16)
+    at Switch (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d67d420:379:17)
+    at Router (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d67d420:291:17)
+    at Route (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d67d420:323:16)
+    at Switch (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d67d420:379:17)
+    at Router (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d67d420:291:17)
+    at Route (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d67d420:323:16)
+    at Switch (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2d67d420:379:17)
+    at div
+    at ThemeProvider (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/src/components/providers/ThemeProvider.tsx:25:3)
+    at QueryClientProvider (https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=2d67d420:2805:3)
+    at App
+printWarning @ chunk-RPCDYKBN.js?v=2d67d420:521Understand this error
+Sidebar.tsx:123 Navigation clicked: from /projects to /requisitions
+Sidebar.tsx:123 Navigation clicked: from /projects to /reports
+Sidebar.tsx:123 Navigation clicked: from /projects to /settings

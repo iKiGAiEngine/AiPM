@@ -1,4 +1,5 @@
 import { useParams, useLocation, Link } from "wouter";
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -127,9 +128,15 @@ export default function ProjectDetail() {
     val !== 'materials' &&
     /^[0-9a-fA-F-]{36}$/.test(val); // UUID format
 
-  // If invalid ID, redirect back to projects list
+  // Use useEffect to redirect with invalid ID to prevent setState during render
+  useEffect(() => {
+    if (!isValidId(id)) {
+      setLocation("/projects");
+    }
+  }, [id, setLocation]);
+
+  // Don't render if ID is invalid
   if (!isValidId(id)) {
-    setLocation("/projects");
     return null;
   }
 
