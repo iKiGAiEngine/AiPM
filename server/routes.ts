@@ -356,8 +356,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         number,
         organizationId: req.user!.organizationId,
         requesterId: req.user!.id,
-        // Convert processed date back to string for database
-        targetDeliveryDate: reqData.targetDeliveryDate?.toISOString() || null,
+        // Date is already processed as ISO string by schema transform
+        targetDeliveryDate: reqData.targetDeliveryDate || null,
         contractEstimateId: reqData.contractEstimateId || null,
         zone: reqData.zone || null,
         attachments: reqData.attachments || [],

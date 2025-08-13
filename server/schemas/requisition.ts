@@ -18,9 +18,10 @@ export const RequisitionCreateSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   targetDeliveryDate: z.string().optional().nullable().transform((val) => {
     if (!val || val.trim() === '') return null;
+    // Return as ISO string for database storage
     const date = new Date(val);
     if (isNaN(date.getTime())) return null;
-    return date;
+    return date.toISOString();
   }),
   deliveryLocation: z.string().trim().optional().nullable(),
   specialInstructions: z.string().trim().optional().nullable(),
