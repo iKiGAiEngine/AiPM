@@ -116,7 +116,14 @@ export default function Sidebar() {
   };
 
   const handleNavigation = (href: string) => {
-    navigate(href);
+    console.log('Sidebar navigation clicked:', href);
+    console.log('Current location:', location.pathname);
+    try {
+      navigate(href);
+      console.log('Navigate called successfully');
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   return (
