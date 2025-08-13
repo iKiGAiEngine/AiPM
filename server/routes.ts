@@ -525,7 +525,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract lines separately as they're handled differently
       const { lines, ...rfqBody } = req.body;
       
-      const rfqData = insertRfqSchema.parse(rfqBody);
+      // Convert bidDueDate from ISO string to Date object
+      if (rfqBody.bidDueDate && typeof rfqBody.bidDueDate === 'string') {
+        rfqBody.bidDueDate = new Date(rfqBody.bidDueDate);
+      }
+      
+      const rfqData = insertRfqSchema.parse({
+        ...rfqBody,
+        organizationId: req.user!.organizationId,
+        createdById: req.user!.id
+      });
       
       // Generate RFQ number
       const year = new Date().getFullYear();
@@ -534,9 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const rfq = await storage.createRFQ({
         ...rfqData,
-        number,
-        organizationId: req.user!.organizationId,
-        createdById: req.user!.id
+        number
       });
 
       // Create RFQ lines if provided
