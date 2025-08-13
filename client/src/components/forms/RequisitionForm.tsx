@@ -582,42 +582,45 @@ export default function RequisitionForm() {
                 <div className="divide-y divide-border">
                   {fields.map((field, index) => (
                     <div key={field.id} className="p-3" data-testid={`line-item-${index}`}>
-                      {/* Mobile Layout */}
-                      <div className="lg:hidden space-y-3">
+                      {/* Mobile Layout - Condensed */}
+                      <div className="lg:hidden space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-muted-foreground">Item #{index + 1}</span>
+                          <span className="text-xs font-medium text-muted-foreground">Item #{index + 1}</span>
                           {fields.length > 1 && (
                             <Button 
                               type="button" 
                               variant="ghost" 
                               size="sm" 
                               onClick={() => removeLineItem(index)}
-                              className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                              className="text-destructive hover:text-destructive h-6 w-6 p-0"
                               data-testid={`button-remove-line-${index}`}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
                         
-                        <div className="space-y-2">
+                        {/* Condensed single row */}
+                        <div className="space-y-1.5">
                           <Input
                             {...form.register(`lines.${index}.description`)}
                             placeholder="Item description"
+                            className="text-sm h-9"
                             data-testid={`input-line-description-${index}`}
                           />
                           
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-3 gap-1.5">
                             <Input
                               {...form.register(`lines.${index}.quantity`, { valueAsNumber: true })}
                               type="number"
                               min="0.01"
                               step="0.01"
-                              placeholder="Quantity"
+                              placeholder="Qty"
+                              className="text-sm h-8 text-center"
                               data-testid={`input-line-quantity-${index}`}
                             />
                             <Select onValueChange={(value) => form.setValue(`lines.${index}.unit`, value)}>
-                              <SelectTrigger data-testid={`select-line-unit-${index}`}>
+                              <SelectTrigger className="h-8 text-sm" data-testid={`select-line-unit-${index}`}>
                                 <SelectValue placeholder="Unit" />
                               </SelectTrigger>
                               <SelectContent>
@@ -628,20 +631,29 @@ export default function RequisitionForm() {
                                 ))}
                               </SelectContent>
                             </Select>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-2">
                             <Input
                               {...form.register(`lines.${index}.estimatedCost`, { valueAsNumber: true })}
                               type="number"
                               min="0"
                               step="0.01"
-                              placeholder="Cost ($)"
+                              placeholder="$"
+                              className="text-sm h-8"
                               data-testid={`input-line-cost-${index}`}
+                            />
+                          </div>
+                          
+                          {/* Model and Notes in compact layout */}
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <Input
+                              {...form.register(`lines.${index}.model`)}
+                              placeholder="Model #"
+                              className="text-sm h-8"
+                              data-testid={`input-line-model-${index}`}
                             />
                             <Input
                               {...form.register(`lines.${index}.notes`)}
                               placeholder="Notes"
+                              className="text-sm h-8"
                               data-testid={`input-line-notes-${index}`}
                             />
                           </div>
