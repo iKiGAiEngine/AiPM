@@ -36,7 +36,7 @@ const catalogNavigation = [
 
 export default function Sidebar() {
   const [location] = useLocation();
-  const { user, organization, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-white lg:border-r lg:border-slate-200">
