@@ -114,7 +114,6 @@ export default function App() {
                 </ProtectedRoute>
               } />
               
-              {/* Requisitions routes */}
               <Route path="/requisitions/new" element={
                 <ProtectedRoute>
                   <NewRequisition />
@@ -126,7 +125,6 @@ export default function App() {
                 </ProtectedRoute>
               } />
               
-              {/* RFQ routes */}
               <Route path="/rfqs/new" element={
                 <ProtectedRoute>
                   <NewRFQ />
@@ -138,7 +136,6 @@ export default function App() {
                 </ProtectedRoute>
               } />
               
-              {/* Purchase Orders routes */}
               <Route path="/purchase-orders/new" element={
                 <ProtectedRoute>
                   <NewPurchaseOrder />
@@ -149,103 +146,123 @@ export default function App() {
                   <PurchaseOrders />
                 </ProtectedRoute>
               } />
-              
-              {/* Deliveries */}
-              <Route path="/deliveries" element={
-                <ProtectedRoute>
-                  <Deliveries />
-                </ProtectedRoute>
-              } />
-              
-              {/* Invoice routes */}
-              <Route path="/invoices/upload" element={
-                <ProtectedRoute>
-                  <InvoiceUpload />
-                </ProtectedRoute>
-              } />
-              <Route path="/invoices/:id" element={
-                <ProtectedRoute>
-                  <InvoiceDetail />
-                </ProtectedRoute>
-              } />
-              <Route path="/invoices" element={
-                <ProtectedRoute>
-                  <Invoices />
-                </ProtectedRoute>
-              } />
-              
-              {/* Materials routes */}
-              <Route path="/materials/new" element={
-                <ProtectedRoute>
-                  <NewMaterial />
-                </ProtectedRoute>
-              } />
-              <Route path="/materials/import" element={
-                <ProtectedRoute>
-                  <ImportMaterials />
-                </ProtectedRoute>
-              } />
-              <Route path="/materials" element={
-                <ProtectedRoute>
-                  <Materials />
-                </ProtectedRoute>
-              } />
-              
-              {/* Vendors */}
-              <Route path="/vendors" element={
-                <ProtectedRoute>
-                  <Vendors />
-                </ProtectedRoute>
-              } />
-              
-              {/* Projects routes - EXPLICIT ORDER TO AVOID CONFLICTS */}
-              <Route path="/projects/new" element={
-                <ProtectedRoute>
-                  <NewProject />
-                </ProtectedRoute>
-              } />
-              <Route path="/projects/:id/edit" element={
-                <ProtectedRoute>
-                  <EditProject />
-                </ProtectedRoute>
-              } />
-              <Route path="/projects/:id/materials/upload" element={
-                <ProtectedRoute>
-                  <ProjectMaterialUpload />
-                </ProtectedRoute>
-              } />
-              <Route path="/projects/:id" element={
-                <ProtectedRoute>
-                  <ProjectDetail />
-                </ProtectedRoute>
-              } />
-              <Route path="/projects" element={
-                <ProtectedRoute>
-                  <Projects />
-                </ProtectedRoute>
-              } />
-              
-              {/* Reports and Settings */}
-              <Route path="/reports" element={
-                <ProtectedRoute>
-                  <Reports />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              } />
-              
-              {/* Default route */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              
-              {/* 404 fallback */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </div>
-          <Toaster />
-        </BrowserRouter>
+            
+            <Route path="/deliveries">
+              <ProtectedRoute>
+                <Deliveries />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/invoices" nest>
+              <Switch>
+                <Route path="/upload">
+                  <ProtectedRoute>
+                    <InvoiceUpload />
+                  </ProtectedRoute>
+                </Route>
+                <Route path="/:id">
+                  {(params) => (
+                    <ProtectedRoute>
+                      <InvoiceDetail />
+                    </ProtectedRoute>
+                  )}
+                </Route>
+                <Route>
+                  <ProtectedRoute>
+                    <Invoices />
+                  </ProtectedRoute>
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/materials" nest>
+              <Switch>
+                <Route path="/new">
+                  <ProtectedRoute>
+                    <NewMaterial />
+                  </ProtectedRoute>
+                </Route>
+                <Route path="/import">
+                  <ProtectedRoute>
+                    <ImportMaterials />
+                  </ProtectedRoute>
+                </Route>
+                <Route>
+                  <ProtectedRoute>
+                    <Materials />
+                  </ProtectedRoute>
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/vendors">
+              <ProtectedRoute>
+                <Vendors />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/projects" nest>
+              <Switch>
+                <Route path="/new">
+                  <ProtectedRoute>
+                    <NewProject />
+                  </ProtectedRoute>
+                </Route>
+                <Route path="/:id" nest>
+                  <Switch>
+                    <Route path="/edit">
+                      {(params) => (
+                        <ProtectedRoute>
+                          <EditProject />
+                        </ProtectedRoute>
+                      )}
+                    </Route>
+                    <Route path="/materials/upload">
+                      {(params) => (
+                        <ProtectedRoute>
+                          <ProjectMaterialUpload />
+                        </ProtectedRoute>
+                      )}
+                    </Route>
+                    <Route>
+                      {(params) => (
+                        <ProtectedRoute>
+                          <ProjectDetail />
+                        </ProtectedRoute>
+                      )}
+                    </Route>
+                  </Switch>
+                </Route>
+                <Route>
+                  <ProtectedRoute>
+                    <Projects />
+                  </ProtectedRoute>
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/reports">
+              <ProtectedRoute>
+                <Reports />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/settings">
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/">
+              <Redirect to="/dashboard" />
+            </Route>
+            
+            <Route>
+              <NotFound />
+            </Route>
+          </Switch>
+        </div>
+        <Toaster />
       </ThemeProvider>
     </QueryClientProvider>
   );

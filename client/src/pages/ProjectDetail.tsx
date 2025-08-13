@@ -1,4 +1,5 @@
-import { useParams, useLocation, Link } from "wouter";
+import { useParams, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,7 +119,7 @@ function PendingImportsCard({ projectId }: { projectId: string }) {
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
 
   // Validate the ID parameter - must be UUID-like, not "projects" or other nav terms
   const isValidId = (val?: string) =>
@@ -131,9 +132,9 @@ export default function ProjectDetail() {
   // Use useEffect to redirect with invalid ID to prevent setState during render
   useEffect(() => {
     if (!isValidId(id)) {
-      setLocation("/projects");
+      navigate("/projects", { replace: true });
     }
-  }, [id, setLocation]);
+  }, [id, navigate]);
 
   // Don't render if ID is invalid
   if (!isValidId(id)) {
