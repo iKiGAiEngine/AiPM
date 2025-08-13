@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
+import type { Project, ProjectMaterial } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,10 +33,7 @@ const requisitionSchema = z.object({
 
 type RequisitionFormData = z.infer<typeof requisitionSchema>;
 
-const mockProjects = [
-  { id: '1', name: 'Metro Plaza Office Tower' },
-  { id: '2', name: 'Riverside Medical Center' },
-];
+// Use real projects from API
 
 const mockZones = [
   'Zone A-1: Main Lobby',
@@ -54,6 +53,37 @@ const mockUnits = [
 export default function RequisitionForm() {
   const { toast } = useToast();
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>("");
+
+  // Fetch real projects from API
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ['/api/projects'],
+    queryFn: async () => {
+      const response = await fetch('/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch projects');
+      return response.json();
+    },
+  });
+
+  // Fetch materials for selected project
+  const { data: projectMaterials = [] } = useQuery<ProjectMaterial[]>({
+    queryKey: ['/api/projects', selectedProject, 'materials'],
+    queryFn: async () => {
+      if (!selectedProject) return [];
+      const response = await fetch(`/api/projects/${selectedProject}/materials`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedProject,
+  });
 
   const form = useForm<RequisitionFormData>({
     resolver: zodResolver(requisitionSchema),
@@ -141,12 +171,15 @@ export default function RequisitionForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="projectId">Project *</Label>
-              <Select onValueChange={(value) => form.setValue('projectId', value)}>
+              <Select onValueChange={(value) => {
+                form.setValue('projectId', value);
+                setSelectedProject(value);
+              }}>
                 <SelectTrigger data-testid="select-project">
                   <SelectValue placeholder="Select project..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockProjects.map((project) => (
+                  {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
                     </SelectItem>
