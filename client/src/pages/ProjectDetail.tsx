@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,9 +102,11 @@ export default function ProjectDetail() {
           </div>
           <p className="text-muted-foreground">Project Details and Management</p>
         </div>
-        <Button data-testid="button-edit-project">
-          <Edit className="w-4 h-4 mr-2" />
-          Edit Project
+        <Button asChild data-testid="button-edit-project">
+          <Link to={`/projects/${project.id}/edit`}>
+            <Edit className="w-4 h-4 mr-2" />
+            Edit Project
+          </Link>
         </Button>
       </div>
 

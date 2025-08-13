@@ -73,11 +73,24 @@ export default function RequisitionForm() {
 
   const onSubmit = async (data: RequisitionFormData) => {
     try {
-      console.log('Submitting requisition:', data);
+      const response = await fetch('/api/requisitions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) throw new Error('Failed to create requisition');
+      
       toast({
         title: "Success",
         description: "Requisition submitted successfully",
       });
+      
+      // Navigate back to requisitions list
+      window.location.href = '/requisitions';
     } catch (error) {
       toast({
         title: "Error",

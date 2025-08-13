@@ -24,7 +24,7 @@ import {
   notifications, projectMaterials
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, like, or, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, like, or, inArray, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Organizations
@@ -41,6 +41,7 @@ export interface IStorage {
   createProject(project: InsertProject): Promise<Project>;
   getProject(id: string): Promise<Project | undefined>;
   getProjectsByOrganization(organizationId: string): Promise<Project[]>;
+  updateProject(id: string, organizationId: string, data: Partial<Project>): Promise<Project | undefined>;
   
   // Vendors
   createVendor(vendor: InsertVendor): Promise<Vendor>;
@@ -183,6 +184,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(projects).where(eq(projects.organizationId, organizationId));
   }
 
+  async updateProject(id: string, organizationId: string, data: Partial<Project>): Promise<Project | undefined> {
+    const [updatedProject] = await db.update(projects)
+      .set(data)
+      .where(and(eq(projects.id, id), eq(projects.organizationId, organizationId)))
+      .returning();
+    return updatedProject || undefined;
+  }
+
   // Vendors
   async createVendor(vendor: InsertVendor): Promise<Vendor> {
     const [newVendor] = await db.insert(vendors).values(vendor).returning();
@@ -218,9 +227,8 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(materials.organizationId, organizationId),
         or(
-          like(materials.sku, `%${query}%`),
           like(materials.description, `%${query}%`),
-          like(materials.manufacturer, `%${query}%`)
+          like(materials.model, `%${query}%`)
         )
       ));
   }
@@ -493,9 +501,7 @@ export class DatabaseStorage implements IStorage {
       const searchTerm = `%${filters.search}%`;
       conditions.push(or(
         like(projectMaterials.description, searchTerm),
-        like(projectMaterials.manufacturer, searchTerm),
-        like(projectMaterials.model, searchTerm),
-        like(projectMaterials.sku, searchTerm)
+        like(projectMaterials.model, searchTerm)
       ));
     }
 

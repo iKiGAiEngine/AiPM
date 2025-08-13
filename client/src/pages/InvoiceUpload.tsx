@@ -166,8 +166,25 @@ export default function InvoiceUpload() {
     setIsUploading(true);
 
     try {
-      // Simulate API call to save invoice
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+      formData.append('vendorName', data.vendorName);
+      formData.append('invoiceNumber', data.invoiceNumber);
+      formData.append('amount', data.amount);
+      formData.append('invoiceDate', data.invoiceDate);
+      formData.append('dueDate', data.dueDate);
+      if (data.description) formData.append('description', data.description);
+
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Failed to upload invoice');
 
       toast({
         title: "Invoice Uploaded Successfully",

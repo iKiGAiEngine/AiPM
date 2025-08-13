@@ -175,6 +175,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/projects/:id", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const projectData = {
+        name: req.body.name,
+        projectNumber: req.body.projectNumber,
+        client: req.body.client,
+        address: req.body.address,
+        budget: req.body.budget,
+        status: req.body.status,
+        description: req.body.description,
+      };
+      
+      const project = await storage.updateProject(req.params.id, req.user!.organizationId, projectData);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(project);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update project" });
+    }
+  });
+
   // Vendor routes
   app.get("/api/vendors", async (req: AuthenticatedRequest, res) => {
     try {
