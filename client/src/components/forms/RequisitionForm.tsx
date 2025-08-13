@@ -28,6 +28,7 @@ const requisitionSchema = z.object({
     unit: z.string().min(1, "Unit is required"),
     estimatedCost: z.number().optional(),
     notes: z.string().optional(),
+    model: z.string().optional(), // Add model field to schema
   })).min(1, "At least one line item is required"),
 });
 
@@ -205,7 +206,8 @@ export default function RequisitionForm() {
       quantity: 1,
       unit: 'Each',
       estimatedCost: 0,
-      notes: ''
+      notes: '',
+      model: ''
     });
   };
 
@@ -659,8 +661,7 @@ export default function RequisitionForm() {
                         
                         <div className="col-span-1">
                           <Input
-                            value={field.model || ''}
-                            onChange={(e) => form.setValue(`lines.${index}.model`, e.target.value)}
+                            {...form.register(`lines.${index}.model`)}
                             placeholder="Model #"
                             className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
                             data-testid={`input-line-model-${index}`}
