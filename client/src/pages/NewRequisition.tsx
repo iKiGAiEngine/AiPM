@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-// import RequisitionForm from "@/components/forms/RequisitionForm";
+import RequisitionForm from "@/components/forms/RequisitionForm";
 
 export default function NewRequisition() {
   return (
@@ -9,7 +9,7 @@ export default function NewRequisition() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/requisitions">
+          <Link to="/requisitions">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Requisitions
           </Link>
@@ -20,10 +20,8 @@ export default function NewRequisition() {
         </div>
       </div>
 
-      {/* Form - Temporarily disabled for navigation debugging */}
-      <div className="p-6 bg-muted/50 rounded-lg text-center">
-        <p>Requisition form temporarily disabled for navigation debugging</p>
-      </div>
+      {/* Form */}
+      <RequisitionForm />
     </div>
   );
 }

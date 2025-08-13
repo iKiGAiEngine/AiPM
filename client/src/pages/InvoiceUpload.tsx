@@ -191,7 +191,7 @@ export default function InvoiceUpload() {
         description: "Your invoice has been processed and added to the system",
       });
 
-      setLocation("/invoices");
+      navigate("/invoices");
     } catch (error) {
       toast({
         title: "Upload Failed",
@@ -220,7 +220,7 @@ export default function InvoiceUpload() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setLocation("/invoices")}
+          onClick={() => navigate("/invoices")}
           data-testid="button-back-to-invoices"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -484,7 +484,7 @@ export default function InvoiceUpload() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setLocation("/invoices")}
+                  onClick={() => navigate("/invoices")}
                   data-testid="button-cancel-upload"
                 >
                   Cancel
