@@ -75,6 +75,23 @@ export default function PurchaseOrderForm() {
     },
   });
 
+  // Get project materials when project is selected
+  const selectedProjectId = form.watch("projectId");
+  const { data: projectMaterials = [] } = useQuery({
+    queryKey: [`/api/projects/${selectedProjectId}/materials`],
+    queryFn: async () => {
+      if (!selectedProjectId) return [];
+      const response = await fetch(`/api/projects/${selectedProjectId}/materials`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch project materials");
+      return response.json();
+    },
+    enabled: !!selectedProjectId,
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: PurchaseOrderFormData) => {
       const response = await fetch("/api/purchase-orders", {
@@ -102,6 +119,16 @@ export default function PurchaseOrderForm() {
     if (lines.length > 1) {
       setLines(lines.filter((_, i) => i !== index));
     }
+  };
+
+  const addMaterialToPO = (material: any) => {
+    const newLine: POLine = {
+      description: `${material.model ? material.model + ' - ' : ''}${material.description}`,
+      quantity: parseFloat(material.qty) || 1,
+      unitPrice: parseFloat(material.unitPrice) || 0,
+      unit: material.unit || "EA"
+    };
+    setLines([...lines, newLine]);
   };
 
   const updateLine = (index: number, field: keyof POLine, value: any) => {
@@ -200,6 +227,57 @@ export default function PurchaseOrderForm() {
               />
             </div>
           </div>
+
+          {/* Project Materials Section */}
+          {selectedProjectId && projectMaterials.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Project Materials</h3>
+                <p className="text-sm text-muted-foreground">
+                  Click to add materials to purchase order
+                </p>
+              </div>
+              
+              <div className="border rounded-lg max-h-60 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Qty</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead>Unit Price</TableHead>
+                      <TableHead>Cost Code</TableHead>
+                      <TableHead className="w-16"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {projectMaterials.map((material: any) => (
+                      <TableRow key={material.id} className="cursor-pointer hover:bg-muted/50">
+                        <TableCell className="font-medium">{material.model || '-'}</TableCell>
+                        <TableCell>{material.description}</TableCell>
+                        <TableCell>{material.qty}</TableCell>
+                        <TableCell>{material.unit}</TableCell>
+                        <TableCell>${parseFloat(material.unitPrice || '0').toFixed(2)}</TableCell>
+                        <TableCell>{material.costCode || '-'}</TableCell>
+                        <TableCell>
+                          <Button 
+                            type="button"
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => addMaterialToPO(material)}
+                            data-testid={`button-add-material-${material.id}`}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
 
           {/* Line Items */}
           <div className="space-y-4">

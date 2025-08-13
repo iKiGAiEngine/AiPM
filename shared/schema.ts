@@ -281,6 +281,7 @@ export const purchaseOrderLines = pgTable("purchase_order_lines", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   poId: uuid("po_id").references(() => purchaseOrders.id).notNull(),
   materialId: uuid("material_id").references(() => materials.id),
+  projectMaterialId: uuid("project_material_id").references(() => projectMaterials.id),
   description: text("description").notNull(),
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
   unit: text("unit").notNull(),

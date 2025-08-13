@@ -197,6 +197,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Project materials route
+  app.get("/api/projects/:id/materials", async (req: AuthenticatedRequest, res) => {
+    try {
+      const materials = await storage.getProjectMaterialsByProject(
+        req.params.id, 
+        req.user!.organizationId
+      );
+      res.json(materials);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch project materials" });
+    }
+  });
+
   // Vendor routes
   app.get("/api/vendors", async (req: AuthenticatedRequest, res) => {
     try {
