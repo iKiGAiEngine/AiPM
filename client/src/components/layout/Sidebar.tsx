@@ -115,25 +115,12 @@ export default function Sidebar() {
   };
 
   const handleNavigation = (href: string) => {
-    console.log('Sidebar navigation clicked:', href);
-    console.log('Current location:', location);
-    
     // Don't navigate if already on the target page
     if (location === href) {
       return;
     }
     
     setLocation(href);
-    console.log('Navigate called successfully');
-    
-    // Add a timeout to check if navigation actually worked
-    setTimeout(() => {
-      console.log('Location after navigate:', location);
-      if (location !== href) {
-        console.log('Navigate failed, forcing window location change');
-        window.location.href = href;
-      }
-    }, 100);
   };
 
   return (
