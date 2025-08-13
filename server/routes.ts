@@ -550,6 +550,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Requisition status update
+  app.patch("/api/requisitions/:id/status", async (req: AuthenticatedRequest, res) => {
+    try {
+      const { status } = req.body;
+      
+      // Verify requisition belongs to user's organization
+      const requisition = await storage.getRequisition(req.params.id);
+      if (!requisition || requisition.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Requisition not found" });
+      }
+      
+      await storage.updateRequisitionStatus(req.params.id, status);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update requisition status" });
+    }
+  });
+
   // Purchase Order routes
   app.get("/api/purchase-orders", async (req: AuthenticatedRequest, res) => {
     try {

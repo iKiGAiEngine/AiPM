@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Requisitions from "@/pages/Requisitions";
 import NewRequisition from "@/pages/NewRequisition";
 import RequisitionView from "@/pages/RequisitionView";
+import NewBuyout from "@/pages/NewBuyout";
 import RFQs from "@/pages/RFQs";
 import NewRFQ from "@/pages/NewRFQ";
 import PurchaseOrders from "@/pages/PurchaseOrders";
@@ -141,6 +142,13 @@ export default function App() {
               <Route path="/rfqs" element={
                 <ProtectedRoute>
                   <RFQs />
+                </ProtectedRoute>
+              } />
+              
+              {/* Buyout routes */}
+              <Route path="/buyout/new" element={
+                <ProtectedRoute>
+                  <NewBuyout />
                 </ProtectedRoute>
               } />
               

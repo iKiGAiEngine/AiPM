@@ -84,13 +84,13 @@ export default function RFQs() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">RFQs & Quotes</h1>
-          <p className="text-muted-foreground">Request quotes and compare vendor pricing</p>
+          <h1 className="text-2xl font-bold text-foreground">Buyouts (RFQs)</h1>
+          <p className="text-muted-foreground">Competitive bidding and vendor quote management</p>
         </div>
         <Button asChild data-testid="button-new-rfq">
-          <Link href="/rfqs/new">
+          <Link to="/rfqs/new">
             <Plus className="w-4 h-4 mr-2" />
-            New RFQ
+            New Buyout
           </Link>
         </Button>
       </div>
@@ -161,7 +161,7 @@ export default function RFQs() {
                   <TableRow key={rfq.id} className="cursor-pointer hover:bg-muted/50" data-testid={`rfq-row-${rfq.id}`}>
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">
-                        {getStatusIcon(rfq.status)}
+                        {getStatusIcon(rfq.status || '')}
                         <span data-testid={`rfq-number-${rfq.id}`}>{rfq.number}</span>
                       </div>
                     </TableCell>
@@ -187,20 +187,20 @@ export default function RFQs() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       <span data-testid={`rfq-created-${rfq.id}`}>
-                        {formatDistanceToNow(new Date(rfq.createdAt), { addSuffix: true })}
+                        {rfq.createdAt ? formatDistanceToNow(new Date(rfq.createdAt), { addSuffix: true }) : 'N/A'}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end space-x-2">
                         {rfq.status === 'quoted' && (
                           <Button variant="ghost" size="sm" asChild data-testid={`button-view-quotes-${rfq.id}`}>
-                            <Link href={`/rfqs/${rfq.id}/quotes`}>
+                            <Link to={`/rfqs/${rfq.id}/quotes`}>
                               <FileText className="w-4 h-4" />
                             </Link>
                           </Button>
                         )}
                         <Button variant="ghost" size="sm" asChild data-testid={`button-view-rfq-${rfq.id}`}>
-                          <Link href={`/rfqs/${rfq.id}`}>
+                          <Link to={`/rfqs/${rfq.id}`}>
                             <Eye className="w-4 h-4" />
                           </Link>
                         </Button>

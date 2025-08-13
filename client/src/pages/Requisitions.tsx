@@ -187,11 +187,25 @@ export default function Requisitions() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild data-testid={`button-view-requisition-${requisition.id}`}>
-                        <Link to={`/requisitions/${requisition.id}`}>
-                          <Eye className="w-4 h-4" />
-                        </Link>
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" asChild data-testid={`button-view-requisition-${requisition.id}`}>
+                          <Link to={`/requisitions/${requisition.id}`}>
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                        {requisition.status === 'approved' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            asChild 
+                            data-testid={`button-create-buyout-${requisition.id}`}
+                          >
+                            <Link to={`/buyout/new?requisitionId=${requisition.id}`}>
+                              Create Buyout
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
