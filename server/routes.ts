@@ -333,13 +333,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/requisitions", async (req: AuthenticatedRequest, res) => {
     try {
-      const requisitionData = insertRequisitionSchema.parse(req.body);
+      const { lines, ...reqData } = req.body;
+      
+      // Validate requisition data (excluding lines)
+      const requisitionData = insertRequisitionSchema.parse(reqData);
       
       // Generate requisition number
       const year = new Date().getFullYear();
       const count = (await storage.getRequisitionsByOrganization(req.user!.organizationId)).length + 1;
       const number = `REQ-${year}-${count.toString().padStart(3, '0')}`;
       
+      // Create requisition
       const requisition = await storage.createRequisition({
         ...requisitionData,
         number,
@@ -347,8 +351,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requesterId: req.user!.id
       });
       
+      // Create requisition lines if provided
+      if (lines && Array.isArray(lines)) {
+        for (const line of lines) {
+          await storage.createRequisitionLine({
+            requisitionId: requisition.id,
+            materialId: line.materialId || null,
+            description: line.description,
+            quantity: line.quantity.toString(),
+            unit: line.unit,
+            estimatedCost: line.estimatedCost ? line.estimatedCost.toString() : null,
+            notes: line.notes || null
+          });
+        }
+      }
+      
       res.status(201).json(requisition);
     } catch (error) {
+      console.error('Requisition creation error:', error);
       res.status(400).json({ error: "Invalid requisition data" });
     }
   });

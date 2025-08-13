@@ -18,7 +18,6 @@ import { useToast } from "@/hooks/use-toast";
 const requisitionSchema = z.object({
   projectId: z.string().min(1, "Project is required"),
   title: z.string().min(1, "Title is required"),
-  zone: z.string().optional(),
   targetDeliveryDate: z.string().optional(),
   deliveryLocation: z.string().optional(),
   specialInstructions: z.string().optional(),
@@ -35,12 +34,6 @@ const requisitionSchema = z.object({
 type RequisitionFormData = z.infer<typeof requisitionSchema>;
 
 // Use real projects from API
-
-const mockZones = [
-  'Zone A-1: Main Lobby',
-  'Zone B-3: Restrooms',
-  'Zone C-2: Office Areas',
-];
 
 const mockUnits = [
   'Each',
@@ -137,16 +130,37 @@ export default function RequisitionForm() {
 
   const onSubmit = async (data: RequisitionFormData) => {
     try {
+      // Separate lines from main requisition data
+      const { lines, ...requisitionData } = data;
+      
+      // Convert date string to ISO date if provided
+      const processedData = {
+        ...requisitionData,
+        targetDeliveryDate: requisitionData.targetDeliveryDate 
+          ? new Date(requisitionData.targetDeliveryDate).toISOString() 
+          : undefined,
+      };
+
+      console.log('Submitting requisition data:', processedData);
+      console.log('Lines data:', lines);
+      
       const response = await fetch('/api/requisitions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...processedData,
+          lines: lines
+        }),
       });
       
-      if (!response.ok) throw new Error('Failed to create requisition');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Submission error:', errorData);
+        throw new Error(errorData.error || 'Failed to create requisition');
+      }
       
       toast({
         title: "Success",
@@ -156,9 +170,10 @@ export default function RequisitionForm() {
       // Navigate back to requisitions list
       window.location.href = '/requisitions';
     } catch (error) {
+      console.error('Error submitting requisition:', error);
       toast({
         title: "Error",
-        description: "Failed to submit requisition",
+        description: error instanceof Error ? error.message : "Failed to submit requisition",
         variant: "destructive",
       });
     }
@@ -312,31 +327,14 @@ export default function RequisitionForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="zone">Project Zone</Label>
-              <Select onValueChange={(value) => form.setValue('zone', value)}>
-                <SelectTrigger data-testid="select-zone">
-                  <SelectValue placeholder="Select zone..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockZones.map((zone) => (
-                    <SelectItem key={zone} value={zone}>
-                      {zone}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="targetDeliveryDate">Target Delivery Date</Label>
-              <Input
-                {...form.register('targetDeliveryDate')}
-                type="date"
-                data-testid="input-delivery-date"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="targetDeliveryDate">Target Delivery Date</Label>
+            <Input
+              {...form.register('targetDeliveryDate')}
+              type="date"
+              data-testid="input-delivery-date"
+              className="max-w-xs"
+            />
           </div>
 
           {/* Available Materials */}
