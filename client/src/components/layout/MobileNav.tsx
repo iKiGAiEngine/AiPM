@@ -106,24 +106,14 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
   };
 
   const handleNavigation = (href: string) => {
-    console.log('Mobile navigation clicked:', href);
-    console.log('Current location:', location.pathname);
-    
     // Don't navigate if already on the target page
     if (location.pathname === href) {
-      console.log('Already on target page, skipping navigation');
       onClose();
       return;
     }
     
-    try {
-      navigate(href);
-      console.log('Mobile navigate called successfully');
-      onClose();
-    } catch (error) {
-      console.error('Mobile navigation error:', error);
-      onClose();
-    }
+    navigate(href);
+    onClose();
   };
 
   if (!isOpen) return null;

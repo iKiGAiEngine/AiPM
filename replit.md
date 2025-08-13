@@ -3,6 +3,7 @@
 This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract estimates, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
 ## Recent Updates (August 13, 2025)
+- **Fixed Navigation Issues**: Resolved sidebar navigation problems by downgrading React Router from v7.8.0 to v6.26.2 and implementing proper button-based navigation
 - **Enhanced PO Creation Workflow**: Implemented advanced purchase order creation with project material integration
 - **Material Type/Scope Filtering**: Added filtering by Material Type and Scope of Work for uploaded project materials
 - **Bulk Material Selection**: Users can now select multiple materials with checkboxes and add them to POs in bulk

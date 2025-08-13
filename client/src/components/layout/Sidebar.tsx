@@ -116,21 +116,12 @@ export default function Sidebar() {
   };
 
   const handleNavigation = (href: string) => {
-    console.log('Sidebar navigation clicked:', href);
-    console.log('Current location:', location.pathname);
-    
     // Don't navigate if already on the target page
     if (location.pathname === href) {
-      console.log('Already on target page, skipping navigation');
       return;
     }
     
-    try {
-      navigate(href, { replace: false });
-      console.log('Navigate called successfully');
-    } catch (error) {
-      console.error('Navigation error:', error);
-    }
+    navigate(href);
   };
 
   return (
