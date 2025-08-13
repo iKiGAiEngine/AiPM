@@ -333,48 +333,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/requisitions", async (req: AuthenticatedRequest, res) => {
     try {
-      const { lines, ...reqData } = req.body;
+      console.log('Raw request body:', JSON.stringify(req.body, null, 2));
+      console.log('User info:', { id: req.user?.id, organizationId: req.user?.organizationId });
       
-      console.log('Raw requisition data received:', JSON.stringify(reqData, null, 2));
-      console.log('Lines received:', JSON.stringify(lines, null, 2));
+      // Import the schema at runtime to avoid circular imports
+      const { RequisitionCreateSchema } = await import('./schemas/requisition.js');
       
-      // Process and clean the data
-      const processedData = {
+      // Validate the entire request body with Zod
+      const validatedData = RequisitionCreateSchema.parse(req.body);
+      console.log('Validated data:', JSON.stringify(validatedData, null, 2));
+      
+      const { lines, ...reqData } = validatedData;
+      
+      // Generate unique requisition number
+      const year = new Date().getFullYear();
+      const count = (await storage.getRequisitionsByOrganization(req.user!.organizationId)).length + 1;
+      const number = `REQ-${year}-${count.toString().padStart(4, '0')}`;
+      
+      // Prepare requisition data with required fields from JWT token
+      const requisitionData = {
         ...reqData,
-        // Convert string date to Date object if provided
-        targetDeliveryDate: reqData.targetDeliveryDate 
-          ? new Date(reqData.targetDeliveryDate) 
-          : null,
-        // Ensure optional fields are handled properly
+        number,
+        organizationId: req.user!.organizationId,
+        requesterId: req.user!.id,
+        // Convert processed date back to string for database
+        targetDeliveryDate: reqData.targetDeliveryDate?.toISOString() || null,
         contractEstimateId: reqData.contractEstimateId || null,
         zone: reqData.zone || null,
-        deliveryLocation: reqData.deliveryLocation || null,
-        specialInstructions: reqData.specialInstructions || null,
         attachments: reqData.attachments || [],
         geoLocation: reqData.geoLocation || null,
         rfqId: reqData.rfqId || null
       };
       
-      console.log('Processed requisition data:', JSON.stringify(processedData, null, 2));
+      console.log('Final requisition data for DB:', JSON.stringify(requisitionData, null, 2));
       
-      // Validate requisition data (excluding lines)
-      const requisitionData = insertRequisitionSchema.parse(processedData);
-      
-      // Generate requisition number
-      const year = new Date().getFullYear();
-      const count = (await storage.getRequisitionsByOrganization(req.user!.organizationId)).length + 1;
-      const number = `REQ-${year}-${count.toString().padStart(3, '0')}`;
+      // Use the existing insertRequisitionSchema for final validation before DB
+      const dbRequisition = insertRequisitionSchema.parse(requisitionData);
       
       // Create requisition
-      const requisition = await storage.createRequisition({
-        ...requisitionData,
-        number,
-        organizationId: req.user!.organizationId,
-        requesterId: req.user!.id
-      });
+      const requisition = await storage.createRequisition(dbRequisition);
       
-      // Create requisition lines if provided
-      if (lines && Array.isArray(lines)) {
+      // Create requisition lines
+      if (lines && lines.length > 0) {
         for (const line of lines) {
           await storage.createRequisitionLine({
             requisitionId: requisition.id,
@@ -392,29 +392,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Requisition creation error:', error);
       
-      // Enhanced error logging for admins
+      // Enhanced error handling with specific Zod validation errors
       if (error instanceof z.ZodError) {
         console.error('Validation errors:', JSON.stringify(error.issues, null, 2));
         
-        // Create admin-friendly error message
-        const validationErrors = error.issues.map(issue => ({
-          field: issue.path.join('.'),
-          message: issue.message,
-          code: issue.code,
-          input: 'input' in issue ? issue.input : undefined
-        }));
-        
-        console.error('Admin validation report:', JSON.stringify(validationErrors, null, 2));
-        
-        res.status(400).json({ 
-          error: "Invalid requisition data",
-          details: "Validation failed. Check server logs for detailed error report.",
-          validationErrors: validationErrors
+        const validationErrors = error.issues.map(err => {
+          const field = err.path.join('.');
+          const message = err.message;
+          
+          // Provide more helpful error messages for common validation failures
+          let helpfulMessage = message;
+          if (field === 'projectId' && err.code === 'invalid_string') {
+            helpfulMessage = 'Please select a valid project';
+          } else if (field === 'title' && err.code === 'too_small') {
+            helpfulMessage = 'Requisition title is required';
+          } else if (field === 'lines' && err.code === 'too_small') {
+            helpfulMessage = 'At least one line item is required';
+          } else if (field.includes('lines') && field.includes('quantity')) {
+            helpfulMessage = 'Quantity must be a positive number';
+          } else if (field.includes('lines') && field.includes('unit')) {
+            helpfulMessage = 'Unit is required for each line item';
+          } else if (field.includes('lines') && field.includes('description')) {
+            helpfulMessage = 'Description is required for each line item';
+          }
+          
+          return {
+            field,
+            message: helpfulMessage,
+            code: err.code,
+            received: err.code === 'invalid_type' ? 'received' in err ? err.received : 'invalid' : undefined
+          };
         });
-      } else {
-        console.error('Non-validation error:', error);
-        res.status(500).json({ error: "Failed to create requisition" });
+        
+        console.log('Validation errors:', JSON.stringify(validationErrors, null, 2));
+        
+        return res.status(400).json({
+          error: "Validation Error",
+          message: "Please check the following fields and try again:",
+          validationErrors,
+          details: validationErrors.map(e => `${e.field}: ${e.message}`).join('; ')
+        });
       }
+      
+      console.error('Unexpected error:', error);
+      res.status(500).json({ 
+        error: "Failed to create requisition", 
+        message: process.env.NODE_ENV === 'development' ? String(error) : 'An unexpected error occurred. Please try again.'
+      });
     }
   });
 

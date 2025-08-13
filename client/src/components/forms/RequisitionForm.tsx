@@ -143,29 +143,32 @@ export default function RequisitionForm() {
       // Separate lines from main requisition data
       const { lines, ...requisitionData } = data;
       
-      // Get current user info for required fields
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const currentOrg = JSON.parse(localStorage.getItem('currentOrganization') || '{}');
-      
-      // Process and prepare the data for submission
+      // Clean and prepare the data for submission - server will handle organizationId/requesterId from JWT token
       const processedData = {
         ...requisitionData,
-        // Required fields that were missing
-        organizationId: currentOrg.id,
-        requesterId: currentUser.id,
-        number: `REQ-${Date.now()}`, // Generate a unique requisition number
-        // Handle optional date field properly
-        targetDeliveryDate: requisitionData.targetDeliveryDate || null,
-        // Include optional fields with default values to prevent validation errors
-        zone: null,
-        deliveryLocation: requisitionData.deliveryLocation || null,
-        specialInstructions: requisitionData.specialInstructions || null,
-        // Required backend fields
+        // Clean empty strings and convert to null for optional fields
+        targetDeliveryDate: requisitionData.targetDeliveryDate?.trim() || null,
+        deliveryLocation: requisitionData.deliveryLocation?.trim() || null,
+        specialInstructions: requisitionData.specialInstructions?.trim() || null,
+        // Optional fields that server expects
         contractEstimateId: null,
+        zone: null,
         attachments: [],
         geoLocation: null,
         rfqId: null,
       };
+      
+      // Clean up the lines data
+      const processedLines = lines.map(line => ({
+        ...line,
+        // Ensure quantities are integers and descriptions are trimmed
+        quantity: Math.floor(line.quantity),
+        description: line.description.trim(),
+        notes: line.notes?.trim() || null,
+        model: line.model?.trim() || null,
+        // Ensure estimatedCost is a number
+        estimatedCost: typeof line.estimatedCost === 'number' ? line.estimatedCost : 0
+      }));
 
       console.log('Submitting requisition data:', processedData);
       console.log('Lines data:', lines);
@@ -178,17 +181,24 @@ export default function RequisitionForm() {
         },
         body: JSON.stringify({
           ...processedData,
-          lines: lines
+          lines: processedLines
         }),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Submission error:', errorData);
-        if (errorData.validationErrors) {
+        
+        // Handle validation errors with user-friendly messages
+        if (errorData.validationErrors && errorData.validationErrors.length > 0) {
           console.error('Validation errors details:', errorData.validationErrors);
+          
+          // Show specific field errors to user
+          const errorMessages = errorData.validationErrors.map((err: any) => err.message).join('\n');
+          throw new Error(`Please fix the following errors:\n${errorMessages}`);
         }
-        throw new Error(errorData.details || errorData.error || 'Failed to create requisition');
+        
+        throw new Error(errorData.message || errorData.details || errorData.error || 'Failed to create requisition');
       }
       
       toast({
