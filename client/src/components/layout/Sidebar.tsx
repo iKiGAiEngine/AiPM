@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,8 +99,7 @@ const settingsNavigation = [
 ];
 
 export default function Sidebar() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const [selectedProject, setSelectedProject] = useState({
     name: "Metro Plaza Office Tower",
@@ -112,16 +111,29 @@ export default function Sidebar() {
   };
 
   const isActive = (href: string) => {
-    return location.pathname === href;
+    return location === href;
   };
 
   const handleNavigation = (href: string) => {
+    console.log('Sidebar navigation clicked:', href);
+    console.log('Current location:', location);
+    
     // Don't navigate if already on the target page
-    if (location.pathname === href) {
+    if (location === href) {
       return;
     }
     
-    navigate(href);
+    setLocation(href);
+    console.log('Navigate called successfully');
+    
+    // Add a timeout to check if navigation actually worked
+    setTimeout(() => {
+      console.log('Location after navigate:', location);
+      if (location !== href) {
+        console.log('Navigate failed, forcing window location change');
+        window.location.href = href;
+      }
+    }, 100);
   };
 
   return (

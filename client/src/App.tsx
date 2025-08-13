@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Route, Switch, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -56,7 +56,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Redirect to="/login" />;
   }
 
   return (
@@ -89,7 +89,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Redirect to="/dashboard" />;
   }
 
   return <>{children}</>;
@@ -99,199 +99,181 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <Router>
         <div className="min-h-screen bg-background">
-            <Routes>
-              <Route
-                path="/login"
-                element={
-                  <PublicRoute>
-                    <Login />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/requisitions"
-                element={
-                  <ProtectedRoute>
-                    <Requisitions />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/requisitions/new"
-                element={
+          <Switch>
+            <Route path="/login">
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            </Route>
+            
+            <Route path="/dashboard">
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/requisitions" nest>
+              <Switch>
+                <Route path="/new">
                   <ProtectedRoute>
                     <NewRequisition />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/rfqs"
-                element={
+                </Route>
+                <Route>
                   <ProtectedRoute>
-                    <RFQs />
+                    <Requisitions />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/rfqs/new"
-                element={
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/rfqs" nest>
+              <Switch>
+                <Route path="/new">
                   <ProtectedRoute>
                     <NewRFQ />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/purchase-orders"
-                element={
+                </Route>
+                <Route>
                   <ProtectedRoute>
-                    <PurchaseOrders />
+                    <RFQs />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/purchase-orders/new"
-                element={
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/purchase-orders" nest>
+              <Switch>
+                <Route path="/new">
                   <ProtectedRoute>
                     <NewPurchaseOrder />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/deliveries"
-                element={
+                </Route>
+                <Route>
                   <ProtectedRoute>
-                    <Deliveries />
+                    <PurchaseOrders />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/invoices"
-                element={
-                  <ProtectedRoute>
-                    <Invoices />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/invoices/upload"
-                element={
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/deliveries">
+              <ProtectedRoute>
+                <Deliveries />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/invoices" nest>
+              <Switch>
+                <Route path="/upload">
                   <ProtectedRoute>
                     <InvoiceUpload />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/invoices/:id"
-                element={
+                </Route>
+                <Route path="/:id">
+                  {(params) => (
+                    <ProtectedRoute>
+                      <InvoiceDetail />
+                    </ProtectedRoute>
+                  )}
+                </Route>
+                <Route>
                   <ProtectedRoute>
-                    <InvoiceDetail />
+                    <Invoices />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/materials"
-                element={
-                  <ProtectedRoute>
-                    <Materials />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/materials/new"
-                element={
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/materials" nest>
+              <Switch>
+                <Route path="/new">
                   <ProtectedRoute>
                     <NewMaterial />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/materials/import"
-                element={
+                </Route>
+                <Route path="/import">
                   <ProtectedRoute>
                     <ImportMaterials />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/vendors"
-                element={
+                </Route>
+                <Route>
                   <ProtectedRoute>
-                    <Vendors />
+                    <Materials />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/projects"
-                element={
-                  <ProtectedRoute>
-                    <Projects />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/projects/new"
-                element={
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/vendors">
+              <ProtectedRoute>
+                <Vendors />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/projects" nest>
+              <Switch>
+                <Route path="/new">
                   <ProtectedRoute>
                     <NewProject />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/projects/:id"
-                element={
+                </Route>
+                <Route path="/:id" nest>
+                  <Switch>
+                    <Route path="/edit">
+                      {(params) => (
+                        <ProtectedRoute>
+                          <EditProject />
+                        </ProtectedRoute>
+                      )}
+                    </Route>
+                    <Route path="/materials/upload">
+                      {(params) => (
+                        <ProtectedRoute>
+                          <ProjectMaterialUpload />
+                        </ProtectedRoute>
+                      )}
+                    </Route>
+                    <Route>
+                      {(params) => (
+                        <ProtectedRoute>
+                          <ProjectDetail />
+                        </ProtectedRoute>
+                      )}
+                    </Route>
+                  </Switch>
+                </Route>
+                <Route>
                   <ProtectedRoute>
-                    <ProjectDetail />
+                    <Projects />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/projects/:id/edit"
-                element={
-                  <ProtectedRoute>
-                    <EditProject />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/projects/:id/materials/upload"
-                element={
-                  <ProtectedRoute>
-                    <ProjectMaterialUpload />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/reports"
-                element={
-                  <ProtectedRoute>
-                    <Reports />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <Settings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </div>
-          <Toaster />
-        </Router>
+                </Route>
+              </Switch>
+            </Route>
+            
+            <Route path="/reports">
+              <ProtectedRoute>
+                <Reports />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/settings">
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            </Route>
+            
+            <Route path="/">
+              <Redirect to="/dashboard" />
+            </Route>
+            
+            <Route>
+              <NotFound />
+            </Route>
+          </Switch>
+        </div>
+        <Toaster />
       </ThemeProvider>
     </QueryClientProvider>
   );

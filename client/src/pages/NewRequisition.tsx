@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link } from "wouter";
 import RequisitionForm from "@/components/forms/RequisitionForm";
 
 export default function NewRequisition() {
@@ -9,7 +9,7 @@ export default function NewRequisition() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/requisitions">
+          <Link href="/requisitions">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Requisitions
           </Link>

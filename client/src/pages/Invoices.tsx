@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ const matchStatusColors = {
 };
 
 export default function Invoices() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -95,7 +95,7 @@ export default function Invoices() {
   };
 
   const handleUploadInvoice = () => {
-    navigate("/invoices/upload");
+    setLocation("/invoices/upload");
   };
 
   if (isLoading) {

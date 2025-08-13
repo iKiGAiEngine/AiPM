@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "wouter";
 import { 
   CheckCircle, 
   AlertTriangle, 
@@ -115,7 +115,7 @@ const getStatusTextColor = (status: Invoice['status']) => {
 };
 
 export default function InvoiceProcessing() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -126,22 +126,22 @@ export default function InvoiceProcessing() {
   };
 
   const handleUploadInvoice = () => {
-    navigate("/invoices");
+    setLocation("/invoices");
   };
 
   const handleReviewException = (invoiceId: string) => {
-    navigate(`/invoices/${invoiceId}`);
+    setLocation(`/invoices/${invoiceId}`);
   };
 
   const handleApproveOverride = (invoiceId: string) => {
     // In a real app, this would make an API call to approve the override
     console.log(`Approving override for invoice ${invoiceId}`);
     // Then navigate to invoices page or refresh data
-    navigate("/invoices");
+    setLocation("/invoices");
   };
 
   const handleViewExceptionCenter = () => {
-    navigate("/invoices?tab=exceptions");
+    setLocation("/invoices?tab=exceptions");
   };
 
   return (

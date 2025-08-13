@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,7 +117,7 @@ function PendingImportsCard({ projectId }: { projectId: string }) {
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   const { data: project, isLoading, error } = useQuery<Project>({
     queryKey: ['/api/projects', id],

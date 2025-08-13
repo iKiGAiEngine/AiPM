@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -20,7 +20,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +44,7 @@ export default function Login() {
         title: "Success",
         description: "Logged in successfully",
       });
-      navigate("/dashboard", { replace: true });
+      setLocation("/dashboard");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Login failed";
       setError(errorMessage);

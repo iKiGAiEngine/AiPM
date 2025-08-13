@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { Search, Bell, Menu, Command, LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,13 +21,13 @@ interface TopAppBarProps {
 
 export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen }: TopAppBarProps) {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [notifications] = useState(true); // Mock notification state
 
   const handleLogout = () => {
     logout();
     // Navigate to login page after logout
-    navigate('/login', { replace: true });
+    setLocation('/login');
   };
 
   const currentPage = "Dashboard";

@@ -8,11 +8,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/lib/auth";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 
 export default function QuickActions() {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   const canAccess = (roles: string[]) => {
     return user && authService.hasRole(roles, user.role);
@@ -27,7 +27,7 @@ export default function QuickActions() {
       iconBg: "bg-primary-600",
       iconColor: "text-white",
       roles: ["Admin", "PM", "Purchaser", "Field"],
-      onClick: () => navigate("/requisitions"),
+      onClick: () => setLocation("/requisitions"),
       testId: "button-new-requisition"
     },
     {
@@ -38,7 +38,7 @@ export default function QuickActions() {
       iconBg: "bg-muted-foreground",
       iconColor: "text-white",
       roles: ["Admin", "PM", "Purchaser"],
-      onClick: () => navigate("/rfqs"),
+      onClick: () => setLocation("/rfqs"),
       testId: "button-create-rfq"
     },
     {
@@ -49,7 +49,7 @@ export default function QuickActions() {
       iconBg: "bg-muted-foreground",
       iconColor: "text-white",
       roles: ["Admin", "PM", "AP"],
-      onClick: () => navigate("/invoices"),
+      onClick: () => setLocation("/invoices"),
       testId: "button-upload-invoice"
     },
     {
@@ -60,7 +60,7 @@ export default function QuickActions() {
       iconBg: "bg-muted-foreground",
       iconColor: "text-white",
       roles: ["Admin", "PM", "Purchaser", "AP"],
-      onClick: () => navigate("/reports"),
+      onClick: () => setLocation("/reports"),
       testId: "button-view-reports"
     }
   ];

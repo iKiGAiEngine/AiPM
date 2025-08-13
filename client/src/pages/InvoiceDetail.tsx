@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { ArrowLeft, FileText, Download, Check, X, AlertTriangle } from "lucide-r
 
 export default function InvoiceDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   // Mock invoice data based on the ID from InvoiceProcessing component
   const getInvoiceData = (invoiceId: string) => {

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useLocation } from "wouter";
 import { ArrowLeft, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +26,7 @@ type EditProjectFormData = z.infer<typeof editProjectSchema>;
 
 export default function EditProject() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
   const { data: project, isLoading } = useQuery({
