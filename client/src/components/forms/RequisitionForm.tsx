@@ -156,28 +156,28 @@ export default function RequisitionForm() {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
-        <div>
-          <CardTitle>Create New Requisition</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Request materials for field delivery
-          </p>
-        </div>
-        <Badge variant="secondary">Mobile Optimized</Badge>
-      </CardHeader>
-      
-      <CardContent>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <div className="w-full max-w-4xl mx-auto px-4 pb-4">
+      <Card className="border-0 sm:border shadow-none sm:shadow-sm">
+        <CardHeader className="px-2 sm:px-6 pb-4">
+          <div>
+            <CardTitle className="text-lg">Create New Requisition</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Request materials for field delivery
+            </p>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="px-2 sm:px-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {/* Project and Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="projectId">Project *</Label>
               <Select onValueChange={(value) => {
                 form.setValue('projectId', value);
                 setSelectedProject(value);
               }}>
-                <SelectTrigger data-testid="select-project">
+                <SelectTrigger data-testid="select-project" className="h-12 text-base">
                   <SelectValue placeholder="Select project..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -196,6 +196,7 @@ export default function RequisitionForm() {
                 {...form.register('title')}
                 placeholder="e.g., Restroom fixtures for Zone B-3"
                 data-testid="input-title"
+                className="h-12 text-base"
               />
             </div>
           </div>
@@ -228,37 +229,22 @@ export default function RequisitionForm() {
           </div>
 
           {/* Available Materials */}
-          <div className="space-y-4">
-            <Label>Available Project Materials ({projectMaterials.length})</Label>
+          <div className="space-y-3">
+            <Label className="text-base font-medium">Available Project Materials ({projectMaterials.length})</Label>
             {selectedProject ? (
               projectMaterials.length > 0 ? (
-                <div className="space-y-2 max-h-80 overflow-y-auto border rounded-lg p-4">
+                <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-2 bg-background material-list">
                   {projectMaterials.map((material) => (
                     <div 
                       key={material.id} 
-                      className="material-card flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors active:bg-muted touch-manipulation"
-                      onClick={() => {
-                        const newLine = {
-                          materialId: material.id,
-                          description: material.description || '',
-                          quantity: 1,
-                          unit: material.unit || 'Each',
-                          estimatedCost: parseFloat(material.unitPrice || '0') || 0,
-                          notes: ''
-                        };
-                        append(newLine);
-                        toast({
-                          title: "Material Added",
-                          description: `${material.description} added to requisition`,
-                        });
-                      }}
+                      className="flex items-center gap-3 p-3 border border-border rounded-lg bg-card hover:bg-muted/30 active:bg-muted/60 transition-all duration-150 touch-manipulation"
                       data-testid={`material-card-${material.id}`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium mb-1 line-clamp-2">{material.description}</div>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span className="font-medium text-green-600">
-                            ${parseFloat(material.unitPrice || '0').toFixed(2)} per {material.unit || 'Each'}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="text-sm font-medium leading-tight text-foreground">{material.description}</div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-md">
+                            ${parseFloat(material.unitPrice || '0').toFixed(2)} / {material.unit || 'Each'}
                           </span>
                           {material.category && (
                             <Badge variant="secondary" className="text-xs">
@@ -267,12 +253,32 @@ export default function RequisitionForm() {
                           )}
                         </div>
                       </div>
-                      <div className="mt-2 sm:mt-0 sm:ml-4">
-                        <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto">
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add
-                        </Button>
-                      </div>
+                      <Button 
+                        type="button" 
+                        size="sm" 
+                        variant="default"
+                        className="shrink-0 h-12 px-4 text-sm font-medium min-w-[60px] active:scale-95 transform transition-transform"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const newLine = {
+                            materialId: material.id,
+                            description: material.description || '',
+                            quantity: 1,
+                            unit: material.unit || 'Each',
+                            estimatedCost: parseFloat(material.unitPrice || '0') || 0,
+                            notes: ''
+                          };
+                          append(newLine);
+                          toast({
+                            title: "Material Added",
+                            description: `${material.description} added to requisition`,
+                          });
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -479,5 +485,6 @@ export default function RequisitionForm() {
         </form>
       </CardContent>
     </Card>
+    </div>
   );
 }

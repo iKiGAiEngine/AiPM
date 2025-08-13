@@ -203,6 +203,37 @@
   .mobile-nav-enter-active {
     transform: translateX(0);
   }
+  
+  /* Mobile viewport fixes for requisition form */
+  @media (max-width: 640px) {
+    /* Prevent zoom on focus for form inputs */
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+    
+    /* Prevent viewport shifting on touch */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Improve touch targets */
+    button, .clickable {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Fix scroll behavior for material lists */
+    .material-list {
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Ensure proper container behavior */
+    .container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
 }
 
 @layer utilities {
