@@ -120,6 +120,7 @@ export default function Sidebar() {
       return;
     }
     
+    console.log(`Navigation clicked: from ${location} to ${href}`);
     setLocation(href);
   };
 
