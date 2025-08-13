@@ -240,19 +240,39 @@ export default function ProjectDetail() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-center space-y-2"
+              onClick={() => navigate(`/requisitions?projectId=${project.id}`)}
+              data-testid="button-view-requisitions"
+            >
               <Eye className="w-6 h-6" />
               <span className="text-sm">View Requisitions</span>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-center space-y-2"
+              onClick={() => navigate(`/rfqs?projectId=${project.id}`)}
+              data-testid="button-view-rfqs"
+            >
               <Building className="w-6 h-6" />
               <span className="text-sm">View RFQs</span>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-center space-y-2"
+              onClick={() => navigate(`/purchase-orders?projectId=${project.id}`)}
+              data-testid="button-view-purchase-orders"
+            >
               <DollarSign className="w-6 h-6" />
               <span className="text-sm">Purchase Orders</span>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-center space-y-2"
+              onClick={() => navigate(`/deliveries?projectId=${project.id}`)}
+              data-testid="button-view-deliveries"
+            >
               <Calendar className="w-6 h-6" />
               <span className="text-sm">Deliveries</span>
             </Button>
