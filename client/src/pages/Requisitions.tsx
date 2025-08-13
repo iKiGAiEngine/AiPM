@@ -285,7 +285,13 @@ export default function Requisitions() {
                             asChild 
                             data-testid={`button-create-buyout-${requisition.id}`}
                           >
-                            <Link to={`/buyout/new?requisitionId=${requisition.id}`}>
+                            <Link 
+                              to={`/buyout/new?requisitionId=${requisition.id}`}
+                              onClick={(e) => {
+                                console.log('Create Buyout clicked for requisition:', requisition.id);
+                                console.log('Navigating to:', `/buyout/new?requisitionId=${requisition.id}`);
+                              }}
+                            >
                               Create Buyout
                             </Link>
                           </Button>
