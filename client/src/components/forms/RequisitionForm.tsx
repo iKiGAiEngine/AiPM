@@ -376,7 +376,7 @@ export default function RequisitionForm() {
                   </div>
                 </div>
 
-                {field.notes !== undefined && (
+                {line.notes !== undefined && (
                   <div className="space-y-2">
                     <Label>Notes</Label>
                     <Textarea

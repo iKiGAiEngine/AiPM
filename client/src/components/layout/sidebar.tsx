@@ -36,7 +36,7 @@ const catalogNavigation = [
 
 export default function Sidebar() {
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, organization, logout } = useAuth();
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-white lg:border-r lg:border-slate-200">
@@ -45,9 +45,9 @@ export default function Sidebar() {
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">AI</span>
+              <span className="text-white font-bold text-sm">BP</span>
             </div>
-            <span className="font-semibold text-slate-900">AiPM</span>
+            <span className="font-semibold text-slate-900">BuildProcure AI</span>
           </div>
         </div>
 
