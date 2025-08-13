@@ -233,6 +233,28 @@
       padding-left: 1rem;
       padding-right: 1rem;
     }
+    
+    /* Fix viewport height when keyboard appears */
+    body {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+    
+    html {
+      height: -webkit-fill-available;
+    }
+    
+    /* Ensure form content is scrollable when keyboard is open */
+    .form-container {
+      min-height: calc(100vh - 100px);
+      padding-bottom: calc(100px + env(keyboard-inset-height, 0px));
+    }
+    
+    /* Smooth scroll behavior when input is focused */
+    input:focus, textarea:focus, select:focus {
+      scroll-margin-top: 100px;
+      scroll-behavior: smooth;
+    }
   }
 }
 

@@ -156,9 +156,9 @@ export default function RequisitionForm() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 pb-4">
+    <div className="w-full max-w-4xl mx-auto px-4 pb-20 min-h-screen">
       <Card className="border-0 sm:border shadow-none sm:shadow-sm">
-        <CardHeader className="px-2 sm:px-6 pb-4">
+        <CardHeader className="px-2 sm:px-6 pb-4 sticky top-0 bg-background/95 backdrop-blur-sm border-b z-10">
           <div>
             <CardTitle className="text-lg">Create New Requisition</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
@@ -167,7 +167,7 @@ export default function RequisitionForm() {
           </div>
         </CardHeader>
         
-        <CardContent className="px-2 sm:px-6">
+        <CardContent className="px-2 sm:px-6 pb-8 form-container">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {/* Project and Basic Info */}
           <div className="space-y-4">
@@ -197,6 +197,12 @@ export default function RequisitionForm() {
                 placeholder="e.g., Restroom fixtures for Zone B-3"
                 data-testid="input-title"
                 className="h-12 text-base"
+                onFocus={(e) => {
+                  // Scroll the input into view when focused on mobile
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }, 300);
+                }}
               />
             </div>
           </div>
@@ -469,15 +475,15 @@ export default function RequisitionForm() {
           </div>
 
           {/* Submit Actions */}
-          <div className="flex items-center justify-between pt-6 border-t border-border">
-            <div className="text-sm text-muted-foreground">
+          <div className="flex flex-col space-y-4 pt-6 border-t border-border">
+            <div className="text-sm text-muted-foreground text-center">
               Will be routed to <span className="font-medium">Project Manager</span> for approval
             </div>
-            <div className="flex space-x-3">
-              <Button type="button" variant="outline" data-testid="button-save-draft">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+              <Button type="button" variant="outline" className="w-full sm:w-auto h-12" data-testid="button-save-draft">
                 Save Draft
               </Button>
-              <Button type="submit" data-testid="button-submit-requisition">
+              <Button type="submit" className="w-full sm:w-auto h-12" data-testid="button-submit-requisition">
                 Submit Requisition
               </Button>
             </div>
