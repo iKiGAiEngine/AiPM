@@ -335,8 +335,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { lines, ...reqData } = req.body;
       
+      console.log('Raw requisition data received:', JSON.stringify(reqData, null, 2));
+      console.log('Lines received:', JSON.stringify(lines, null, 2));
+      
+      // Process and clean the data
+      const processedData = {
+        ...reqData,
+        // Convert string date to Date object if provided
+        targetDeliveryDate: reqData.targetDeliveryDate 
+          ? new Date(reqData.targetDeliveryDate) 
+          : null,
+        // Ensure optional fields are handled properly
+        contractEstimateId: reqData.contractEstimateId || null,
+        zone: reqData.zone || null,
+        deliveryLocation: reqData.deliveryLocation || null,
+        specialInstructions: reqData.specialInstructions || null,
+        attachments: reqData.attachments || [],
+        geoLocation: reqData.geoLocation || null,
+        rfqId: reqData.rfqId || null
+      };
+      
+      console.log('Processed requisition data:', JSON.stringify(processedData, null, 2));
+      
       // Validate requisition data (excluding lines)
-      const requisitionData = insertRequisitionSchema.parse(reqData);
+      const requisitionData = insertRequisitionSchema.parse(processedData);
       
       // Generate requisition number
       const year = new Date().getFullYear();
@@ -369,7 +391,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(requisition);
     } catch (error) {
       console.error('Requisition creation error:', error);
-      res.status(400).json({ error: "Invalid requisition data" });
+      
+      // Enhanced error logging for admins
+      if (error instanceof z.ZodError) {
+        console.error('Validation errors:', JSON.stringify(error.issues, null, 2));
+        
+        // Create admin-friendly error message
+        const validationErrors = error.issues.map(issue => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+          received: issue.received,
+          expected: issue.expected
+        }));
+        
+        console.error('Admin validation report:', JSON.stringify(validationErrors, null, 2));
+        
+        res.status(400).json({ 
+          error: "Invalid requisition data",
+          details: "Validation failed. Check server logs for detailed error report.",
+          validationErrors: validationErrors
+        });
+      } else {
+        console.error('Non-validation error:', error);
+        res.status(500).json({ error: "Failed to create requisition" });
+      }
     }
   });
 

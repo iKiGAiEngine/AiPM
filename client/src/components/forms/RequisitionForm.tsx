@@ -142,12 +142,20 @@ export default function RequisitionForm() {
       // Separate lines from main requisition data
       const { lines, ...requisitionData } = data;
       
-      // Convert date string to ISO date if provided
+      // Process and prepare the data for submission
       const processedData = {
         ...requisitionData,
-        targetDeliveryDate: requisitionData.targetDeliveryDate 
-          ? new Date(requisitionData.targetDeliveryDate).toISOString() 
-          : undefined,
+        // Handle optional date field properly
+        targetDeliveryDate: requisitionData.targetDeliveryDate || null,
+        // Include optional fields with default values to prevent validation errors
+        zone: null,
+        deliveryLocation: requisitionData.deliveryLocation || null,
+        specialInstructions: requisitionData.specialInstructions || null,
+        // Required backend fields
+        contractEstimateId: null,
+        attachments: [],
+        geoLocation: null,
+        rfqId: null,
       };
 
       console.log('Submitting requisition data:', processedData);
@@ -168,7 +176,10 @@ export default function RequisitionForm() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Submission error:', errorData);
-        throw new Error(errorData.error || 'Failed to create requisition');
+        if (errorData.validationErrors) {
+          console.error('Validation errors details:', errorData.validationErrors);
+        }
+        throw new Error(errorData.details || errorData.error || 'Failed to create requisition');
       }
       
       toast({
