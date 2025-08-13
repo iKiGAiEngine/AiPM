@@ -3,6 +3,11 @@
 This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract estimates, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
 ## Recent Updates (August 13, 2025)
+- **BUYOUT PROCESS (COMPETITIVE BIDDING) IMPLEMENTED**: Successfully created complete "Buyout" workflow for converting approved requisitions to RFQs with vendor competitive bidding
+- **Requisition Approval System**: Added comprehensive approval interface for PM/Admin users with approve/reject buttons and role-based access control
+- **Create Buyout Action**: Approved requisitions now show "Create Buyout" button for initiating competitive bidding process
+- **NewBuyout & BuyoutForm**: Complete workflow for converting requisitions to RFQs with multi-vendor selection and line item management
+- **Status Management**: Added proper requisition status updates (submitted → approved → converted) with backend integration
 - **MATERIAL DEPLETION SYSTEM IMPLEMENTED**: Successfully created sophisticated material tracking that prevents repopulation of used materials across requisitions
 - **Available Materials Endpoint**: New API endpoint `/api/projects/{id}/materials?available=true` returns only materials with remaining quantities after deducting usage from submitted requisitions
 - **Real-time Material Tracking**: System calculates used quantities from submitted requisitions and shows only available amounts for new requisitions
@@ -10,10 +15,6 @@ This is a full-stack construction materials procurement application that replica
 - **Individual Requisition API**: Added `/api/requisitions/{id}` and `/api/requisitions/{id}/lines` endpoints for detailed requisition viewing
 - **Procurement Workflow Documentation**: Created comprehensive PROCUREMENT_WORKFLOW.md explaining the complete material lifecycle from requisition to payment
 - **Navigation System Completely Rebuilt**: Completely replaced mixed wouter/react-router system causing navigation freezing with unified React Router v6 architecture
-- **REQUISITION SUBMISSION SYSTEM COMPLETED**: Successfully implemented comprehensive form validation and data handling for requisition submissions with proper material depletion
-- **Enhanced PO Creation Workflow**: Implemented advanced purchase order creation with project material integration
-- **Material Type/Scope Filtering**: Added filtering by Material Type and Scope of Work for uploaded project materials
-- **Project-to-PO Integration**: Complete workflow from Excel material upload → project materials → filtered selection → PO creation
 
 ## Previous Updates (August 12, 2025)
 - **Excel Import Integration**: Successfully integrated comprehensive Excel import functionality into the Project Creation wizard

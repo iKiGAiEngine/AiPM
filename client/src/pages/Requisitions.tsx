@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Eye, FileText, CheckCircle } from "lucide-react";
+import { Plus, Search, Filter, Eye, FileText, CheckCircle, Check, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import type { Requisition } from "@shared/schema";
 
 const statusColors = {
@@ -22,6 +24,9 @@ const statusColors = {
 export default function Requisitions() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: requisitions = [], isLoading, error } = useQuery<Requisition[]>({
     queryKey: ['/api/requisitions'],
@@ -42,6 +47,52 @@ export default function Requisitions() {
     const matchesStatus = statusFilter === "all" || req.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Check if user can approve requisitions (PM, Admin roles)
+  const canApprove = user && ['PM', 'Admin'].includes(user.role);
+
+  // Mutation for updating requisition status
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await fetch(`/api/requisitions/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update requisition status');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (_, { status }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/requisitions'] });
+      toast({
+        title: 'Success',
+        description: `Requisition ${status === 'approved' ? 'approved' : 'rejected'} successfully`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update requisition status',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleApprove = (requisition: Requisition) => {
+    updateStatusMutation.mutate({ id: requisition.id, status: 'approved' });
+  };
+
+  const handleReject = (requisition: Requisition) => {
+    updateStatusMutation.mutate({ id: requisition.id, status: 'rejected' });
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -86,7 +137,13 @@ export default function Requisitions() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Requisitions</h1>
-          <p className="text-muted-foreground">Manage material requests and approvals</p>
+          <p className="text-muted-foreground">
+            Manage material requests and approvals
+            {canApprove && (() => {
+              const pendingApproval = requisitions.filter(r => r.status === 'submitted').length;
+              return pendingApproval > 0 ? ` • ${pendingApproval} pending approval` : '';
+            })()}
+          </p>
         </div>
         <Button asChild data-testid="button-new-requisition">
           <Link to="/requisitions/new">
@@ -193,6 +250,34 @@ export default function Requisitions() {
                             <Eye className="w-4 h-4" />
                           </Link>
                         </Button>
+                        
+                        {/* Approval Actions - only show for submitted requisitions */}
+                        {canApprove && requisition.status === 'submitted' && (
+                          <>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleApprove(requisition)}
+                              disabled={updateStatusMutation.isPending}
+                              data-testid={`button-approve-requisition-${requisition.id}`}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleReject(requisition)}
+                              disabled={updateStatusMutation.isPending}
+                              data-testid={`button-reject-requisition-${requisition.id}`}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                        
+                        {/* Buyout Creation - only show for approved requisitions */}
                         {requisition.status === 'approved' && (
                           <Button 
                             variant="outline" 
