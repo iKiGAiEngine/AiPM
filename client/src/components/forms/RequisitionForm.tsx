@@ -70,12 +70,12 @@ export default function RequisitionForm() {
     },
   });
 
-  // Fetch materials for selected project
+  // Fetch available materials for selected project (excluding already used ones)
   const { data: projectMaterials = [] } = useQuery<ProjectMaterial[]>({
-    queryKey: ['/api/projects', selectedProject, 'materials'],
+    queryKey: ['/api/projects', selectedProject, 'materials', 'available'],
     queryFn: async () => {
       if (!selectedProject) return [];
-      const response = await fetch(`/api/projects/${selectedProject}/materials`, {
+      const response = await fetch(`/api/projects/${selectedProject}/materials?available=true`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -99,16 +99,16 @@ export default function RequisitionForm() {
   useEffect(() => {
     const quantities: Record<string, number> = {};
     projectMaterials.forEach(material => {
-      quantities[material.id] = parseFloat(material.qty || '0');
+      // Use the available quantity returned from the server (after deducting used quantities)
+      quantities[material.id] = parseFloat(material.quantity || material.qty || '0');
     });
     setAvailableQuantities(quantities);
   }, [projectMaterials]);
 
   // Filter materials based on search and scope type
   const filteredMaterials = useMemo(() => {
-    let filtered = projectMaterials.filter(material => 
-      availableQuantities[material.id] > 0 // Only show materials with available quantity
-    );
+    // Server already filters out materials with 0 available quantity
+    let filtered = projectMaterials;
     
     if (materialSearch) {
       const searchLower = materialSearch.toLowerCase();

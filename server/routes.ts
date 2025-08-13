@@ -200,11 +200,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project materials route
   app.get("/api/projects/:id/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const materials = await storage.getProjectMaterialsByProject(
-        req.params.id, 
-        req.user!.organizationId
-      );
-      res.json(materials);
+      const { available } = req.query;
+      
+      // If available=true query param, return only available materials (excluding used ones)
+      if (available === 'true') {
+        const materials = await storage.getAvailableProjectMaterialsByProject(
+          req.params.id, 
+          req.user!.organizationId
+        );
+        res.json(materials);
+      } else {
+        // Default behavior - return all project materials
+        const materials = await storage.getProjectMaterialsByProject(
+          req.params.id, 
+          req.user!.organizationId
+        );
+        res.json(materials);
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch project materials" });
     }
