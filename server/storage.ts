@@ -51,6 +51,7 @@ export interface IStorage {
   // Materials
   createMaterial(material: InsertMaterial): Promise<Material>;
   getMaterial(id: string): Promise<Material | undefined>;
+
   getMaterialsByOrganization(organizationId: string): Promise<Material[]>;
   searchMaterials(organizationId: string, query: string): Promise<Material[]>;
   
