@@ -24,6 +24,7 @@ import NewProject from "@/pages/NewProject";
 import EditProject from "@/pages/EditProject";
 import NewPurchaseOrder from "@/pages/NewPurchaseOrder";
 import ProjectDetail from "@/pages/ProjectDetail";
+import ProjectMaterialUpload from "@/pages/ProjectMaterialUpload";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
@@ -258,6 +259,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <EditProject />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:id/materials/upload"
+                element={
+                  <ProtectedRoute>
+                    <ProjectMaterialUpload />
                   </ProtectedRoute>
                 }
               />

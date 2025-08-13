@@ -11,7 +11,8 @@ import {
   Calendar,
   Tag,
   Eye,
-  Edit
+  Edit,
+  Upload
 } from "lucide-react";
 import type { Project } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
@@ -239,7 +240,7 @@ export default function ProjectDetail() {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-center space-y-2"
@@ -275,6 +276,15 @@ export default function ProjectDetail() {
             >
               <Calendar className="w-6 h-6" />
               <span className="text-sm">Deliveries</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-center space-y-2"
+              onClick={() => navigate(`/projects/${project.id}/materials/upload`)}
+              data-testid="button-upload-materials"
+            >
+              <Upload className="w-6 h-6" />
+              <span className="text-sm">Upload Materials</span>
             </Button>
           </div>
         </CardContent>
