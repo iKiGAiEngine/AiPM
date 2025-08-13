@@ -1,0 +1,63 @@
+You are Replit AI. My app freezes when I open a Project and then click another nav item. In the browser console I see:
+
+GET /api/projects/projects 500 (Internal Server Error)
+
+Root cause: the ProjectDetail page is issuing fetch(`/api/projects/${id}`) when `id` is incorrectly set to the string "projects". We need to fix routing and guard code so this never happens, and return proper 4xx from the API instead of a 500.
+
+Make the following changes:
+
+## 1) Router: define unambiguous routes and order
+- Ensure routes are declared explicitly like:
+  /projects                -> ProjectsList
+  /projects/:id            -> ProjectDetail
+- Do NOT let /projects match the /projects/:id route.
+- If using react-router v6, make sure you have two separate <Route> entries, not a wildcard or nested route that causes “projects” to be captured as :id.
+- If using wouter, double-check the patterns and their order.
+
+## 2) Navigation: ensure links pass a real id
+- Audit all links/buttons that navigate to a project detail page.
+- They must use the real project id: navigate(`/projects/${project.id}`) or <Link to={`/projects/${id}`}>.
+- Remove any relative navigation like navigate("projects") from inside ProjectDetail that could confuse the router.
+- Keep the “Back to Projects” button as navigate("/projects").
+
+## 3) ProjectDetail guard (frontend)
+Open ProjectDetail.tsx and:
+
+- Before calling react-query, validate the :id param. If it’s missing or equals "projects" (or any non-id value), bail out cleanly and route back to the list.
+
+Example patch:
+
+```tsx
+// ProjectDetail.tsx
+import { useParams, useNavigate } from "react-router-dom"; // or wouter's useLocation/useRoute
+// ...
+
+const { id } = useParams<{ id: string }>();
+const navigate = useNavigate();
+
+// Simple validator: allow UUID-like or numeric IDs (adjust to your backend)
+const isValidId = (val?: string) =>
+  !!val && /^[0-9a-fA-F-]+$/.test(val) || /^\d+$/.test(val);
+
+if (!isValidId(id)) {
+  // avoid firing the query with a bad id
+  // optional: show a toast
+  navigate("/projects", { replace: true });
+  return null;
+}
+
+const { data: project, isLoading, error } = useQuery({
+  queryKey: ["project", id],
+  enabled: !!id && isValidId(id),
+  queryFn: async () => {
+    const res = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+    });
+    if (!res.ok) {
+      // map 404/400 to readable errors, don't crash UI
+      const msg = await res.text();
+      throw new Error(`Project fetch failed (${res.status}): ${msg}`);
+    }
+    return res.json();
+  },
+});

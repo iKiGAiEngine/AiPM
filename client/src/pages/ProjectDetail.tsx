@@ -119,18 +119,35 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
 
+  // Validate the ID parameter - must be UUID-like, not "projects" or other nav terms
+  const isValidId = (val?: string) =>
+    !!val && 
+    val !== 'projects' && 
+    val !== 'requisitions' && 
+    val !== 'materials' &&
+    /^[0-9a-fA-F-]{36}$/.test(val); // UUID format
+
+  // If invalid ID, redirect back to projects list
+  if (!isValidId(id)) {
+    setLocation("/projects");
+    return null;
+  }
+
   const { data: project, isLoading, error } = useQuery<Project>({
     queryKey: ['/api/projects', id],
     queryFn: async () => {
-      const response = await fetch(`/api/projects/${id}`, {
+      const response = await fetch(`/api/projects/${encodeURIComponent(id!)}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
-      if (!response.ok) throw new Error('Failed to fetch project');
+      if (!response.ok) {
+        const msg = await response.text();
+        throw new Error(`Project fetch failed (${response.status}): ${msg}`);
+      }
       return response.json();
     },
-    enabled: !!id,
+    enabled: !!id && isValidId(id),
   });
 
   const formatCurrency = (amount: string | number) => {
