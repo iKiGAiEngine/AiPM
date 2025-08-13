@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -94,6 +94,7 @@ const navigation = [
 
 export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const canAccess = (roles: string[]) => {
@@ -102,6 +103,11 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
 
   const isActive = (href: string) => {
     return location.pathname === href;
+  };
+
+  const handleNavigation = (href: string) => {
+    navigate(href);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -130,12 +136,11 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
             if (!canAccess(item.roles)) return null;
             
             return (
-              <Link
+              <button
                 key={item.name}
-                to={item.href}
-                onClick={onClose}
+                onClick={() => handleNavigation(item.href)}
                 className={cn(
-                  "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-left",
                   isActive(item.href)
                     ? "text-sidebar-primary-foreground bg-sidebar-primary"
                     : "text-sidebar-foreground hover:bg-sidebar-accent"
@@ -144,7 +149,7 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
               >
                 <item.icon className="w-5 h-5" />
                 <span>{item.name}</span>
-              </Link>
+              </button>
             );
           })}
         </nav>

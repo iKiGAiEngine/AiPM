@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -100,6 +100,7 @@ const settingsNavigation = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedProject, setSelectedProject] = useState({
     name: "Metro Plaza Office Tower",
@@ -112,6 +113,10 @@ export default function Sidebar() {
 
   const isActive = (href: string) => {
     return location.pathname === href;
+  };
+
+  const handleNavigation = (href: string) => {
+    navigate(href);
   };
 
   return (
@@ -153,11 +158,11 @@ export default function Sidebar() {
             if (!canAccess(item.roles)) return null;
             
             return (
-              <Link
+              <button
                 key={item.name}
-                to={item.href}
+                onClick={() => handleNavigation(item.href)}
                 className={cn(
-                  "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-left",
                   isActive(item.href)
                     ? "text-sidebar-primary-foreground bg-sidebar-primary"
                     : "text-sidebar-foreground hover:bg-sidebar-accent"
@@ -171,7 +176,7 @@ export default function Sidebar() {
                     {item.badge}
                   </Badge>
                 )}
-              </Link>
+              </button>
             );
           })}
 
@@ -180,11 +185,11 @@ export default function Sidebar() {
               if (!canAccess(item.roles)) return null;
               
               return (
-                <Link
+                <button
                   key={item.name}
-                  to={item.href}
+                  onClick={() => handleNavigation(item.href)}
                   className={cn(
-                    "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+                    "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-left",
                     isActive(item.href)
                       ? "text-sidebar-primary-foreground bg-sidebar-primary"
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
@@ -193,7 +198,7 @@ export default function Sidebar() {
                 >
                   <item.icon className="w-5 h-5" />
                   <span>{item.name}</span>
-                </Link>
+                </button>
               );
             })}
           </div>
@@ -203,11 +208,11 @@ export default function Sidebar() {
               if (!canAccess(item.roles)) return null;
               
               return (
-                <Link
+                <button
                   key={item.name}
-                  to={item.href}
+                  onClick={() => handleNavigation(item.href)}
                   className={cn(
-                    "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+                    "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-left",
                     isActive(item.href)
                       ? "text-sidebar-primary-foreground bg-sidebar-primary"
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
@@ -216,7 +221,7 @@ export default function Sidebar() {
                 >
                   <item.icon className="w-5 h-5" />
                   <span>{item.name}</span>
-                </Link>
+                </button>
               );
             })}
           </div>
