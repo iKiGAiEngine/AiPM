@@ -227,18 +227,49 @@ export default function RequisitionForm() {
 
           {/* Material Search */}
           <div className="space-y-2">
-            <Label htmlFor="materialSearch">Search Materials</Label>
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search catalog by SKU, description, or manufacturer..."
-                className="pr-10"
-                data-testid="input-material-search"
-              />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <Search className="w-4 h-4 text-muted-foreground" />
+            <Label htmlFor="materialSearch">Available Project Materials ({projectMaterials.length})</Label>
+            {selectedProject ? (
+              projectMaterials.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                  {projectMaterials.map((material) => (
+                    <div 
+                      key={material.id} 
+                      className="p-3 border border-border rounded-lg hover:bg-muted cursor-pointer"
+                      onClick={() => {
+                        const newLine = {
+                          materialId: material.id,
+                          description: material.description || '',
+                          quantity: 1,
+                          unit: material.unit || 'Each',
+                          estimatedCost: material.unitPrice || 0,
+                          notes: ''
+                        };
+                        append(newLine);
+                      }}
+                      data-testid={`material-card-${material.id}`}
+                    >
+                      <div className="text-sm font-medium">{material.description}</div>
+                      <div className="text-xs text-muted-foreground">
+                        ${material.unitPrice?.toFixed(2) || '0.00'} per {material.unit || 'Each'}
+                      </div>
+                      {material.category && (
+                        <Badge variant="secondary" className="text-xs mt-1">
+                          {material.category}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-lg text-center">
+                  No materials found for this project. Upload materials first.
+                </div>
+              )
+            ) : (
+              <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-lg text-center">
+                Select a project to see available materials
               </div>
-            </div>
+            )}
           </div>
 
           {/* Line Items */}

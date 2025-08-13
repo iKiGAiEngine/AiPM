@@ -151,7 +151,7 @@ export default function PurchaseOrderForm() {
 
   // Filter materials by selected type
   const filteredMaterials = useMemo(() => {
-    if (!selectedMaterialType) return projectMaterials;
+    if (!selectedMaterialType || selectedMaterialType === "all") return projectMaterials;
     return projectMaterials.filter((material: any) => 
       material.scope === selectedMaterialType || 
       material.materialType === selectedMaterialType ||
@@ -245,8 +245,8 @@ export default function PurchaseOrderForm() {
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((project: any) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
+                    <SelectItem key={project.id} value={project.id || 'unknown'}>
+                      {project.name || 'Unknown Project'}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -319,10 +319,10 @@ export default function PurchaseOrderForm() {
                       <SelectValue placeholder="All material types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All material types</SelectItem>
+                      <SelectItem value="all">All material types</SelectItem>
                       {materialTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
+                        <SelectItem key={type} value={type || 'unknown'}>
+                          {type || 'Unknown'}
                         </SelectItem>
                       ))}
                     </SelectContent>
