@@ -520,7 +520,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/rfqs", requireRole(['Admin', 'PM', 'Purchaser']), async (req: AuthenticatedRequest, res) => {
     try {
-      const rfqData = insertRfqSchema.parse(req.body);
+      console.log('RFQ creation request body:', JSON.stringify(req.body, null, 2));
+      
+      // Extract lines separately as they're handled differently
+      const { lines, ...rfqBody } = req.body;
+      
+      const rfqData = insertRfqSchema.parse(rfqBody);
       
       // Generate RFQ number
       const year = new Date().getFullYear();
@@ -533,10 +538,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         organizationId: req.user!.organizationId,
         createdById: req.user!.id
       });
+
+      // Create RFQ lines if provided
+      if (lines && Array.isArray(lines)) {
+        for (const line of lines) {
+          await storage.createRFQLine({
+            rfqId: rfq.id,
+            materialId: line.materialId || null,
+            description: line.description,
+            quantity: line.quantity.toString(),
+            unit: line.unit
+          });
+        }
+      }
       
       res.status(201).json(rfq);
     } catch (error) {
-      res.status(400).json({ error: "Invalid RFQ data" });
+      console.error('RFQ creation error:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
+      res.status(400).json({ error: "Invalid RFQ data", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

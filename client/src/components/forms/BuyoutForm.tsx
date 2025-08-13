@@ -144,9 +144,13 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
-          ...data,
+          projectId: data.projectId,
+          title: data.title,
+          description: data.description || '',
           bidDueDate: data.bidDueDate.toISOString(),
+          shipToAddress: data.shipToAddress || '',
           vendorIds: data.selectedVendors,
+          lines: data.lines || [],
         }),
       });
       

@@ -146,52 +146,52 @@ export default function RFQs() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>RFQ Number</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Bid Due Date</TableHead>
-                  <TableHead>Vendors</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                <TableRow className="border-b">
+                  <TableHead className="h-10">RFQ Number</TableHead>
+                  <TableHead className="h-10">Title</TableHead>
+                  <TableHead className="h-10">Bid Due Date</TableHead>
+                  <TableHead className="h-10">Vendors</TableHead>
+                  <TableHead className="h-10">Status</TableHead>
+                  <TableHead className="h-10">Created</TableHead>
+                  <TableHead className="h-10 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRFQs.map((rfq) => (
-                  <TableRow key={rfq.id} className="cursor-pointer hover:bg-muted/50" data-testid={`rfq-row-${rfq.id}`}>
-                    <TableCell className="font-medium">
+                  <TableRow key={rfq.id} className="border-b hover:bg-muted/30 h-12" data-testid={`rfq-row-${rfq.id}`}>
+                    <TableCell className="py-2">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(rfq.status || '')}
                         <span data-testid={`rfq-number-${rfq.id}`}>{rfq.number}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <div className="max-w-xs truncate" data-testid={`rfq-title-${rfq.id}`}>
                         {rfq.title}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <span className="text-sm" data-testid={`rfq-due-date-${rfq.id}`}>
                         {rfq.bidDueDate ? format(new Date(rfq.bidDueDate), 'MMM dd, yyyy') : 'Not set'}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <span className="text-sm text-muted-foreground" data-testid={`rfq-vendors-${rfq.id}`}>
                         {rfq.vendorIds ? `${rfq.vendorIds.length} vendors` : '0 vendors'}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <Badge className={statusColors[rfq.status as keyof typeof statusColors]} data-testid={`rfq-status-${rfq.id}`}>
                         {rfq.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="py-2 text-muted-foreground">
                       <span data-testid={`rfq-created-${rfq.id}`}>
                         {rfq.createdAt ? formatDistanceToNow(new Date(rfq.createdAt), { addSuffix: true }) : 'N/A'}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                    <TableCell className="py-2 text-right">
+                      <div className="flex items-center justify-end space-x-1">
                         {rfq.status === 'quoted' && (
                           <Button variant="ghost" size="sm" asChild data-testid={`button-view-quotes-${rfq.id}`}>
                             <Link to={`/rfqs/${rfq.id}/quotes`}>
