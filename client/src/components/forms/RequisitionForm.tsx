@@ -376,17 +376,7 @@ export default function RequisitionForm() {
                   </div>
                 </div>
 
-                {line.notes !== undefined && (
-                  <div className="space-y-2">
-                    <Label>Notes</Label>
-                    <Textarea
-                      {...form.register(`lines.${index}.notes`)}
-                      placeholder="Additional notes for this item"
-                      rows={2}
-                      data-testid={`input-line-notes-${index}`}
-                    />
-                  </div>
-                )}
+
               </div>
             ))}
           </div>
