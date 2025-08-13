@@ -47,9 +47,19 @@ export const getQueryFn: <T>(options: {
     if (queryKey.length === 1) {
       url = queryKey[0] as string;
     } else {
-      // For multi-part keys, construct URL properly
+      // For multi-part keys like ['/api/projects', id, 'materials']
+      // We need to construct: /api/projects/{id}/materials
       const [basePath, ...params] = queryKey;
-      url = `${basePath}${params.length > 0 ? `/${params.join('/')}` : ''}`;
+      if (params.length === 0) {
+        url = basePath as string;
+      } else if (params.length === 1) {
+        // Single param like ['/api/projects', id] -> /api/projects/{id}
+        url = `${basePath}/${params[0]}`;
+      } else {
+        // Multiple params like ['/api/projects', id, 'materials'] -> /api/projects/{id}/materials
+        const [id, ...rest] = params;
+        url = `${basePath}/${id}/${rest.join('/')}`;
+      }
     }
     
     const res = await fetch(url, {
