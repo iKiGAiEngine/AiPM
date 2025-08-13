@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Bell, Menu, Search, Command } from 'lucide-react';
-import Sidebar from './sidebar';
+import Sidebar from './Sidebar';
 
 export default function TopBar() {
   const { user } = useAuth();

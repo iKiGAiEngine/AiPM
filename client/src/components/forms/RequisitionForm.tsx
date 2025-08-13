@@ -648,7 +648,8 @@ export default function RequisitionForm() {
                         
                         <div className="col-span-1">
                           <Input
-                            {...form.register(`lines.${index}.model`)}
+                            value={field.model || ''}
+                            onChange={(e) => form.setValue(`lines.${index}.model`, e.target.value)}
                             placeholder="Model #"
                             className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
                             data-testid={`input-line-model-${index}`}
@@ -734,7 +735,7 @@ export default function RequisitionForm() {
               <Checkbox 
                 id="photo-attachments" 
                 checked={showPhotoSection}
-                onCheckedChange={setShowPhotoSection}
+                onCheckedChange={(checked) => setShowPhotoSection(checked === true)}
                 data-testid="checkbox-photo-attachments"
               />
               <Label htmlFor="photo-attachments" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
