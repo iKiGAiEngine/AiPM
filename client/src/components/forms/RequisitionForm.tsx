@@ -241,7 +241,7 @@ export default function RequisitionForm() {
                           description: material.description || '',
                           quantity: 1,
                           unit: material.unit || 'Each',
-                          estimatedCost: material.unitPrice || 0,
+                          estimatedCost: parseFloat(material.unitPrice || '0') || 0,
                           notes: ''
                         };
                         append(newLine);
@@ -250,7 +250,7 @@ export default function RequisitionForm() {
                     >
                       <div className="text-sm font-medium">{material.description}</div>
                       <div className="text-xs text-muted-foreground">
-                        ${material.unitPrice?.toFixed(2) || '0.00'} per {material.unit || 'Each'}
+                        ${parseFloat(material.unitPrice || '0').toFixed(2)} per {material.unit || 'Each'}
                       </div>
                       {material.category && (
                         <Badge variant="secondary" className="text-xs mt-1">

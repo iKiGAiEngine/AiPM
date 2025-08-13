@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/projects/:id", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/projects/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const project = await storage.getProject(req.params.id);
       if (!project || project.organizationId !== req.user!.organizationId) {
@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Project materials route
-  app.get("/api/projects/:id/materials", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/projects/:id/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const materials = await storage.getProjectMaterialsByProject(
         req.params.id, 
