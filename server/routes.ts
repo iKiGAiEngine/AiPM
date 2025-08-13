@@ -367,8 +367,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Final requisition data for DB:', JSON.stringify(requisitionData, null, 2));
       
+      // Convert ISO string back to Date object for insertRequisitionSchema
+      const dbRequisitionData = {
+        ...requisitionData,
+        targetDeliveryDate: requisitionData.targetDeliveryDate ? new Date(requisitionData.targetDeliveryDate) : null
+      };
+      
       // Use the existing insertRequisitionSchema for final validation before DB
-      const dbRequisition = insertRequisitionSchema.parse(requisitionData);
+      const dbRequisition = insertRequisitionSchema.parse(dbRequisitionData);
       
       // Create requisition
       const requisition = await storage.createRequisition(dbRequisition);
