@@ -72,27 +72,26 @@ export function RequisitionForm({ onSuccess }: RequisitionFormProps) {
   });
 
   const { data: projects, isLoading: projectsLoading } = useQuery({
-    queryKey: [`/api/${currentOrganization?.id}/projects`],
-    enabled: !!currentOrganization?.id,
+    queryKey: ['/api/projects'],
   });
 
   const { data: zones } = useQuery({
-    queryKey: [`/api/${currentOrganization?.id}/projects/${form.watch('projectId')}`],
-    enabled: !!currentOrganization?.id && !!form.watch('projectId'),
+    queryKey: [`/api/projects/${form.watch('projectId')}`],
+    enabled: !!form.watch('projectId'),
   });
 
   const { data: materials } = useQuery({
-    queryKey: [`/api/${currentOrganization?.id}/materials/search`, materialSearch],
-    enabled: !!currentOrganization?.id && materialSearch.length > 2,
+    queryKey: [`/api/materials/search`, materialSearch],
+    enabled: materialSearch.length > 2,
   });
 
   const createRequisitionMutation = useMutation({
     mutationFn: async (data: RequisitionFormData) => {
-      const response = await apiRequest('POST', `/api/${currentOrganization?.id}/requisitions`, data);
+      const response = await apiRequest('POST', `/api/requisitions`, data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/${currentOrganization?.id}/requisitions`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/requisitions'] });
       toast({
         title: 'Success',
         description: 'Requisition created successfully',

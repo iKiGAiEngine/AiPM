@@ -78,27 +78,25 @@ export function RFQForm({ onSuccess, fromRequisition }: RFQFormProps) {
   });
 
   const { data: projects, isLoading: projectsLoading } = useQuery({
-    queryKey: [`/api/${currentOrganization?.id}/projects`],
-    enabled: !!currentOrganization?.id,
+    queryKey: ['/api/projects'],
   });
 
   const { data: vendors, isLoading: vendorsLoading } = useQuery({
-    queryKey: [`/api/${currentOrganization?.id}/vendors`],
-    enabled: !!currentOrganization?.id,
+    queryKey: ['/api/vendors'],
   });
 
   const { data: requisitions } = useQuery({
-    queryKey: [`/api/${currentOrganization?.id}/requisitions`],
-    enabled: !!currentOrganization?.id && !fromRequisition,
+    queryKey: ['/api/requisitions'],
+    enabled: !fromRequisition,
   });
 
   const createRFQMutation = useMutation({
     mutationFn: async (data: RFQFormData) => {
-      const response = await apiRequest('POST', `/api/${currentOrganization?.id}/rfqs`, data);
+      const response = await apiRequest('POST', `/api/rfqs`, data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/${currentOrganization?.id}/rfqs`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
       toast({
         title: 'Success',
         description: 'RFQ created successfully',
