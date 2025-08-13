@@ -15,6 +15,7 @@ This is a full-stack construction materials procurement application that replica
 - **Individual Requisition API**: Added `/api/requisitions/{id}` and `/api/requisitions/{id}/lines` endpoints for detailed requisition viewing
 - **Procurement Workflow Documentation**: Created comprehensive PROCUREMENT_WORKFLOW.md explaining the complete material lifecycle from requisition to payment
 - **Navigation System Completely Rebuilt**: Completely replaced mixed wouter/react-router system causing navigation freezing with unified React Router v6 architecture
+- **Buyout Navigation Guide**: Created comprehensive BUYOUT_NAVIGATION_GUIDE.md showing exact page locations, buttons, and workflow steps for the complete procurement process
 
 ## Previous Updates (August 12, 2025)
 - **Excel Import Integration**: Successfully integrated comprehensive Excel import functionality into the Project Creation wizard
