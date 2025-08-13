@@ -1,0 +1,34 @@
+Navigation clicked: from /dashboard to /requisitions
+Sidebar.tsx:124 Navigation clicked: from /requisitions to /projects
+Sidebar.tsx:124 Navigation clicked: from /projects to /requisitions
+RequisitionForm.tsx:173 Submitting requisition data: Object
+RequisitionForm.tsx:174 Lines data: Array(15)
+/api/requisitions:1  Failed to load resource: the server responded with a status of 503 (Service Unavailable)Understand this error
+RequisitionForm.tsx:212 Error submitting requisition: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+onSubmit @ RequisitionForm.tsx:212Understand this error
+Sidebar.tsx:124 Navigation clicked: from /requisitions/new to /requisitions
+Requisitions.tsx:29  GET https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/api/requisitions 503 (Service Unavailable)
+queryFn @ Requisitions.tsx:29
+fetchFn @ @tanstack_react-query.js?v=409a7415:840
+run @ @tanstack_react-query.js?v=409a7415:494
+start @ @tanstack_react-query.js?v=409a7415:536
+fetch @ @tanstack_react-query.js?v=409a7415:926
+executeFetch_fn @ @tanstack_react-query.js?v=409a7415:2211
+onSubscribe @ @tanstack_react-query.js?v=409a7415:1898
+subscribe @ @tanstack_react-query.js?v=409a7415:24
+(anonymous) @ @tanstack_react-query.js?v=409a7415:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=409a7415:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=409a7415:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=409a7415:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=409a7415:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=409a7415:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=409a7415:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=409a7415:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=409a7415:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=409a7415:19416
+commitRoot @ chunk-RPCDYKBN.js?v=409a7415:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=409a7415:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=409a7415:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=409a7415:18627Understand this error
+favicon.ico:1  GET https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/favicon.ico 503 (Service Unavailable)Understand this error
+Requisitions.tsx:29  GET https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/api/requisitions 503 (Service Unavailable)
