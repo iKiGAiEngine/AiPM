@@ -17,9 +17,11 @@ import { useAuth } from "@/hooks/useAuth";
 interface TopAppBarProps {
   onMobileMenuToggle?: () => void;
   onGlobalSearchOpen?: () => void;
+  pageTitle?: string;
+  pageSubtitle?: string;
 }
 
-export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen }: TopAppBarProps) {
+export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, pageTitle, pageSubtitle }: TopAppBarProps) {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   const [notifications] = useState(true); // Mock notification state
@@ -30,8 +32,8 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen }: To
     setLocation('/login');
   };
 
-  const currentPage = "Dashboard";
-  const currentProject = "Metro Plaza Office Tower";
+  const currentPage = pageTitle || "Dashboard";
+  const currentProject = pageSubtitle || "BuildProcure AI";
 
   return (
     <header className="bg-card border-b border-border px-4 py-3 sm:px-6">

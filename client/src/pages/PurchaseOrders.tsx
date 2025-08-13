@@ -197,7 +197,7 @@ export default function PurchaseOrders() {
                   <TableRow key={po.id} className="cursor-pointer hover:bg-muted/50" data-testid={`po-row-${po.id}`}>
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">
-                        {getStatusIcon(po.status)}
+                        {po.status ? getStatusIcon(po.status) : <Clock className="w-4 h-4" />}
                         <span data-testid={`po-number-${po.id}`}>{po.number}</span>
                       </div>
                     </TableCell>
@@ -223,7 +223,7 @@ export default function PurchaseOrders() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       <span data-testid={`po-created-${po.id}`}>
-                        {formatDistanceToNow(new Date(po.createdAt), { addSuffix: true })}
+                        {po.createdAt ? formatDistanceToNow(new Date(po.createdAt), { addSuffix: true }) : 'Unknown'}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
