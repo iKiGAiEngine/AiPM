@@ -119,10 +119,22 @@ export default function Sidebar() {
     console.log('Sidebar navigation clicked:', href);
     console.log('Current location:', location.pathname);
     try {
-      navigate(href);
+      // Try multiple navigation approaches
+      navigate(href, { replace: false });
       console.log('Navigate called successfully');
+      
+      // Force location change if navigate doesn't work
+      setTimeout(() => {
+        console.log('Location after navigate:', location.pathname);
+        if (location.pathname !== href) {
+          console.log('Navigate failed, forcing window location change');
+          window.location.href = href;
+        }
+      }, 100);
     } catch (error) {
       console.error('Navigation error:', error);
+      // Fallback to window.location
+      window.location.href = href;
     }
   };
 
