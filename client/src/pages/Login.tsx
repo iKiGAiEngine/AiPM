@@ -68,8 +68,8 @@ export default function Login() {
               <Building2 className="w-8 h-8 text-primary-foreground" />
             </div>
           </div>
-          <h1 className="mt-4 text-3xl font-bold text-foreground">BuildProcure AI</h1>
-          <p className="mt-2 text-muted-foreground">Construction Materials Procurement Platform</p>
+          <h1 className="mt-4 text-3xl font-bold text-foreground">AiPM</h1>
+          <p className="mt-2 text-muted-foreground">AI Project Manager for Construction</p>
         </div>
 
         {/* Demo Credentials */}

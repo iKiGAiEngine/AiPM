@@ -45,9 +45,9 @@ export default function Sidebar() {
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">BP</span>
+              <span className="text-white font-bold text-sm">AI</span>
             </div>
-            <span className="font-semibold text-slate-900">BuildProcure AI</span>
+            <span className="font-semibold text-slate-900">AiPM</span>
           </div>
         </div>
 

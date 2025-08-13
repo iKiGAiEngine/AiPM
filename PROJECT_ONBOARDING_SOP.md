@@ -1,7 +1,7 @@
 # Project Onboarding SOP: From Excel Award to Live System
 
 ## Overview
-This guide walks you through importing an awarded construction project from Excel into BuildProcure AI. Follow these steps in order for a smooth setup process.
+This guide walks you through importing an awarded construction project from Excel into AiPM. Follow these steps in order for a smooth setup process.
 
 ## Prerequisites
 - Project awarded by GC team

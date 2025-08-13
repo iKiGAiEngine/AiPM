@@ -218,13 +218,13 @@ Thank you for your business.
 
   async sendNotificationEmail(userEmail: string, notification: { title: string; message: string }): Promise<boolean> {
     const template: EmailTemplate = {
-      subject: `BuildProcure AI: ${notification.title}`,
+      subject: `AiPM: ${notification.title}`,
       html: `
         <h3>${notification.title}</h3>
         <p>${notification.message}</p>
-        <p><a href="${process.env.APP_URL || 'http://localhost:5000'}">View in BuildProcure AI</a></p>
+        <p><a href="${process.env.APP_URL || 'http://localhost:5000'}">View in AiPM</a></p>
       `,
-      text: `${notification.title}\n\n${notification.message}\n\nView in BuildProcure AI: ${process.env.APP_URL || 'http://localhost:5000'}`
+      text: `${notification.title}\n\n${notification.message}\n\nView in AiPM: ${process.env.APP_URL || 'http://localhost:5000'}`
     };
 
     return await this.sendEmail(userEmail, template);
