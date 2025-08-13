@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Save, Plus, Trash2 } from "lucide-react";
+import { Save, Plus, Trash2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,6 +38,8 @@ export default function PurchaseOrderForm() {
   const [lines, setLines] = useState<POLine[]>([
     { description: "", quantity: 1, unitPrice: 0, unit: "EA" }
   ]);
+  const [selectedMaterialType, setSelectedMaterialType] = useState<string>("");
+  const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set());
 
   const form = useForm<PurchaseOrderFormData>({
     resolver: zodResolver(purchaseOrderSchema),
@@ -129,6 +132,59 @@ export default function PurchaseOrderForm() {
       unit: material.unit || "EA"
     };
     setLines([...lines, newLine]);
+  };
+
+  // Get unique material types/scopes from project materials
+  const materialTypes = useMemo(() => {
+    if (!projectMaterials.length) return [];
+    const types = new Set<string>();
+    projectMaterials.forEach((material: any) => {
+      // Check various possible field names for material type/scope
+      if (material.scope) types.add(material.scope);
+      if (material.materialType) types.add(material.materialType);
+      if (material.material_type) types.add(material.material_type);
+      if (material.category) types.add(material.category);
+      if (material.type) types.add(material.type);
+    });
+    return Array.from(types).sort();
+  }, [projectMaterials]);
+
+  // Filter materials by selected type
+  const filteredMaterials = useMemo(() => {
+    if (!selectedMaterialType) return projectMaterials;
+    return projectMaterials.filter((material: any) => 
+      material.scope === selectedMaterialType || 
+      material.materialType === selectedMaterialType ||
+      material.material_type === selectedMaterialType ||
+      material.category === selectedMaterialType ||
+      material.type === selectedMaterialType
+    );
+  }, [projectMaterials, selectedMaterialType]);
+
+  const handleMaterialSelection = (materialId: string, checked: boolean) => {
+    const newSelection = new Set(selectedMaterials);
+    if (checked) {
+      newSelection.add(materialId);
+    } else {
+      newSelection.delete(materialId);
+    }
+    setSelectedMaterials(newSelection);
+  };
+
+  const addSelectedMaterialsToPO = () => {
+    const materialsToAdd = filteredMaterials.filter((material: any) => 
+      selectedMaterials.has(material.id)
+    );
+    
+    const newLines = materialsToAdd.map((material: any) => ({
+      description: `${material.model ? material.model + ' - ' : ''}${material.description}`,
+      quantity: parseFloat(material.qty) || 1,
+      unitPrice: parseFloat(material.unitPrice) || 0,
+      unit: material.unit || "EA"
+    }));
+    
+    setLines([...lines, ...newLines]);
+    setSelectedMaterials(new Set()); // Clear selection after adding
   };
 
   const updateLine = (index: number, field: keyof POLine, value: any) => {
@@ -233,48 +289,105 @@ export default function PurchaseOrderForm() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">Project Materials</h3>
-                <p className="text-sm text-muted-foreground">
-                  Click to add materials to purchase order
-                </p>
+                <div className="flex items-center gap-4">
+                  {selectedMaterials.size > 0 && (
+                    <Button 
+                      type="button"
+                      onClick={addSelectedMaterialsToPO}
+                      size="sm"
+                      data-testid="button-add-selected-materials"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Selected ({selectedMaterials.size})
+                    </Button>
+                  )}
+                </div>
               </div>
+
+              {/* Material Type Filter */}
+              {materialTypes.length > 0 && (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-muted-foreground" />
+                    <Label htmlFor="materialType">Filter by Type:</Label>
+                  </div>
+                  <Select
+                    value={selectedMaterialType}
+                    onValueChange={setSelectedMaterialType}
+                  >
+                    <SelectTrigger className="w-64" data-testid="select-material-type">
+                      <SelectValue placeholder="All material types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All material types</SelectItem>
+                      {materialTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
-              <div className="border rounded-lg max-h-60 overflow-y-auto">
+              <div className="border rounded-lg max-h-80 overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedMaterials.size === filteredMaterials.length && filteredMaterials.length > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedMaterials(new Set(filteredMaterials.map((m: any) => m.id)));
+                            } else {
+                              setSelectedMaterials(new Set());
+                            }
+                          }}
+                          data-testid="checkbox-select-all"
+                        />
+                      </TableHead>
                       <TableHead>Model</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Type/Scope</TableHead>
                       <TableHead>Qty</TableHead>
                       <TableHead>Unit</TableHead>
                       <TableHead>Unit Price</TableHead>
                       <TableHead>Cost Code</TableHead>
-                      <TableHead className="w-16"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {projectMaterials.map((material: any) => (
-                      <TableRow key={material.id} className="cursor-pointer hover:bg-muted/50">
+                    {filteredMaterials.map((material: any) => (
+                      <TableRow key={material.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedMaterials.has(material.id)}
+                            onCheckedChange={(checked) => handleMaterialSelection(material.id, checked as boolean)}
+                            data-testid={`checkbox-material-${material.id}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{material.model || '-'}</TableCell>
                         <TableCell>{material.description}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {material.scope || material.materialType || material.material_type || material.category || material.type || '-'}
+                        </TableCell>
                         <TableCell>{material.qty}</TableCell>
                         <TableCell>{material.unit}</TableCell>
                         <TableCell>${parseFloat(material.unitPrice || '0').toFixed(2)}</TableCell>
                         <TableCell>{material.costCode || '-'}</TableCell>
-                        <TableCell>
-                          <Button 
-                            type="button"
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => addMaterialToPO(material)}
-                            data-testid={`button-add-material-${material.id}`}
-                          >
-                            <Plus className="w-3 h-3" />
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                
+                {filteredMaterials.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    {selectedMaterialType ? 
+                      `No materials found for "${selectedMaterialType}"` : 
+                      "No materials found for this project"
+                    }
+                  </div>
+                )}
               </div>
             </div>
           )}
