@@ -88,7 +88,7 @@ export default function RFQs() {
           <p className="text-muted-foreground">Request quotes and compare vendor pricing</p>
         </div>
         <Button asChild data-testid="button-new-rfq">
-          <Link to="/rfqs/new">
+          <Link href="/rfqs/new">
             <Plus className="w-4 h-4 mr-2" />
             New RFQ
           </Link>
@@ -194,13 +194,13 @@ export default function RFQs() {
                       <div className="flex items-center justify-end space-x-2">
                         {rfq.status === 'quoted' && (
                           <Button variant="ghost" size="sm" asChild data-testid={`button-view-quotes-${rfq.id}`}>
-                            <Link to={`/rfqs/${rfq.id}/quotes`}>
+                            <Link href={`/rfqs/${rfq.id}/quotes`}>
                               <FileText className="w-4 h-4" />
                             </Link>
                           </Button>
                         )}
                         <Button variant="ghost" size="sm" asChild data-testid={`button-view-rfq-${rfq.id}`}>
-                          <Link to={`/rfqs/${rfq.id}`}>
+                          <Link href={`/rfqs/${rfq.id}`}>
                             <Eye className="w-4 h-4" />
                           </Link>
                         </Button>

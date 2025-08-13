@@ -67,7 +67,7 @@ export default function Vendors() {
           <p className="text-muted-foreground">Manage vendor relationships and performance tracking</p>
         </div>
         <Button asChild data-testid="button-new-vendor">
-          <Link to="/vendors/new">
+          <Link href="/vendors/new">
             <Plus className="w-4 h-4 mr-2" />
             Add Vendor
           </Link>
@@ -213,7 +213,7 @@ export default function Vendors() {
                       Performance metrics available
                     </div>
                     <Button variant="ghost" size="sm" asChild data-testid={`button-view-vendor-${vendor.id}`}>
-                      <Link to={`/vendors/${vendor.id}`}>
+                      <Link href={`/vendors/${vendor.id}`}>
                         <Eye className="w-4 h-4 mr-2" />
                         View Details
                       </Link>

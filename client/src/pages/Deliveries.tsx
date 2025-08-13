@@ -90,7 +90,7 @@ export default function Deliveries() {
           <p className="text-muted-foreground">Track and manage material deliveries</p>
         </div>
         <Button asChild data-testid="button-new-delivery">
-          <Link to="/deliveries/new">
+          <Link href="/deliveries/new">
             <Plus className="w-4 h-4 mr-2" />
             Record Delivery
           </Link>
@@ -166,7 +166,7 @@ export default function Deliveries() {
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(delivery.status)}
                         <span data-testid={`delivery-date-${delivery.id}`}>
-                          {format(new Date(delivery.deliveryDate), 'MMM dd, yyyy')}
+                          {delivery.deliveryDate ? format(new Date(delivery.deliveryDate), 'MMM dd, yyyy') : 'Not set'}
                         </span>
                       </div>
                     </TableCell>
@@ -197,12 +197,12 @@ export default function Deliveries() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       <span data-testid={`delivery-recorded-${delivery.id}`}>
-                        {formatDistanceToNow(new Date(delivery.createdAt), { addSuffix: true })}
+                        {delivery.createdAt ? formatDistanceToNow(new Date(delivery.createdAt), { addSuffix: true }) : 'Unknown'}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild data-testid={`button-view-delivery-${delivery.id}`}>
-                        <Link to={`/deliveries/${delivery.id}`}>
+                        <Link href={`/deliveries/${delivery.id}`}>
                           <Eye className="w-4 h-4" />
                         </Link>
                       </Button>
