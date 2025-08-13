@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +52,8 @@ export default function RequisitionForm() {
   const [selectedScopeType, setSelectedScopeType] = useState<string>("all");
   const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set());
   const [materialQuantities, setMaterialQuantities] = useState<Record<string, number>>({});
+  const [availableQuantities, setAvailableQuantities] = useState<Record<string, number>>({});
+  const [showPhotoSection, setShowPhotoSection] = useState(false);
 
   // Fetch real projects from API
   const { data: projects = [] } = useQuery<Project[]>({
@@ -92,9 +94,20 @@ export default function RequisitionForm() {
     return types;
   }, [projectMaterials]);
 
+  // Initialize available quantities when project materials change
+  useEffect(() => {
+    const quantities: Record<string, number> = {};
+    projectMaterials.forEach(material => {
+      quantities[material.id] = parseFloat(material.qty || '0');
+    });
+    setAvailableQuantities(quantities);
+  }, [projectMaterials]);
+
   // Filter materials based on search and scope type
   const filteredMaterials = useMemo(() => {
-    let filtered = projectMaterials;
+    let filtered = projectMaterials.filter(material => 
+      availableQuantities[material.id] > 0 // Only show materials with available quantity
+    );
     
     if (materialSearch) {
       const searchLower = materialSearch.toLowerCase();
@@ -110,16 +123,12 @@ export default function RequisitionForm() {
     }
     
     return filtered;
-  }, [projectMaterials, materialSearch, selectedScopeType]);
+  }, [projectMaterials, materialSearch, selectedScopeType, availableQuantities]);
 
   const form = useForm<RequisitionFormData>({
     resolver: zodResolver(requisitionSchema),
     defaultValues: {
-      lines: [{
-        description: '',
-        quantity: 1,
-        unit: 'Each',
-      }]
+      lines: []
     }
   });
 
@@ -244,10 +253,43 @@ export default function RequisitionForm() {
   };
 
   const updateMaterialQuantity = (materialId: string, quantity: number) => {
+    const maxAvailable = availableQuantities[materialId] || 0;
+    const clampedQuantity = Math.max(0.01, Math.min(quantity, maxAvailable));
     setMaterialQuantities(prev => ({
       ...prev,
-      [materialId]: Math.max(0.01, quantity)
+      [materialId]: clampedQuantity
     }));
+  };
+
+  const addMaterialToRequisition = (material: any, quantity: number) => {
+    const newLine = {
+      materialId: material.id,
+      description: material.description || '',
+      model: material.model || '',
+      quantity: quantity,
+      unit: material.unit || 'Each',
+      estimatedCost: (parseFloat(material.unitPrice || '0') || 0) * quantity,
+      notes: ''
+    };
+    append(newLine);
+
+    // Update available quantities
+    setAvailableQuantities(prev => ({
+      ...prev,
+      [material.id]: Math.max(0, (prev[material.id] || 0) - quantity)
+    }));
+
+    // Clear selection for this material
+    setSelectedMaterials(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(material.id);
+      return newSet;
+    });
+    setMaterialQuantities(prev => {
+      const newQty = { ...prev };
+      delete newQty[material.id];
+      return newQty;
+    });
   };
 
   const addSelectedMaterials = () => {
@@ -255,15 +297,7 @@ export default function RequisitionForm() {
     
     selectedMaterialsData.forEach(material => {
       const quantity = materialQuantities[material.id] || 1;
-      const newLine = {
-        materialId: material.id,
-        description: material.description || '',
-        quantity: quantity,
-        unit: material.unit || 'Each',
-        estimatedCost: (parseFloat(material.unitPrice || '0') || 0) * quantity,
-        notes: ''
-      };
-      append(newLine);
+      addMaterialToRequisition(material, quantity);
     });
 
     toast({
@@ -271,7 +305,7 @@ export default function RequisitionForm() {
       description: `${selectedMaterialsData.length} materials added to requisition`,
     });
 
-    // Clear selections
+    // Clear all selections
     deselectAllMaterials();
   };
 
@@ -436,9 +470,14 @@ export default function RequisitionForm() {
                                   </div>
                                 </div>
                                 <div className="flex items-center justify-between lg:justify-end gap-2">
-                                  <span className="text-sm font-semibold text-green-700 dark:text-green-400">
-                                    ${parseFloat(material.unitPrice || '0').toFixed(2)} / {material.unit || 'Each'}
-                                  </span>
+                                  <div className="text-right">
+                                    <div className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                      ${parseFloat(material.unitPrice || '0').toFixed(2)} / {material.unit || 'Each'}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Available: {availableQuantities[material.id] || 0}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
 
@@ -449,6 +488,7 @@ export default function RequisitionForm() {
                                     type="number"
                                     min="0.01"
                                     step="0.01"
+                                    max={availableQuantities[material.id] || 0}
                                     value={materialQuantities[material.id] || 1}
                                     onChange={(e) => updateMaterialQuantity(material.id, parseFloat(e.target.value))}
                                     className="w-20 h-8 text-sm"
@@ -466,15 +506,7 @@ export default function RequisitionForm() {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   const quantity = materialQuantities[material.id] || 1;
-                                  const newLine = {
-                                    materialId: material.id,
-                                    description: material.description || '',
-                                    quantity: quantity,
-                                    unit: material.unit || 'Each',
-                                    estimatedCost: (parseFloat(material.unitPrice || '0') || 0) * quantity,
-                                    notes: ''
-                                  };
-                                  append(newLine);
+                                  addMaterialToRequisition(material, quantity);
                                   toast({
                                     title: "Material Added",
                                     description: `${material.description} added to requisition`,
@@ -523,7 +555,8 @@ export default function RequisitionForm() {
               <div className="border rounded-lg bg-background">
                 {/* Header Row for Desktop */}
                 <div className="hidden lg:grid lg:grid-cols-12 gap-3 p-3 border-b bg-muted/30 text-sm font-medium text-muted-foreground">
-                  <div className="col-span-4">Description</div>
+                  <div className="col-span-3">Description</div>
+                  <div className="col-span-1">Model #</div>
                   <div className="col-span-1 text-center">Qty</div>
                   <div className="col-span-1 text-center">Unit</div>
                   <div className="col-span-2 text-center">Est. Cost</div>
@@ -602,12 +635,21 @@ export default function RequisitionForm() {
 
                       {/* Desktop Layout - Single Row */}
                       <div className="hidden lg:grid lg:grid-cols-12 gap-3 items-center">
-                        <div className="col-span-4">
+                        <div className="col-span-3">
                           <Input
                             {...form.register(`lines.${index}.description`)}
                             placeholder="Item description"
                             className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
                             data-testid={`input-line-description-${index}`}
+                          />
+                        </div>
+                        
+                        <div className="col-span-1">
+                          <Input
+                            {...form.register(`lines.${index}.model`)}
+                            placeholder="Model #"
+                            className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
+                            data-testid={`input-line-model-${index}`}
                           />
                         </div>
                         
@@ -686,11 +728,23 @@ export default function RequisitionForm() {
 
           {/* Photo Attachments */}
           <div className="space-y-2">
-            <Label>Photo Attachments</Label>
-            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-muted-foreground transition-colors">
-              <Camera className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-              <div>
-                <Button type="button" variant="ghost" className="font-medium" asChild>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="photo-attachments" 
+                checked={showPhotoSection}
+                onCheckedChange={setShowPhotoSection}
+                data-testid="checkbox-photo-attachments"
+              />
+              <Label htmlFor="photo-attachments" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Add Photo Attachments
+              </Label>
+            </div>
+            
+            {showPhotoSection && (
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-muted-foreground transition-colors">
+                <Camera className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
+                <div>
+                  <Button type="button" variant="ghost" className="font-medium" asChild>
                   <label htmlFor="photo-upload" className="cursor-pointer" data-testid="button-photo-upload">
                     Take Photo or Upload Files
                     <input
@@ -704,8 +758,9 @@ export default function RequisitionForm() {
                   </label>
                 </Button>
                 <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 10MB each</p>
+                </div>
               </div>
-            </div>
+            )}
             
             {attachments.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
