@@ -1,14 +1,14 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { RFQForm } from "@/components/forms/rfq-form";
 
 export default function NewRFQ() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   const handleSuccess = () => {
-    navigate("/rfqs");
+    setLocation("/rfqs");
   };
 
   return (
@@ -18,7 +18,7 @@ export default function NewRFQ() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate("/rfqs")}
+          onClick={() => setLocation("/rfqs")}
           data-testid="button-back-to-rfqs"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />

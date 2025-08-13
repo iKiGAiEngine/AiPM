@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -45,7 +45,7 @@ interface OCRResult {
 }
 
 export default function InvoiceUpload() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessingOCR, setIsProcessingOCR] = useState(false);
@@ -191,7 +191,7 @@ export default function InvoiceUpload() {
         description: "Your invoice has been processed and added to the system",
       });
 
-      navigate("/invoices");
+      setLocation("/invoices");
     } catch (error) {
       toast({
         title: "Upload Failed",
@@ -220,7 +220,7 @@ export default function InvoiceUpload() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate("/invoices")}
+          onClick={() => setLocation("/invoices")}
           data-testid="button-back-to-invoices"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -484,7 +484,7 @@ export default function InvoiceUpload() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate("/invoices")}
+                  onClick={() => setLocation("/invoices")}
                   data-testid="button-cancel-upload"
                 >
                   Cancel

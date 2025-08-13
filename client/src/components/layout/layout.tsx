@@ -1,5 +1,5 @@
 import { useState, useEffect, ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import Sidebar from './Sidebar';
 import TopBar from './TopAppBar';
 import { cn } from '@/lib/utils';
@@ -24,11 +24,11 @@ const pageConfig = {
 };
 
 export function Layout({ children }: LayoutProps) {
-  const location = useLocation();
+  const [location] = useLocation();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  const currentPageConfig = pageConfig[location.pathname as keyof typeof pageConfig] || {
+  const currentPageConfig = pageConfig[location as keyof typeof pageConfig] || {
     title: 'BuildProcure AI',
     subtitle: undefined
   };
@@ -36,7 +36,7 @@ export function Layout({ children }: LayoutProps) {
   // Close mobile nav when route changes
   useEffect(() => {
     setIsMobileNavOpen(false);
-  }, [location.pathname]);
+  }, [location]);
 
   // Close mobile nav when clicking outside
   useEffect(() => {
