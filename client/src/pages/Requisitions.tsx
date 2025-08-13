@@ -162,7 +162,7 @@ export default function Requisitions() {
                   <TableRow key={requisition.id} className="cursor-pointer hover:bg-muted/50" data-testid={`requisition-row-${requisition.id}`}>
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">
-                        {getStatusIcon(requisition.status)}
+                        {getStatusIcon(requisition.status || '')}
                         <span data-testid={`requisition-number-${requisition.id}`}>{requisition.number}</span>
                       </div>
                     </TableCell>
@@ -183,7 +183,7 @@ export default function Requisitions() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       <span data-testid={`requisition-created-${requisition.id}`}>
-                        {formatDistanceToNow(new Date(requisition.createdAt), { addSuffix: true })}
+                        {requisition.createdAt ? formatDistanceToNow(new Date(requisition.createdAt), { addSuffix: true }) : 'N/A'}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
