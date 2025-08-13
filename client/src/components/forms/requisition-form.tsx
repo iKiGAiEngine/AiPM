@@ -164,8 +164,8 @@ export function RequisitionForm({ onSuccess }: RequisitionFormProps) {
                       <SelectContent>
                         {projectsLoading ? (
                           <SelectItem value="loading">Loading projects...</SelectItem>
-                        ) : projects?.length > 0 ? (
-                          projects.map((project: Project) => (
+                        ) : (projects as any)?.length > 0 ? (
+                          (projects as any).map((project: any) => (
                             <SelectItem key={project.id} value={project.id}>
                               {project.name}
                             </SelectItem>
@@ -194,7 +194,7 @@ export function RequisitionForm({ onSuccess }: RequisitionFormProps) {
                       </FormControl>
                       <SelectContent>
                         {zones?.zones?.length > 0 ? (
-                          zones.zones.map((zone: ProjectZone) => (
+                          zones.zones.map((zone: any) => (
                             <SelectItem key={zone.id} value={zone.id}>
                               {zone.name}
                             </SelectItem>

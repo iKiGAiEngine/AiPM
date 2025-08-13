@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { RFQForm } from "@/components/forms/rfq-form";
+// import { RFQForm } from "@/components/forms/rfq-form";
 
 export default function NewRFQ() {
   const [, setLocation] = useLocation();
@@ -36,7 +36,9 @@ export default function NewRFQ() {
           <CardTitle>RFQ Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <RFQForm onSuccess={handleSuccess} />
+          <div className="p-6 bg-muted/50 rounded-lg text-center">
+            <p>RFQ form temporarily disabled for navigation debugging</p>
+          </div>
         </CardContent>
       </Card>
     </div>

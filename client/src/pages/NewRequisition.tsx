@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import RequisitionForm from "@/components/forms/RequisitionForm";
+// import RequisitionForm from "@/components/forms/RequisitionForm";
 
 export default function NewRequisition() {
   return (
@@ -20,8 +20,10 @@ export default function NewRequisition() {
         </div>
       </div>
 
-      {/* Form */}
-      <RequisitionForm />
+      {/* Form - Temporarily disabled for navigation debugging */}
+      <div className="p-6 bg-muted/50 rounded-lg text-center">
+        <p>Requisition form temporarily disabled for navigation debugging</p>
+      </div>
     </div>
   );
 }
