@@ -65,7 +65,7 @@ export default function InvoiceDetail() {
           <CardContent className="p-6">
             <div className="text-center">
               <p className="text-destructive">Invoice not found</p>
-              <Button onClick={() => navigate("/invoices")} className="mt-4">
+              <Button onClick={() => setLocation("/invoices")} className="mt-4">
                 Back to Invoices
               </Button>
             </div>
@@ -85,12 +85,12 @@ export default function InvoiceDetail() {
 
   const handleApprove = () => {
     console.log(`Approving invoice ${invoice.id}`);
-    navigate("/invoices");
+    setLocation("/invoices");
   };
 
   const handleReject = () => {
     console.log(`Rejecting invoice ${invoice.id}`);
-    navigate("/invoices");
+    setLocation("/invoices");
   };
 
   return (
@@ -100,7 +100,7 @@ export default function InvoiceDetail() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate("/invoices")}
+          onClick={() => setLocation("/invoices")}
           data-testid="button-back-to-invoices"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
