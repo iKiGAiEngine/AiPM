@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, MapPin, Camera, Plus, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, MapPin, Camera, Plus, Trash2, Package, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const requisitionSchema = z.object({
@@ -54,6 +55,10 @@ export default function RequisitionForm() {
   const { toast } = useToast();
   const [attachments, setAttachments] = useState<File[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
+  const [materialSearch, setMaterialSearch] = useState("");
+  const [selectedScopeType, setSelectedScopeType] = useState<string>("all");
+  const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set());
+  const [materialQuantities, setMaterialQuantities] = useState<Record<string, number>>({});
 
   // Fetch real projects from API
   const { data: projects = [] } = useQuery<Project[]>({
@@ -84,6 +89,35 @@ export default function RequisitionForm() {
     },
     enabled: !!selectedProject,
   });
+
+  // Get unique scope types for filtering
+  const scopeTypes = useMemo(() => {
+    const types = Array.from(new Set(projectMaterials
+      .map(m => m.category)
+      .filter(Boolean)
+    )).sort();
+    return types;
+  }, [projectMaterials]);
+
+  // Filter materials based on search and scope type
+  const filteredMaterials = useMemo(() => {
+    let filtered = projectMaterials;
+    
+    if (materialSearch) {
+      const searchLower = materialSearch.toLowerCase();
+      filtered = filtered.filter(material => 
+        material.description?.toLowerCase().includes(searchLower) ||
+        material.model?.toLowerCase().includes(searchLower) ||
+        material.category?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    if (selectedScopeType !== "all") {
+      filtered = filtered.filter(material => material.category === selectedScopeType);
+    }
+    
+    return filtered;
+  }, [projectMaterials, materialSearch, selectedScopeType]);
 
   const form = useForm<RequisitionFormData>({
     resolver: zodResolver(requisitionSchema),
@@ -155,8 +189,79 @@ export default function RequisitionForm() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Material selection helpers
+  const toggleMaterialSelection = (materialId: string) => {
+    setSelectedMaterials(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(materialId)) {
+        newSelection.delete(materialId);
+        // Remove quantity when deselected
+        setMaterialQuantities(prevQty => {
+          const newQty = { ...prevQty };
+          delete newQty[materialId];
+          return newQty;
+        });
+      } else {
+        newSelection.add(materialId);
+        // Set default quantity when selected
+        setMaterialQuantities(prevQty => ({
+          ...prevQty,
+          [materialId]: 1
+        }));
+      }
+      return newSelection;
+    });
+  };
+
+  const selectAllMaterials = () => {
+    const allMaterialIds = new Set(filteredMaterials.map(m => m.id));
+    setSelectedMaterials(allMaterialIds);
+    const quantities: Record<string, number> = {};
+    filteredMaterials.forEach(material => {
+      quantities[material.id] = 1;
+    });
+    setMaterialQuantities(quantities);
+  };
+
+  const deselectAllMaterials = () => {
+    setSelectedMaterials(new Set());
+    setMaterialQuantities({});
+  };
+
+  const updateMaterialQuantity = (materialId: string, quantity: number) => {
+    setMaterialQuantities(prev => ({
+      ...prev,
+      [materialId]: Math.max(0.01, quantity)
+    }));
+  };
+
+  const addSelectedMaterials = () => {
+    const selectedMaterialsData = filteredMaterials.filter(m => selectedMaterials.has(m.id));
+    
+    selectedMaterialsData.forEach(material => {
+      const quantity = materialQuantities[material.id] || 1;
+      const newLine = {
+        materialId: material.id,
+        description: material.description || '',
+        quantity: quantity,
+        unit: material.unit || 'Each',
+        estimatedCost: (parseFloat(material.unitPrice || '0') || 0) * quantity,
+        notes: ''
+      };
+      append(newLine);
+    });
+
+    toast({
+      title: "Materials Added",
+      description: `${selectedMaterialsData.length} materials added to requisition`,
+    });
+
+    // Clear selections
+    deselectAllMaterials();
+  };
+
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 pb-20 min-h-screen">
+    <div className="w-full max-w-7xl mx-auto px-4 pb-20 min-h-screen">
       <Card className="border-0 sm:border shadow-none sm:shadow-sm">
         <CardHeader className="px-2 sm:px-6 pb-4 sticky top-0 bg-background/95 backdrop-blur-sm border-b z-10">
           <div>
@@ -236,57 +341,162 @@ export default function RequisitionForm() {
 
           {/* Available Materials */}
           <div className="space-y-3">
-            <Label className="text-base font-medium">Available Project Materials ({projectMaterials.length})</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">Available Project Materials ({filteredMaterials.length})</Label>
+              {selectedProject && projectMaterials.length > 0 && (
+                <div className="flex items-center gap-2">
+                  {selectedMaterials.size > 0 && (
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      onClick={addSelectedMaterials}
+                      className="text-sm"
+                      data-testid="button-add-selected"
+                    >
+                      <Package className="w-4 h-4 mr-1" />
+                      Add Selected ({selectedMaterials.size})
+                    </Button>
+                  )}
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={selectedMaterials.size > 0 ? deselectAllMaterials : selectAllMaterials}
+                    className="text-sm"
+                    data-testid="button-toggle-all"
+                  >
+                    {selectedMaterials.size > 0 ? 'Deselect All' : 'Select All'}
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {selectedProject ? (
               projectMaterials.length > 0 ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-2 bg-background material-list">
-                  {projectMaterials.map((material) => (
-                    <div 
-                      key={material.id} 
-                      className="flex items-center gap-3 p-3 border border-border rounded-lg bg-card hover:bg-muted/30 active:bg-muted/60 transition-all duration-150 touch-manipulation"
-                      data-testid={`material-card-${material.id}`}
-                    >
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="text-sm font-medium leading-tight text-foreground">{material.description}</div>
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-md">
-                            ${parseFloat(material.unitPrice || '0').toFixed(2)} / {material.unit || 'Each'}
-                          </span>
-                          {material.category && (
-                            <Badge variant="secondary" className="text-xs">
-                              {material.category}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button 
-                        type="button" 
-                        size="sm" 
-                        variant="default"
-                        className="shrink-0 h-12 px-4 text-sm font-medium min-w-[60px] active:scale-95 transform transition-transform"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const newLine = {
-                            materialId: material.id,
-                            description: material.description || '',
-                            quantity: 1,
-                            unit: material.unit || 'Each',
-                            estimatedCost: parseFloat(material.unitPrice || '0') || 0,
-                            notes: ''
-                          };
-                          append(newLine);
-                          toast({
-                            title: "Material Added",
-                            description: `${material.description} added to requisition`,
-                          });
-                        }}
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add
-                      </Button>
+                <div className="space-y-3">
+                  {/* Search and Filter Controls */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        placeholder="Search materials..."
+                        value={materialSearch}
+                        onChange={(e) => setMaterialSearch(e.target.value)}
+                        className="pl-10"
+                        data-testid="input-material-search"
+                      />
                     </div>
-                  ))}
+                    <div className="min-w-[200px]">
+                      <Select value={selectedScopeType} onValueChange={setSelectedScopeType}>
+                        <SelectTrigger data-testid="select-scope-type">
+                          <Filter className="w-4 h-4 mr-2" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Scope Types</SelectItem>
+                          {scopeTypes.map((type) => (
+                            <SelectItem key={type} value={type || ""}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Materials List */}
+                  <div className="border rounded-lg bg-background">
+                    <div className="max-h-96 overflow-y-auto">
+                      {filteredMaterials.length > 0 ? (
+                        <div className="divide-y divide-border">
+                          {filteredMaterials.map((material) => (
+                            <div 
+                              key={material.id} 
+                              className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors"
+                              data-testid={`material-row-${material.id}`}
+                            >
+                              <Checkbox
+                                checked={selectedMaterials.has(material.id)}
+                                onCheckedChange={() => toggleMaterialSelection(material.id)}
+                                data-testid={`checkbox-material-${material.id}`}
+                              />
+                              
+                              <div className="flex-1 min-w-0 grid grid-cols-1 lg:grid-cols-3 gap-2">
+                                <div className="lg:col-span-2">
+                                  <div className="font-medium text-sm truncate">{material.description}</div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    {material.model && (
+                                      <span className="font-mono bg-muted px-1.5 py-0.5 rounded">
+                                        {material.model}
+                                      </span>
+                                    )}
+                                    {material.category && (
+                                      <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                                        {material.category}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between lg:justify-end gap-2">
+                                  <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                    ${parseFloat(material.unitPrice || '0').toFixed(2)} / {material.unit || 'Each'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {selectedMaterials.has(material.id) && (
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-xs text-muted-foreground">Qty:</Label>
+                                  <Input
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    value={materialQuantities[material.id] || 1}
+                                    onChange={(e) => updateMaterialQuantity(material.id, parseFloat(e.target.value))}
+                                    className="w-20 h-8 text-sm"
+                                    data-testid={`input-qty-${material.id}`}
+                                  />
+                                </div>
+                              )}
+
+                              <Button 
+                                type="button" 
+                                size="sm" 
+                                variant="outline"
+                                className="shrink-0 h-8 px-3 text-xs"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const quantity = materialQuantities[material.id] || 1;
+                                  const newLine = {
+                                    materialId: material.id,
+                                    description: material.description || '',
+                                    quantity: quantity,
+                                    unit: material.unit || 'Each',
+                                    estimatedCost: (parseFloat(material.unitPrice || '0') || 0) * quantity,
+                                    notes: ''
+                                  };
+                                  append(newLine);
+                                  toast({
+                                    title: "Material Added",
+                                    description: `${material.description} added to requisition`,
+                                  });
+                                }}
+                                data-testid={`button-add-${material.id}`}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Add
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground p-6 text-center">
+                          No materials match your search criteria
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground p-6 border border-dashed rounded-lg text-center">
@@ -304,93 +514,176 @@ export default function RequisitionForm() {
           {/* Line Items */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-foreground">Material Line Items</h4>
+              <h4 className="font-medium text-foreground">Material Line Items ({fields.length})</h4>
               <Button type="button" variant="outline" size="sm" onClick={addLineItem} data-testid="button-add-line">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Item
               </Button>
             </div>
             
-            {fields.map((field, index) => (
-              <div key={field.id} className="p-4 border border-border rounded-lg space-y-4 bg-card">
-                <div className="flex items-center justify-between">
-                  <h5 className="font-medium text-sm">Item #{index + 1}</h5>
-                  {fields.length > 1 && (
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => removeLineItem(index)}
-                      className="text-destructive hover:text-destructive"
-                      data-testid={`button-remove-line-${index}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Description *</Label>
-                    <Input
-                      {...form.register(`lines.${index}.description`)}
-                      placeholder="Item description"
-                      data-testid={`input-line-description-${index}`}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>Quantity *</Label>
-                      <Input
-                        {...form.register(`lines.${index}.quantity`, { valueAsNumber: true })}
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        data-testid={`input-line-quantity-${index}`}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Unit *</Label>
-                      <Select onValueChange={(value) => form.setValue(`lines.${index}.unit`, value)}>
-                        <SelectTrigger data-testid={`select-line-unit-${index}`}>
-                          <SelectValue placeholder="Unit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mockUnits.map((unit) => (
-                            <SelectItem key={unit} value={unit}>
-                              {unit}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+            {fields.length > 0 ? (
+              <div className="border rounded-lg bg-background">
+                {/* Header Row for Desktop */}
+                <div className="hidden lg:grid lg:grid-cols-12 gap-3 p-3 border-b bg-muted/30 text-sm font-medium text-muted-foreground">
+                  <div className="col-span-4">Description</div>
+                  <div className="col-span-1 text-center">Qty</div>
+                  <div className="col-span-1 text-center">Unit</div>
+                  <div className="col-span-2 text-center">Est. Cost</div>
+                  <div className="col-span-3">Notes</div>
+                  <div className="col-span-1 text-center">Actions</div>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Estimated Cost</Label>
-                    <Input
-                      {...form.register(`lines.${index}.estimatedCost`, { valueAsNumber: true })}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      data-testid={`input-line-cost-${index}`}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Notes</Label>
-                    <Input
-                      {...form.register(`lines.${index}.notes`)}
-                      placeholder="Special instructions or notes"
-                      data-testid={`input-line-notes-${index}`}
-                    />
-                  </div>
+                <div className="divide-y divide-border">
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="p-3" data-testid={`line-item-${index}`}>
+                      {/* Mobile Layout */}
+                      <div className="lg:hidden space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-muted-foreground">Item #{index + 1}</span>
+                          {fields.length > 1 && (
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => removeLineItem(index)}
+                              className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                              data-testid={`button-remove-line-${index}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Input
+                            {...form.register(`lines.${index}.description`)}
+                            placeholder="Item description"
+                            data-testid={`input-line-description-${index}`}
+                          />
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              {...form.register(`lines.${index}.quantity`, { valueAsNumber: true })}
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              placeholder="Quantity"
+                              data-testid={`input-line-quantity-${index}`}
+                            />
+                            <Select onValueChange={(value) => form.setValue(`lines.${index}.unit`, value)}>
+                              <SelectTrigger data-testid={`select-line-unit-${index}`}>
+                                <SelectValue placeholder="Unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {mockUnits.map((unit) => (
+                                  <SelectItem key={unit} value={unit}>
+                                    {unit}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              {...form.register(`lines.${index}.estimatedCost`, { valueAsNumber: true })}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="Cost ($)"
+                              data-testid={`input-line-cost-${index}`}
+                            />
+                            <Input
+                              {...form.register(`lines.${index}.notes`)}
+                              placeholder="Notes"
+                              data-testid={`input-line-notes-${index}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Desktop Layout - Single Row */}
+                      <div className="hidden lg:grid lg:grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4">
+                          <Input
+                            {...form.register(`lines.${index}.description`)}
+                            placeholder="Item description"
+                            className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
+                            data-testid={`input-line-description-${index}`}
+                          />
+                        </div>
+                        
+                        <div className="col-span-1">
+                          <Input
+                            {...form.register(`lines.${index}.quantity`, { valueAsNumber: true })}
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            className="text-center border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
+                            data-testid={`input-line-quantity-${index}`}
+                          />
+                        </div>
+                        
+                        <div className="col-span-1">
+                          <Select onValueChange={(value) => form.setValue(`lines.${index}.unit`, value)}>
+                            <SelectTrigger className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0" data-testid={`select-line-unit-${index}`}>
+                              <SelectValue placeholder="Unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {mockUnits.map((unit) => (
+                                <SelectItem key={unit} value={unit}>
+                                  {unit}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="col-span-2">
+                          <Input
+                            {...form.register(`lines.${index}.estimatedCost`, { valueAsNumber: true })}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
+                            data-testid={`input-line-cost-${index}`}
+                          />
+                        </div>
+                        
+                        <div className="col-span-3">
+                          <Input
+                            {...form.register(`lines.${index}.notes`)}
+                            placeholder="Special instructions or notes"
+                            className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
+                            data-testid={`input-line-notes-${index}`}
+                          />
+                        </div>
+                        
+                        <div className="col-span-1 text-center">
+                          {fields.length > 1 && (
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => removeLineItem(index)}
+                              className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                              data-testid={`button-remove-line-${index}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-
-
               </div>
-            ))}
+            ) : (
+              <div className="text-sm text-muted-foreground p-6 border border-dashed rounded-lg text-center">
+                No line items added yet. Add materials from the Available Project Materials section above.
+              </div>
+            )}
           </div>
 
           {/* Photo Attachments */}
