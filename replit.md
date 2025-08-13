@@ -3,20 +3,17 @@
 This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract estimates, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
 ## Recent Updates (August 13, 2025)
-- **CRITICAL FIX - Navigation System Completely Rebuilt**: Completely replaced mixed wouter/react-router system causing navigation freezing with unified React Router v6 architecture
-- **Routing Architecture Overhaul**: Eliminated all wouter imports and standardized on react-router-dom v6 with proper BrowserRouter, Routes, Route syntax
-- **Navigation Performance Resolved**: Fixed "Cannot update component while rendering" errors and navigation freezing by using useNavigate instead of setState during render
-- **Component-Wide Migration**: Updated 25+ components from wouter to react-router-dom including Sidebar, MobileNav, all page components, and dashboard QuickActions
-- **REQUISITION SUBMISSION SYSTEM COMPLETED**: Successfully implemented comprehensive form validation and data handling for requisition submissions
-- **Server-Side Validation**: Added comprehensive Zod validation with user-friendly error messages instead of generic server logs
-- **Date Handling Fixed**: Resolved date validation conflicts between client schema and database schema with proper ISO string conversion
-- **Database Constraint Resolution**: Fixed foreign key constraint violations by handling materialId references properly
-- **Enhanced Error Handling**: Clear validation messages returned to users with specific field-level feedback
+- **MATERIAL DEPLETION SYSTEM IMPLEMENTED**: Successfully created sophisticated material tracking that prevents repopulation of used materials across requisitions
+- **Available Materials Endpoint**: New API endpoint `/api/projects/{id}/materials?available=true` returns only materials with remaining quantities after deducting usage from submitted requisitions
+- **Real-time Material Tracking**: System calculates used quantities from submitted requisitions and shows only available amounts for new requisitions
+- **Requisition View Page FIXED**: Created complete RequisitionView page with individual requisition details, line items, and proper routing - eye icon now works!
+- **Individual Requisition API**: Added `/api/requisitions/{id}` and `/api/requisitions/{id}/lines` endpoints for detailed requisition viewing
+- **Procurement Workflow Documentation**: Created comprehensive PROCUREMENT_WORKFLOW.md explaining the complete material lifecycle from requisition to payment
+- **Navigation System Completely Rebuilt**: Completely replaced mixed wouter/react-router system causing navigation freezing with unified React Router v6 architecture
+- **REQUISITION SUBMISSION SYSTEM COMPLETED**: Successfully implemented comprehensive form validation and data handling for requisition submissions with proper material depletion
 - **Enhanced PO Creation Workflow**: Implemented advanced purchase order creation with project material integration
 - **Material Type/Scope Filtering**: Added filtering by Material Type and Scope of Work for uploaded project materials
-- **Bulk Material Selection**: Users can now select multiple materials with checkboxes and add them to POs in bulk
 - **Project-to-PO Integration**: Complete workflow from Excel material upload → project materials → filtered selection → PO creation
-- **Enhanced UI/UX**: Improved purchase order form with better material browsing and selection capabilities
 
 ## Previous Updates (August 12, 2025)
 - **Excel Import Integration**: Successfully integrated comprehensive Excel import functionality into the Project Creation wizard

@@ -325,6 +325,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Individual requisition routes
+  app.get("/api/requisitions/:id", async (req: AuthenticatedRequest, res) => {
+    try {
+      const requisition = await storage.getRequisition(req.params.id);
+      if (!requisition || requisition.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Requisition not found" });
+      }
+      res.json(requisition);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch requisition" });
+    }
+  });
+
+  app.get("/api/requisitions/:id/lines", async (req: AuthenticatedRequest, res) => {
+    try {
+      // First verify the requisition belongs to the user's organization
+      const requisition = await storage.getRequisition(req.params.id);
+      if (!requisition || requisition.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Requisition not found" });
+      }
+      
+      const lines = await storage.getRequisitionLines(req.params.id);
+      res.json(lines);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch requisition lines" });
+    }
+  });
+
   // Requisition routes
   app.get("/api/requisitions", async (req: AuthenticatedRequest, res) => {
     try {

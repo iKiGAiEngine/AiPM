@@ -8,6 +8,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Requisitions from "@/pages/Requisitions";
 import NewRequisition from "@/pages/NewRequisition";
+import RequisitionView from "@/pages/RequisitionView";
 import RFQs from "@/pages/RFQs";
 import NewRFQ from "@/pages/NewRFQ";
 import PurchaseOrders from "@/pages/PurchaseOrders";
@@ -118,6 +119,11 @@ export default function App() {
               <Route path="/requisitions/new" element={
                 <ProtectedRoute>
                   <NewRequisition />
+                </ProtectedRoute>
+              } />
+              <Route path="/requisitions/:id" element={
+                <ProtectedRoute>
+                  <RequisitionView />
                 </ProtectedRoute>
               } />
               <Route path="/requisitions" element={
