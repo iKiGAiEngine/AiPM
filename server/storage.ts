@@ -485,8 +485,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<any[]> {
     const conditions = [
       eq(projectMaterials.projectId, projectId),
-      eq(projectMaterials.organizationId, organizationId),
-      sql`deleted_at IS NULL`
+      eq(projectMaterials.organizationId, organizationId)
     ];
 
     if (filters?.category) {
@@ -502,7 +501,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(or(
         like(projectMaterials.description, searchTerm),
         like(projectMaterials.model, searchTerm)
-      ));
+      ) as any);
     }
 
     return await db

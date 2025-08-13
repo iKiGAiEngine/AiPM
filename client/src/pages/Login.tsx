@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { authService } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { AlertCircle, Building2 } from "lucide-react";
 
 const loginSchema = z.object({
@@ -22,6 +22,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -38,15 +39,12 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await authService.login(data.email, data.password);
+      await login(data.email, data.password);
       toast({
         title: "Success",
         description: "Logged in successfully",
       });
-      // Give a small delay to ensure auth state is updated
-      setTimeout(() => {
-        navigate("/dashboard", { replace: true });
-      }, 100);
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Login failed";
       setError(errorMessage);
