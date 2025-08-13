@@ -1,8 +1,9 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ArrowLeft, 
   Building, 
@@ -12,7 +13,11 @@ import {
   Tag,
   Eye,
   Edit,
-  Upload
+  Upload,
+  FileSpreadsheet,
+  CheckCircle,
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 import type { Project } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
@@ -23,6 +28,92 @@ const statusColors = {
   completed: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
   cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
 };
+
+interface MaterialImportRun {
+  id: string;
+  sourceFilename: string;
+  status: "pending" | "review" | "approved" | "rejected";
+  rowCount: number;
+  createdAt: string;
+}
+
+function PendingImportsCard({ projectId }: { projectId: string }) {
+  const queryClient = useQueryClient();
+  
+  const { data: imports } = useQuery<MaterialImportRun[]>({
+    queryKey: ['/api/projects', projectId, 'material-imports'],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${projectId}/material-import/runs`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (runId: string) => {
+      const response = await fetch(`/api/material-imports/${runId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to approve import');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/projects', projectId, 'material-imports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects', projectId, 'materials'] });
+    },
+  });
+
+  const pendingImports = imports?.filter(imp => imp.status === 'review') || [];
+  
+  if (pendingImports.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileSpreadsheet className="w-5 h-5" />
+          Pending Material Imports
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {pendingImports.map((importRun) => (
+            <Alert key={importRun.id}>
+              <Clock className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <div>
+                  <strong>{importRun.sourceFilename}</strong> - {importRun.rowCount} materials uploaded
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Uploaded {new Date(importRun.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => approveMutation.mutate(importRun.id)}
+                    disabled={approveMutation.isPending}
+                    data-testid={`button-approve-import-${importRun.id}`}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Approve
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -233,6 +324,9 @@ export default function ProjectDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Material Imports Status */}
+      <PendingImportsCard projectId={project.id} />
 
       {/* Quick Actions */}
       <Card>
