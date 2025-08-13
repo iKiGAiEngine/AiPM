@@ -11,7 +11,7 @@ import {
   type AuthenticatedRequest 
 } from "./middleware/auth";
 import { z } from "zod";
-import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema } from "@shared/schema";
+import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, type InsertProject } from "@shared/schema";
 import { threeWayMatchService } from "./services/three-way-match";
 import { emailService } from "./services/email";
 import { ocrService } from "./services/ocr";
@@ -148,7 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const project = await storage.createProject({
         ...projectData,
         organizationId: req.user!.organizationId
-      });
+      } as InsertProject & { organizationId: string });
       res.status(201).json(project);
     } catch (error) {
       console.error('Project validation error details:', error);
@@ -400,8 +400,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const validationErrors = error.issues.map(issue => ({
           field: issue.path.join('.'),
           message: issue.message,
-          received: issue.received,
-          expected: issue.expected
+          code: issue.code,
+          input: 'input' in issue ? issue.input : undefined
         }));
         
         console.error('Admin validation report:', JSON.stringify(validationErrors, null, 2));

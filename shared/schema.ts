@@ -64,6 +64,7 @@ export const projects = pgTable("projects", {
   projectNumber: text("project_number"),
   client: text("client"),
   address: text("address"),
+  description: text("description"),
   status: projectStatusEnum("status").default('active'),
   budget: numeric("budget", { precision: 12, scale: 2 }),
   contractValue: numeric("contract_value", { precision: 12, scale: 2 }),
@@ -123,6 +124,7 @@ export const materials = pgTable("materials", {
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
   sku: text("sku"), // Made optional since SKU is not required
   description: text("description").notNull(),
+  manufacturer: text("manufacturer"),
   model: text("model"), // Model # field for product model number
   unit: text("unit").notNull(),
   category: text("category"),

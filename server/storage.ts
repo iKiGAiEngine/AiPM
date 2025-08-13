@@ -38,7 +38,7 @@ export interface IStorage {
   getUsersByOrganization(organizationId: string): Promise<User[]>;
   
   // Projects
-  createProject(project: InsertProject): Promise<Project>;
+  createProject(project: InsertProject & { organizationId: string }): Promise<Project>;
   getProject(id: string): Promise<Project | undefined>;
   getProjectsByOrganization(organizationId: string): Promise<Project[]>;
   updateProject(id: string, organizationId: string, data: Partial<Project>): Promise<Project | undefined>;
@@ -170,7 +170,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Projects
-  async createProject(project: InsertProject): Promise<Project> {
+  async createProject(project: InsertProject & { organizationId: string }): Promise<Project> {
     const [newProject] = await db.insert(projects).values(project).returning();
     return newProject;
   }
