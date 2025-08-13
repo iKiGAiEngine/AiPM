@@ -24,7 +24,7 @@ const requisitionSchema = z.object({
   lines: z.array(z.object({
     materialId: z.string().optional(),
     description: z.string().min(1, "Description is required"),
-    quantity: z.number().min(0.01, "Quantity must be greater than 0"),
+    quantity: z.number().min(1, "Quantity must be at least 1"),
     unit: z.string().min(1, "Unit is required"),
     estimatedCost: z.number().optional(),
     notes: z.string().optional(),
@@ -143,9 +143,17 @@ export default function RequisitionForm() {
       // Separate lines from main requisition data
       const { lines, ...requisitionData } = data;
       
+      // Get current user info for required fields
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const currentOrg = JSON.parse(localStorage.getItem('currentOrganization') || '{}');
+      
       // Process and prepare the data for submission
       const processedData = {
         ...requisitionData,
+        // Required fields that were missing
+        organizationId: currentOrg.id,
+        requesterId: currentUser.id,
+        number: `REQ-${Date.now()}`, // Generate a unique requisition number
         // Handle optional date field properly
         targetDeliveryDate: requisitionData.targetDeliveryDate || null,
         // Include optional fields with default values to prevent validation errors
@@ -269,7 +277,7 @@ export default function RequisitionForm() {
 
   const updateMaterialQuantity = (materialId: string, quantity: number) => {
     const maxAvailable = availableQuantities[materialId] || 0;
-    const clampedQuantity = Math.max(0.01, Math.min(quantity, maxAvailable));
+    const clampedQuantity = Math.max(1, Math.min(Math.floor(quantity), Math.floor(maxAvailable)));
     setMaterialQuantities(prev => ({
       ...prev,
       [materialId]: clampedQuantity
@@ -490,7 +498,7 @@ export default function RequisitionForm() {
                                       ${parseFloat(material.unitPrice || '0').toFixed(2)} / {material.unit || 'Each'}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                      Available: {availableQuantities[material.id] || 0}
+                                      Available: {Math.floor(availableQuantities[material.id] || 0)}
                                     </div>
                                   </div>
                                 </div>
@@ -501,11 +509,11 @@ export default function RequisitionForm() {
                                   <Label className="text-xs text-muted-foreground">Qty:</Label>
                                   <Input
                                     type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    max={availableQuantities[material.id] || 0}
-                                    value={materialQuantities[material.id] || 1}
-                                    onChange={(e) => updateMaterialQuantity(material.id, parseFloat(e.target.value))}
+                                    min="1"
+                                    step="1"
+                                    max={Math.floor(availableQuantities[material.id] || 0)}
+                                    value={Math.floor(materialQuantities[material.id] || 1)}
+                                    onChange={(e) => updateMaterialQuantity(material.id, parseInt(e.target.value) || 1)}
                                     className="w-20 h-8 text-sm"
                                     data-testid={`input-qty-${material.id}`}
                                   />
