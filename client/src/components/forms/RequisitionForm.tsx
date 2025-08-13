@@ -227,10 +227,11 @@ export default function RequisitionForm() {
         });
       } else {
         newSelection.add(materialId);
-        // Set default quantity when selected
+        // Set full available quantity when selected
+        const availableQty = availableQuantities[materialId] || 0;
         setMaterialQuantities(prevQty => ({
           ...prevQty,
-          [materialId]: 1
+          [materialId]: availableQty > 0 ? availableQty : 1
         }));
       }
       return newSelection;
@@ -242,7 +243,8 @@ export default function RequisitionForm() {
     setSelectedMaterials(allMaterialIds);
     const quantities: Record<string, number> = {};
     filteredMaterials.forEach(material => {
-      quantities[material.id] = 1;
+      const availableQty = availableQuantities[material.id] || 0;
+      quantities[material.id] = availableQty > 0 ? availableQty : 1;
     });
     setMaterialQuantities(quantities);
   };
