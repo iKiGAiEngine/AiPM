@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { Save, Plus, Trash2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,7 @@ type PurchaseOrderFormData = z.infer<typeof purchaseOrderSchema>;
 type POLine = z.infer<typeof poLineSchema>;
 
 export default function PurchaseOrderForm() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [lines, setLines] = useState<POLine[]>([
     { description: "", quantity: 1, unitPrice: 0, unit: "EA" }
@@ -110,7 +110,7 @@ export default function PurchaseOrderForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
-      setLocation("/purchase-orders");
+      navigate("/purchase-orders");
     },
   });
 

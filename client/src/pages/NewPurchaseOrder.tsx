@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import PurchaseOrderForm from "@/components/forms/PurchaseOrderForm";
 
 export default function NewPurchaseOrder() {

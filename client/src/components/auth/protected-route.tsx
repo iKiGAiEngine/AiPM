@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Redirect } from 'wouter';
+import { Navigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProtectedRouteProps {
@@ -31,7 +31,7 @@ export function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
-    return <Redirect to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (requiredRole && !hasRole(requiredRole)) {

@@ -1,4 +1,4 @@
-import { useParams, useLocation } from "wouter";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { ProjectMaterialsStep } from "@/components/forms/ProjectMaterialsStep";
 
 export default function ProjectMaterialUpload() {
   const { id } = useParams<{ id: string }>();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
 
   const { data: project, isLoading, error } = useQuery<Project>({
     queryKey: ['/api/projects', id],

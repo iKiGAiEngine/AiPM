@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { Search, FileText, Building, Package, ShoppingCart, Clock } from 'lucide-react';
 import type { SearchResult } from '@/types';
 
@@ -22,7 +22,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     { type: 'vendor', id: '3', title: 'Bobrick Hardware', subtitle: 'Vendor • 96% on-time delivery' },
   ]);
   const { currentOrganization } = useAuth();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
 
   const { data: searchResults, isLoading } = useQuery({
     queryKey: [`/api/${currentOrganization?.id}/search`, query],
@@ -60,7 +60,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   };
 
   const handleResultClick = (result: SearchResult) => {
-    setLocation(getRoute(result));
+    navigate(getRoute(result));
     onClose();
     setQuery('');
   };

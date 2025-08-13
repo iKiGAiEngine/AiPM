@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -93,7 +93,8 @@ const navigation = [
 ];
 
 export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
-  const [location, setLocation] = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const canAccess = (roles: string[]) => {
@@ -101,17 +102,17 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
   };
 
   const isActive = (href: string) => {
-    return location === href;
+    return location.pathname === href;
   };
 
   const handleNavigation = (href: string) => {
     // Don't navigate if already on the target page
-    if (location === href) {
+    if (location.pathname === href) {
       onClose();
       return;
     }
     
-    setLocation(href);
+    navigate(href);
     onClose();
   };
 

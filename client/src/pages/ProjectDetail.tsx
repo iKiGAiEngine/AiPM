@@ -187,7 +187,7 @@ export default function ProjectDetail() {
           <CardContent className="p-6 text-center">
             <h2 className="text-lg font-semibold mb-2">Project Not Found</h2>
             <p className="text-muted-foreground mb-4">The project you're looking for doesn't exist or you don't have permission to view it.</p>
-            <Button onClick={() => setLocation("/projects")}>
+            <Button onClick={() => navigate("/projects")}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Projects
             </Button>
@@ -204,7 +204,7 @@ export default function ProjectDetail() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setLocation("/projects")}
+          onClick={() => navigate("/projects")}
           data-testid="button-back-to-projects"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -363,7 +363,7 @@ export default function ProjectDetail() {
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-center space-y-2"
-              onClick={() => setLocation(`/requisitions?projectId=${project.id}`)}
+              onClick={() => navigate(`/requisitions?projectId=${project.id}`)}
               data-testid="button-view-requisitions"
             >
               <Eye className="w-6 h-6" />
@@ -372,7 +372,7 @@ export default function ProjectDetail() {
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-center space-y-2"
-              onClick={() => setLocation(`/rfqs?projectId=${project.id}`)}
+              onClick={() => navigate(`/rfqs?projectId=${project.id}`)}
               data-testid="button-view-rfqs"
             >
               <Building className="w-6 h-6" />
@@ -381,7 +381,7 @@ export default function ProjectDetail() {
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-center space-y-2"
-              onClick={() => setLocation(`/purchase-orders?projectId=${project.id}`)}
+              onClick={() => navigate(`/purchase-orders?projectId=${project.id}`)}
               data-testid="button-view-purchase-orders"
             >
               <DollarSign className="w-6 h-6" />
@@ -390,7 +390,7 @@ export default function ProjectDetail() {
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-center space-y-2"
-              onClick={() => setLocation(`/deliveries?projectId=${project.id}`)}
+              onClick={() => navigate(`/deliveries?projectId=${project.id}`)}
               data-testid="button-view-deliveries"
             >
               <Calendar className="w-6 h-6" />
@@ -399,7 +399,7 @@ export default function ProjectDetail() {
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-center space-y-2"
-              onClick={() => setLocation(`/projects/${project.id}/materials/upload`)}
+              onClick={() => navigate(`/projects/${project.id}/materials/upload`)}
               data-testid="button-upload-materials"
             >
               <Upload className="w-6 h-6" />
