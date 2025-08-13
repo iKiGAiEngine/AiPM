@@ -4,7 +4,7 @@ import QuickActions from "@/components/dashboard/QuickActions";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import BudgetOverview from "@/components/dashboard/BudgetOverview";
 import VendorPerformance from "@/components/dashboard/VendorPerformance";
-import RequisitionForm from "@/components/forms/RequisitionForm";
+
 import QuoteAnalysisMatrix from "@/components/quotes/QuoteAnalysisMatrix";
 import InvoiceProcessing from "@/components/invoices/InvoiceProcessing";
 
@@ -29,9 +29,6 @@ export default function Dashboard() {
         <BudgetOverview />
         <VendorPerformance />
       </div>
-
-      {/* Mobile-First Requisition Form (Demo) */}
-      <RequisitionForm />
 
       {/* Quote Analysis Matrix (Demo) */}
       <QuoteAnalysisMatrix />

@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { Plus, Trash2, MapPin, Calendar, Package } from 'lucide-react';
-import type { Project, ProjectZone, Material } from '@/types';
+import type { Project, Material } from '@/types';
 
 const requisitionLineSchema = z.object({
   materialId: z.string().optional(),
@@ -42,7 +42,7 @@ interface RequisitionFormProps {
 }
 
 export function RequisitionForm({ onSuccess }: RequisitionFormProps) {
-  const { currentOrganization } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [materialSearch, setMaterialSearch] = useState('');
