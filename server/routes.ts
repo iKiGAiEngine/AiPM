@@ -530,21 +530,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rfqBody.bidDueDate = new Date(rfqBody.bidDueDate);
       }
       
-      const rfqData = insertRfqSchema.parse({
-        ...rfqBody,
-        organizationId: req.user!.organizationId,
-        createdById: req.user!.id
-      });
-      
       // Generate RFQ number
       const year = new Date().getFullYear();
       const count = (await storage.getRFQsByOrganization(req.user!.organizationId)).length + 1;
       const number = `RFQ-${year}-${count.toString().padStart(3, '0')}`;
       
-      const rfq = await storage.createRFQ({
-        ...rfqData,
+      const rfqData = insertRfqSchema.parse({
+        ...rfqBody,
+        organizationId: req.user!.organizationId,
+        createdById: req.user!.id,
         number
       });
+      
+      const rfq = await storage.createRFQ(rfqData);
 
       // Create RFQ lines if provided
       if (lines && Array.isArray(lines)) {
