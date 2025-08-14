@@ -132,12 +132,12 @@ export default function Requisitions() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Requisitions</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Requisitions</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Manage material requests and approvals
             {canApprove && (() => {
               const pendingApproval = requisitions.filter(r => r.status === 'submitted').length;
@@ -145,7 +145,7 @@ export default function Requisitions() {
             })()}
           </p>
         </div>
-        <Button asChild data-testid="button-new-requisition">
+        <Button asChild data-testid="button-new-requisition" className="w-full sm:w-auto">
           <Link to="/requisitions/new">
             <Plus className="w-4 h-4 mr-2" />
             New Requisition
@@ -155,8 +155,8 @@ export default function Requisitions() {
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
+        <CardHeader className="pb-3 sm:pb-6">
+          <CardTitle className="text-base sm:text-lg">Filters</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
@@ -203,105 +203,210 @@ export default function Requisitions() {
               </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Requisition</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Zone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Requisition</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Zone</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRequisitions.map((requisition) => (
+                      <TableRow key={requisition.id} className="cursor-pointer hover:bg-muted/50" data-testid={`requisition-row-${requisition.id}`}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center space-x-2">
+                            {getStatusIcon(requisition.status || '')}
+                            <span data-testid={`requisition-number-${requisition.id}`}>{requisition.number}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-xs truncate" data-testid={`requisition-title-${requisition.id}`}>
+                            {requisition.title}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground" data-testid={`requisition-zone-${requisition.id}`}>
+                            {requisition.zone || 'N/A'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[requisition.status as keyof typeof statusColors]} data-testid={`requisition-status-${requisition.id}`}>
+                            {requisition.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          <span data-testid={`requisition-created-${requisition.id}`}>
+                            {requisition.createdAt ? formatDistanceToNow(new Date(requisition.createdAt), { addSuffix: true }) : 'N/A'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" asChild data-testid={`button-view-requisition-${requisition.id}`}>
+                              <Link to={`/requisitions/${requisition.id}`}>
+                                <Eye className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                            
+                            {/* Approval Actions - only show for submitted requisitions */}
+                            {canApprove && requisition.status === 'submitted' && (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleApprove(requisition)}
+                                  disabled={updateStatusMutation.isPending}
+                                  data-testid={`button-approve-requisition-${requisition.id}`}
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleReject(requisition)}
+                                  disabled={updateStatusMutation.isPending}
+                                  data-testid={`button-reject-requisition-${requisition.id}`}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            
+                            {/* Buyout Creation - only show for approved requisitions */}
+                            {requisition.status === 'approved' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                asChild 
+                                data-testid={`button-create-buyout-${requisition.id}`}
+                              >
+                                <Link 
+                                  to={`/buyout/new?requisitionId=${requisition.id}`}
+                                  onClick={(e) => {
+                                    console.log('Create Buyout clicked for requisition:', requisition.id);
+                                    console.log('Navigating to:', `/buyout/new?requisitionId=${requisition.id}`);
+                                  }}
+                                >
+                                  Create Buyout
+                                </Link>
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3 p-3">
                 {filteredRequisitions.map((requisition) => (
-                  <TableRow key={requisition.id} className="cursor-pointer hover:bg-muted/50" data-testid={`requisition-row-${requisition.id}`}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(requisition.status || '')}
-                        <span data-testid={`requisition-number-${requisition.id}`}>{requisition.number}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-xs truncate" data-testid={`requisition-title-${requisition.id}`}>
-                        {requisition.title}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground" data-testid={`requisition-zone-${requisition.id}`}>
-                        {requisition.zone || 'N/A'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[requisition.status as keyof typeof statusColors]} data-testid={`requisition-status-${requisition.id}`}>
-                        {requisition.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <span data-testid={`requisition-created-${requisition.id}`}>
-                        {requisition.createdAt ? formatDistanceToNow(new Date(requisition.createdAt), { addSuffix: true }) : 'N/A'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" asChild data-testid={`button-view-requisition-${requisition.id}`}>
-                          <Link to={`/requisitions/${requisition.id}`}>
-                            <Eye className="w-4 h-4" />
-                          </Link>
-                        </Button>
-                        
-                        {/* Approval Actions - only show for submitted requisitions */}
-                        {canApprove && requisition.status === 'submitted' && (
-                          <>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleApprove(requisition)}
-                              disabled={updateStatusMutation.isPending}
-                              data-testid={`button-approve-requisition-${requisition.id}`}
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleReject(requisition)}
-                              disabled={updateStatusMutation.isPending}
-                              data-testid={`button-reject-requisition-${requisition.id}`}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                        
-                        {/* Buyout Creation - only show for approved requisitions */}
-                        {requisition.status === 'approved' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            asChild 
-                            data-testid={`button-create-buyout-${requisition.id}`}
-                          >
-                            <Link 
-                              to={`/buyout/new?requisitionId=${requisition.id}`}
-                              onClick={(e) => {
-                                console.log('Create Buyout clicked for requisition:', requisition.id);
-                                console.log('Navigating to:', `/buyout/new?requisitionId=${requisition.id}`);
-                              }}
-                            >
-                              Create Buyout
+                  <Card key={requisition.id} className="hover:shadow-md transition-shadow" data-testid={`requisition-card-${requisition.id}`}>
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center space-x-2">
+                            {getStatusIcon(requisition.status || '')}
+                            <span className="font-medium text-sm" data-testid={`requisition-number-${requisition.id}`}>
+                              {requisition.number}
+                            </span>
+                          </div>
+                          <Badge className={statusColors[requisition.status as keyof typeof statusColors]} data-testid={`requisition-status-${requisition.id}`}>
+                            {requisition.status}
+                          </Badge>
+                        </div>
+
+                        {/* Title */}
+                        <div>
+                          <h3 className="font-medium text-foreground line-clamp-2" data-testid={`requisition-title-${requisition.id}`}>
+                            {requisition.title}
+                          </h3>
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span data-testid={`requisition-zone-${requisition.id}`}>
+                            Zone: {requisition.zone || 'N/A'}
+                          </span>
+                          <span data-testid={`requisition-created-${requisition.id}`}>
+                            {requisition.createdAt ? formatDistanceToNow(new Date(requisition.createdAt), { addSuffix: true }) : 'N/A'}
+                          </span>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          <Button variant="outline" size="sm" asChild className="flex-1" data-testid={`button-view-requisition-${requisition.id}`}>
+                            <Link to={`/requisitions/${requisition.id}`}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View
                             </Link>
                           </Button>
-                        )}
+                          
+                          {/* Approval Actions - only show for submitted requisitions */}
+                          {canApprove && requisition.status === 'submitted' && (
+                            <>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleApprove(requisition)}
+                                disabled={updateStatusMutation.isPending}
+                                data-testid={`button-approve-requisition-${requisition.id}`}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <Check className="w-4 h-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleReject(requisition)}
+                                disabled={updateStatusMutation.isPending}
+                                data-testid={`button-reject-requisition-${requisition.id}`}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          
+                          {/* Buyout Creation - only show for approved requisitions */}
+                          {requisition.status === 'approved' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              asChild 
+                              className="flex-1"
+                              data-testid={`button-create-buyout-${requisition.id}`}
+                            >
+                              <Link 
+                                to={`/buyout/new?requisitionId=${requisition.id}`}
+                                onClick={(e) => {
+                                  console.log('Create Buyout clicked for requisition:', requisition.id);
+                                  console.log('Navigating to:', `/buyout/new?requisitionId=${requisition.id}`);
+                                }}
+                              >
+                                Create Buyout
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </CardContent>
+                  </Card>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

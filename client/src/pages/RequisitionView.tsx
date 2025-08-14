@@ -84,28 +84,29 @@ export default function RequisitionView() {
   const totalCost = requisitionLines.reduce((sum, line) => sum + (Number(line.estimatedCost) || 0), 0);
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-3 sm:p-6 max-w-4xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/requisitions">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Requisitions
-          </Link>
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{requisition.number}</h1>
-            <Badge className={statusColors[requisition.status as keyof typeof statusColors]}>
-              {requisition.status}
-            </Badge>
-          </div>
-          <p className="text-muted-foreground">{requisition.title}</p>
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/requisitions">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Back to Requisitions</span>
+              <span className="sm:hidden">Back</span>
+            </Link>
+          </Button>
+          <Badge className={statusColors[requisition.status as keyof typeof statusColors]}>
+            {requisition.status}
+          </Badge>
+        </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{requisition.number}</h1>
+          <p className="text-sm sm:text-base text-muted-foreground line-clamp-2">{requisition.title}</p>
         </div>
       </div>
 
       {/* Requisition Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -113,8 +114,8 @@ export default function RequisitionView() {
               Requisition Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Number</label>
                 <p className="font-medium">{requisition.number}</p>
@@ -185,7 +186,7 @@ export default function RequisitionView() {
       {/* Line Items */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Package className="w-5 h-5" />
             Requested Materials ({requisitionLines.length} items)
           </CardTitle>
@@ -196,42 +197,78 @@ export default function RequisitionView() {
               No line items found for this requisition
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead className="text-right">Est. Cost</TableHead>
-                  <TableHead>Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead className="text-right">Est. Cost</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {requisitionLines.map((line, index) => (
+                      <TableRow key={line.id || index}>
+                        <TableCell className="font-medium">
+                          {line.description}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {line.notes || 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {line.quantity}
+                        </TableCell>
+                        <TableCell>
+                          {line.unit}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {line.estimatedCost ? `$${Number(line.estimatedCost).toFixed(2)}` : 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {line.notes || 'No notes'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3 p-3">
                 {requisitionLines.map((line, index) => (
-                  <TableRow key={line.id || index}>
-                    <TableCell className="font-medium">
-                      {line.description}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {line.notes || 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {line.quantity}
-                    </TableCell>
-                    <TableCell>
-                      {line.unit}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {line.estimatedCost ? `$${Number(line.estimatedCost).toFixed(2)}` : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {line.notes || 'No notes'}
-                    </TableCell>
-                  </TableRow>
+                  <Card key={line.id || index} className="border-l-4 border-l-primary">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-foreground line-clamp-2">{line.description}</h4>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Quantity:</span>
+                            <span className="ml-2 font-medium">{line.quantity} {line.unit}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Est. Cost:</span>
+                            <span className="ml-2 font-medium">
+                              {line.estimatedCost ? `$${Number(line.estimatedCost).toFixed(2)}` : 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                        {line.notes && (
+                          <div className="pt-2 border-t">
+                            <span className="text-xs text-muted-foreground">Notes:</span>
+                            <p className="text-sm mt-1">{line.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
