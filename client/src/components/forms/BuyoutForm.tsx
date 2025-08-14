@@ -137,29 +137,42 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
   // Create RFQ mutation
   const createRFQMutation = useMutation({
     mutationFn: async (data: BuyoutFormData) => {
+      const token = localStorage.getItem('accessToken');
+      console.log('Creating RFQ with data:', data);
+      console.log('Token exists:', !!token);
+      
+      const payload = {
+        projectId: data.projectId,
+        title: data.title,
+        description: data.description || '',
+        bidDueDate: data.bidDueDate.toISOString(),
+        shipToAddress: data.shipToAddress || '',
+        vendorIds: data.selectedVendors,
+        lines: data.lines || [],
+      };
+      
+      console.log('RFQ payload:', payload);
+      
       const response = await fetch('/api/rfqs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          projectId: data.projectId,
-          title: data.title,
-          description: data.description || '',
-          bidDueDate: data.bidDueDate.toISOString(),
-          shipToAddress: data.shipToAddress || '',
-          vendorIds: data.selectedVendors,
-          lines: data.lines || [],
-        }),
+        body: JSON.stringify(payload),
       });
+      
+      console.log('RFQ Response status:', response.status);
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create RFQ');
+        console.error('RFQ creation error:', error);
+        throw new Error(error.error || `Failed to create RFQ: ${response.status}`);
       }
       
-      return response.json();
+      const result = await response.json();
+      console.log('RFQ created successfully:', result);
+      return result;
     },
     onSuccess: (rfq) => {
       queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });

@@ -1,4 +1,5 @@
 import { useSearchParams, Link } from "react-router-dom";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,11 @@ import type { Requisition } from "@shared/schema";
 export default function NewBuyout() {
   const [searchParams] = useSearchParams();
   const requisitionId = searchParams.get('requisitionId');
+
+  // Scroll to top when component loads
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   // Fetch requisition details if creating from a requisition
   const { data: requisition, isLoading } = useQuery<Requisition>({
@@ -38,7 +44,7 @@ export default function NewBuyout() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6" id="buyout-top">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>

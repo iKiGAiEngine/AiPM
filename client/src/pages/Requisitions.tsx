@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ export default function Requisitions() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: requisitions = [], isLoading, error } = useQuery<Requisition[]>({
@@ -285,18 +286,13 @@ export default function Requisitions() {
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                asChild 
+                                onClick={() => {
+                                  console.log('Create Buyout clicked for requisition:', requisition.id);
+                                  navigate(`/buyout/new?requisitionId=${requisition.id}`);
+                                }}
                                 data-testid={`button-create-buyout-${requisition.id}`}
                               >
-                                <Link 
-                                  to={`/buyout/new?requisitionId=${requisition.id}`}
-                                  onClick={(e) => {
-                                    console.log('Create Buyout clicked for requisition:', requisition.id);
-                                    console.log('Navigating to:', `/buyout/new?requisitionId=${requisition.id}`);
-                                  }}
-                                >
-                                  Create Buyout
-                                </Link>
+                                Create Buyout
                               </Button>
                             )}
                           </div>
@@ -385,19 +381,14 @@ export default function Requisitions() {
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              asChild 
+                              onClick={() => {
+                                console.log('Create Buyout clicked for requisition:', requisition.id);
+                                navigate(`/buyout/new?requisitionId=${requisition.id}`);
+                              }}
                               className="flex-1"
                               data-testid={`button-create-buyout-${requisition.id}`}
                             >
-                              <Link 
-                                to={`/buyout/new?requisitionId=${requisition.id}`}
-                                onClick={(e) => {
-                                  console.log('Create Buyout clicked for requisition:', requisition.id);
-                                  console.log('Navigating to:', `/buyout/new?requisitionId=${requisition.id}`);
-                                }}
-                              >
-                                Create Buyout
-                              </Link>
+                              Create Buyout
                             </Button>
                           )}
                         </div>
