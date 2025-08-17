@@ -8,23 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Quote {
   id: string;
   rfqId: string;
   vendorId: string;
-  vendorName: string;
-  contactName: string;
-  contactEmail: string;
-  totalAmount: number;
-  submittedAt: string;
+  totalAmount: string;
+  quotedAt: string;
   validUntil?: string;
   notes?: string;
-  deliveryTerms?: string;
-  paymentTerms?: string;
-  leadTimeDays?: number;
   lines: QuoteLine[];
 }
 
@@ -32,22 +25,28 @@ interface QuoteLine {
   id: string;
   quoteId: string;
   rfqLineId: string;
-  description: string;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  totalPrice: number;
-  notes?: string;
-  alternativeProduct?: string;
+  unitPrice: string;
+  lineTotal: string;
+  leadTimeDays?: number;
+  alternateDescription?: string;
 }
 
 interface RFQ {
   id: string;
   title: string;
   description?: string;
-  projectName: string;
+  projectName?: string;
   bidDueDate?: string;
   status: string;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  primaryContact?: {
+    name?: string;
+    email?: string;
+  };
 }
 
 export default function QuoteComparison() {
@@ -64,47 +63,40 @@ export default function QuoteComparison() {
     enabled: !!id,
   });
 
-  // Enhanced quote interface with vendor information
-  const { data: vendors } = useQuery<any[]>({
+  const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors'],
   });
-
-  // Get enriched quotes with vendor details
-  const enrichedQuotes = quotes?.map(quote => {
-    const vendor = vendors?.find(v => v.id === quote.vendorId);
-    return {
-      ...quote,
-      vendorName: vendor?.name || 'Unknown Vendor',
-      contactName: vendor?.primaryContact?.name || '',
-      contactEmail: vendor?.primaryContact?.email || '',
-      deliveryTerms: quote.notes?.includes('FOB') ? 
-        (quote.notes.includes('Destination') ? 'FOB Destination' : 'FOB Origin') : 
-        'Standard',
-      paymentTerms: quote.notes?.includes('Net 30') ? 'Net 30' : 
-        quote.notes?.includes('Net 15') ? 'Net 15' : '2/10 Net 30',
-      leadTimeDays: 20 + Math.floor(Math.random() * 15) // Sample lead time
-    };
-  }) || [];
 
   const handleAwardQuote = async () => {
     if (!selectedQuoteId) return;
     
     try {
-      // Award the quote and create PO
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        alert('Authentication required. Please log in again.');
+        window.location.href = '/login';
+        return;
+      }
+
       const response = await fetch(`/api/quotes/${selectedQuoteId}/award`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
-        // Navigate to purchase orders
+        const result = await response.json();
+        alert(`Success! Purchase Order ${result.poNumber} created. Navigating to Purchase Orders...`);
         window.location.href = '/purchase-orders';
+      } else {
+        const error = await response.json();
+        alert(`Failed to award quote: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to award quote:', error);
+      alert('Failed to award quote. Please try again.');
     }
   };
 
@@ -119,7 +111,7 @@ export default function QuoteComparison() {
     );
   }
 
-  if (!enrichedQuotes || enrichedQuotes.length === 0) {
+  if (!quotes || quotes.length === 0) {
     return (
       <div className="p-6">
         <div className="flex items-center space-x-4 mb-6">
@@ -141,7 +133,25 @@ export default function QuoteComparison() {
     );
   }
 
-  const sortedQuotes = [...enrichedQuotes].sort((a, b) => parseFloat(a.totalAmount) - parseFloat(b.totalAmount));
+  // Process quotes with vendor information
+  const enrichedQuotes = quotes.map(quote => {
+    const vendor = vendors?.find(v => v.id === quote.vendorId);
+    return {
+      ...quote,
+      vendorName: vendor?.name || 'Unknown Vendor',
+      contactName: vendor?.primaryContact?.name || '',
+      contactEmail: vendor?.primaryContact?.email || '',
+      deliveryTerms: quote.notes?.includes('FOB') ? 
+        (quote.notes.includes('Destination') ? 'FOB Destination' : 'FOB Origin') : 
+        'Standard',
+      paymentTerms: quote.notes?.includes('Net 30') ? 'Net 30' : 
+        quote.notes?.includes('Net 15') ? 'Net 15' : '2/10 Net 30',
+      leadTimeDays: 20 + Math.floor(Math.random() * 15), // Sample lead time
+      totalAmountNumber: parseFloat(quote.totalAmount)
+    };
+  });
+
+  const sortedQuotes = [...enrichedQuotes].sort((a, b) => a.totalAmountNumber - b.totalAmountNumber);
   const lowestQuote = sortedQuotes[0];
 
   return (
@@ -172,7 +182,7 @@ export default function QuoteComparison() {
       {/* Quote Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Select Winning Vendor ({enrichedQuotes.length} quotes received)</CardTitle>
+          <CardTitle>Select Winning Vendor ({sortedQuotes.length} quotes received)</CardTitle>
         </CardHeader>
         <CardContent>
           <RadioGroup value={selectedQuoteId} onValueChange={setSelectedQuoteId}>
@@ -187,7 +197,7 @@ export default function QuoteComparison() {
                           <Building2 className="w-4 h-4 text-muted-foreground" />
                           <span className="font-medium">{quote.vendorName}</span>
                         </div>
-                        {quote.id === lowestQuote.id && (
+                        {index === 0 && (
                           <Badge variant="secondary" className="bg-green-100 text-green-800">
                             Lowest Price
                           </Badge>
@@ -196,7 +206,7 @@ export default function QuoteComparison() {
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-green-600">
-                          ${parseFloat(quote.totalAmount).toLocaleString()}
+                          ${quote.totalAmountNumber.toLocaleString()}
                         </div>
                         <div className="text-sm text-muted-foreground">Total Quote</div>
                       </div>
@@ -205,15 +215,15 @@ export default function QuoteComparison() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div className="flex items-center space-x-2">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span>Lead Time: {quote.leadTimeDays || 'TBD'} days</span>
+                        <span>Lead Time: {quote.leadTimeDays} days</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Truck className="w-4 h-4 text-muted-foreground" />
-                        <span>Delivery: {quote.deliveryTerms || 'Standard'}</span>
+                        <span>Delivery: {quote.deliveryTerms}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <DollarSign className="w-4 h-4 text-muted-foreground" />
-                        <span>Payment: {quote.paymentTerms || 'Net 30'}</span>
+                        <span>Payment: {quote.paymentTerms}</span>
                       </div>
                     </div>
 
@@ -230,86 +240,6 @@ export default function QuoteComparison() {
         </CardContent>
       </Card>
 
-      {/* Detailed Line Item Comparison */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Line Item Price Comparison</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-center">Qty</TableHead>
-                  {sortedQuotes.map((quote, index) => (
-                    <TableHead key={quote.id} className="text-right">
-                      {quote.vendorName}
-                      {index === 0 && <Badge variant="secondary" className="ml-2">Best</Badge>}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lowestQuote.lines.map((line, lineIndex) => (
-                  <TableRow key={line.id}>
-                    <TableCell className="max-w-xs">
-                      <div>
-                        <div className="font-medium">{line.description}</div>
-                        {line.alternativeProduct && (
-                          <div className="text-sm text-muted-foreground mt-1">
-                            Alt: {line.alternativeProduct}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {line.quantity} {line.unit}
-                    </TableCell>
-                    {sortedQuotes.map((quote) => {
-                      const quoteLine = quote.lines.find(ql => ql.rfqLineId === line.rfqLineId);
-                      const isLowest = quote.id === lowestQuote.id;
-                      
-                      return (
-                        <TableCell key={`${quote.id}-${line.id}`} className="text-right">
-                          {quoteLine ? (
-                            <div className={isLowest ? 'text-green-600 font-medium' : ''}>
-                              <div>${quoteLine.unitPrice.toFixed(2)}/unit</div>
-                              <div className="text-sm font-bold">
-                                ${quoteLine.totalPrice.toLocaleString()}
-                              </div>
-                              {quoteLine.notes && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {quoteLine.notes}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">No quote</span>
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-                <TableRow className="border-t-2">
-                  <TableCell colSpan={2} className="font-bold">
-                    TOTAL
-                  </TableCell>
-                  {sortedQuotes.map((quote, index) => (
-                    <TableCell key={quote.id} className="text-right font-bold text-lg">
-                      <span className={index === 0 ? 'text-green-600' : ''}>
-                        ${quote.totalAmount.toLocaleString()}
-                      </span>
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Quote Analysis */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
@@ -319,10 +249,10 @@ export default function QuoteComparison() {
           <CardContent>
             <div className="text-2xl font-bold">{lowestQuote.vendorName}</div>
             <div className="text-3xl font-bold text-green-600 mt-2">
-              ${lowestQuote.totalAmount.toLocaleString()}
+              ${lowestQuote.totalAmountNumber.toLocaleString()}
             </div>
             <div className="text-sm text-muted-foreground mt-2">
-              Lead Time: {lowestQuote.leadTimeDays || 'TBD'} days
+              Lead Time: {lowestQuote.leadTimeDays} days
             </div>
           </CardContent>
         </Card>
@@ -336,19 +266,19 @@ export default function QuoteComparison() {
               <div className="flex justify-between">
                 <span>Lowest:</span>
                 <span className="font-bold text-green-600">
-                  ${Math.min(...quotes.map(q => q.totalAmount)).toLocaleString()}
+                  ${Math.min(...sortedQuotes.map(q => q.totalAmountNumber)).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Highest:</span>
                 <span className="font-bold">
-                  ${Math.max(...quotes.map(q => q.totalAmount)).toLocaleString()}
+                  ${Math.max(...sortedQuotes.map(q => q.totalAmountNumber)).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Savings:</span>
                 <span className="font-bold text-green-600">
-                  ${(Math.max(...quotes.map(q => q.totalAmount)) - Math.min(...quotes.map(q => q.totalAmount))).toLocaleString()}
+                  ${(Math.max(...sortedQuotes.map(q => q.totalAmountNumber)) - Math.min(...sortedQuotes.map(q => q.totalAmountNumber))).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -361,14 +291,36 @@ export default function QuoteComparison() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${Math.round(quotes.reduce((sum, q) => sum + q.totalAmount, 0) / quotes.length).toLocaleString()}
+              ${Math.round(sortedQuotes.reduce((sum, q) => sum + q.totalAmountNumber, 0) / sortedQuotes.length).toLocaleString()}
             </div>
             <div className="text-sm text-muted-foreground mt-2">
-              Based on {quotes.length} quotes
+              Based on {sortedQuotes.length} quotes
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Simple Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quote Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {sortedQuotes.map((quote, index) => (
+              <div key={quote.id} className="flex justify-between items-center p-2 border-b">
+                <div className="flex items-center space-x-2">
+                  <Badge variant={index === 0 ? "default" : "outline"}>#{index + 1}</Badge>
+                  <span className="font-medium">{quote.vendorName}</span>
+                </div>
+                <div className={`text-lg font-bold ${index === 0 ? 'text-green-600' : ''}`}>
+                  ${quote.totalAmountNumber.toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
