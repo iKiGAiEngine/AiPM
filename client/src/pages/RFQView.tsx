@@ -58,11 +58,22 @@ export default function RFQView() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('Sample quotes created:', result);
+        
         // Refresh the RFQ data to show updated status
-        refetch();
+        await refetch();
+        
+        // Show success feedback
+        alert(`Success! Created ${result.quotes?.length || 3} sample quotes. The RFQ status has been updated to 'quoted'.`);
+      } else {
+        const error = await response.json();
+        console.error('Quote creation failed:', error);
+        alert(`Failed to create quotes: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to create sample quotes:', error);
+      alert('Failed to create sample quotes. Please try again.');
     }
   };
 
