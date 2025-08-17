@@ -62,7 +62,15 @@ export const getQueryFn: <T>(options: {
       }
     }
     
+    // Add authorization header if token exists
+    const headers: Record<string, string> = {};
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('auth_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(url, {
+      headers,
       credentials: "include",
     });
 

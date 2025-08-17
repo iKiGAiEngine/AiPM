@@ -51,12 +51,17 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  console.log('Auth check for:', req.method, req.path);
+  console.log('Auth header:', authHeader ? 'Present' : 'Missing');
+
   if (!token) {
+    console.log('No token found');
     return res.status(401).json({ error: 'Access token required' });
   }
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
+      console.log('Token verification failed:', err);
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
     
@@ -67,6 +72,7 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
       organizationId: payload.organizationId,
       role: payload.role
     };
+    console.log('Token verified for user:', payload.email);
     next();
   });
 }
