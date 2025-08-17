@@ -84,8 +84,8 @@ export default function RFQView() {
     );
   }
 
-  const project = projects?.find((p: any) => p.id === rfq.projectId);
-  const rfqVendors = vendors?.filter((v: any) => rfq.vendorIds?.includes(v.id)) || [];
+  const project = Array.isArray(projects) ? projects.find((p: any) => p.id === rfq.projectId) : undefined;
+  const rfqVendors = Array.isArray(vendors) ? vendors.filter((v: any) => rfq.vendorIds?.includes(v.id)) : [];
   const lines = rfqLines || [];
 
   return (
