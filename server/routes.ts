@@ -567,6 +567,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get individual RFQ
+  app.get("/api/rfqs/:id", async (req: AuthenticatedRequest, res) => {
+    try {
+      const rfq = await storage.getRFQById(req.params.id);
+      if (!rfq || rfq.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "RFQ not found" });
+      }
+      res.json(rfq);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch RFQ" });
+    }
+  });
+
+  // Get RFQ lines
+  app.get("/api/rfqs/:id/lines", async (req: AuthenticatedRequest, res) => {
+    try {
+      const rfq = await storage.getRFQById(req.params.id);
+      if (!rfq || rfq.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "RFQ not found" });
+      }
+      
+      const lines = await storage.getRFQLinesByRFQ(req.params.id);
+      res.json(lines);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch RFQ lines" });
+    }
+  });
+
   // Quote routes
   app.get("/api/rfqs/:rfqId/quotes", async (req: AuthenticatedRequest, res) => {
     try {
