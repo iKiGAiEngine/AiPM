@@ -458,6 +458,7 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
                                 placeholder="Material description" 
                                 {...field}
                                 value={field.value || ''}
+                                className="text-foreground bg-background border-border"
                               />
                             </FormControl>
                             <FormMessage />
@@ -481,6 +482,7 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
                                 {...field}
                                 value={field.value || ''}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                className="text-foreground bg-background border-border"
                               />
                             </FormControl>
                             <FormMessage />
@@ -501,6 +503,7 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
                                 placeholder="Unit" 
                                 {...field}
                                 value={field.value || ''}
+                                className="text-foreground bg-background border-border"
                               />
                             </FormControl>
                             <FormMessage />

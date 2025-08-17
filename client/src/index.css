@@ -95,11 +95,11 @@
   
   /* Global input styling */
   input, textarea, select {
-    @apply bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700;
+    @apply bg-background text-foreground placeholder-muted-foreground border-border;
   }
   
   input:focus, textarea:focus, select:focus {
-    @apply border-slate-500 ring-0 outline-none;
+    @apply border-ring ring-0 outline-none;
   }
   
   /* Override autofill styles for all browsers */
@@ -107,22 +107,22 @@
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px rgb(15 23 42) inset !important; /* slate-900 */
-    -webkit-text-fill-color: rgb(241 245 249) !important; /* slate-100 */
-    caret-color: rgb(241 245 249) !important;
+    -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    caret-color: hsl(var(--foreground)) !important;
     transition: background-color 5000s ease-in-out 0s;
   }
   
   /* Firefox autofill override */
   input:-moz-autofill {
-    background-color: rgb(15 23 42) !important; /* slate-900 */
-    color: rgb(241 245 249) !important; /* slate-100 */
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
   }
   
   /* Edge/IE autofill override */
   input:-ms-autofill {
-    background-color: rgb(15 23 42) !important; /* slate-900 */
-    color: rgb(241 245 249) !important; /* slate-100 */
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
   }
 
   /* Enhanced date picker icon styling */
