@@ -82,6 +82,7 @@ export interface IStorage {
   getQuote(id: string): Promise<Quote | undefined>;
   getQuotesByRFQ(rfqId: string): Promise<Quote[]>;
   getQuotesByVendor(vendorId: string): Promise<Quote[]>;
+  updateQuote(id: string, updates: Partial<InsertQuote>): Promise<void>;
   
   // Quote Lines
   createQuoteLine(line: InsertQuoteLine): Promise<QuoteLine>;
@@ -340,6 +341,10 @@ export class DatabaseStorage implements IStorage {
 
   async getQuoteLines(quoteId: string): Promise<QuoteLine[]> {
     return await db.select().from(quoteLines).where(eq(quoteLines.quoteId, quoteId));
+  }
+
+  async updateQuote(id: string, updates: Partial<InsertQuote>): Promise<void> {
+    await db.update(quotes).set(updates).where(eq(quotes.id, id));
   }
 
   // Purchase Orders

@@ -13,6 +13,7 @@ import RequisitionView from "@/pages/RequisitionView";
 import NewBuyout from "@/pages/NewBuyout";
 import RFQs from "@/pages/RFQs";
 import RFQView from "@/pages/RFQView";
+import QuoteComparison from "@/pages/QuoteComparison";
 import NewRFQ from "@/pages/NewRFQ";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import Deliveries from "@/pages/Deliveries";
@@ -130,6 +131,11 @@ export default function App() {
               <Route path="/rfqs/new" element={
                 <ProtectedRoute>
                   <NewRFQ />
+                </ProtectedRoute>
+              } />
+              <Route path="/rfqs/:id/quotes" element={
+                <ProtectedRoute>
+                  <QuoteComparison />
                 </ProtectedRoute>
               } />
               <Route path="/rfqs/:id" element={

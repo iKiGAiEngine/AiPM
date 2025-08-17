@@ -598,10 +598,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Quote routes
   app.get("/api/rfqs/:rfqId/quotes", async (req: AuthenticatedRequest, res) => {
     try {
+      const rfq = await storage.getRFQ(req.params.rfqId);
+      if (!rfq || rfq.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "RFQ not found" });
+      }
+
       const quotes = await storage.getQuotesByRFQ(req.params.rfqId);
       res.json(quotes);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  // Award quote and create purchase order
+  app.post("/api/quotes/:quoteId/award", async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get the quote and verify access
+      const quote = await storage.getQuote(req.params.quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+
+      // Get the RFQ to verify organization access
+      const rfq = await storage.getRFQ(quote.rfqId);
+      if (!rfq || rfq.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "RFQ not found" });
+      }
+
+      // Mark this quote as selected
+      await storage.updateQuote(req.params.quoteId, { isSelected: true });
+
+      // Create purchase order from the winning quote
+      const vendor = await storage.getVendor(quote.vendorId);
+      if (!vendor) {
+        return res.status(400).json({ error: "Vendor not found" });
+      }
+
+      // Generate PO number
+      const year = new Date().getFullYear();
+      const count = (await storage.getPurchaseOrdersByOrganization(req.user!.organizationId)).length + 1;
+      const poNumber = `PO-${year}-${count.toString().padStart(4, '0')}`;
+
+      const poData = {
+        organizationId: req.user!.organizationId,
+        projectId: rfq.projectId,
+        vendorId: quote.vendorId,
+        rfqId: rfq.id,
+        quoteId: quote.id,
+        number: poNumber,
+        status: 'draft' as const,
+        subtotal: quote.totalAmount,
+        totalAmount: quote.totalAmount,
+        createdById: req.user!.id
+      };
+
+      const purchaseOrder = await storage.createPurchaseOrder(poData);
+
+      // Create PO lines from quote lines
+      const quoteLines = await storage.getQuoteLines(quote.id);
+      const rfqLines = await storage.getRFQLines(rfq.id);
+      
+      for (const quoteLine of quoteLines) {
+        const rfqLine = rfqLines.find(line => line.id === quoteLine.rfqLineId);
+        if (rfqLine) {
+          await storage.createPurchaseOrderLine({
+            poId: purchaseOrder.id,
+            description: rfqLine.description,
+            quantity: rfqLine.quantity,
+            unit: rfqLine.unit,
+            unitPrice: quoteLine.unitPrice.toString(),
+            lineTotal: quoteLine.lineTotal.toString()
+          });
+        }
+      }
+
+      res.json({ 
+        message: "Quote awarded successfully", 
+        purchaseOrder,
+        poNumber 
+      });
+    } catch (error) {
+      console.error('Quote award error:', error);
+      res.status(500).json({ error: "Failed to award quote" });
+    }
+  });
+
+  // Create sample quotes for demonstration
+  app.post("/api/rfqs/:rfqId/quotes/sample", async (req: AuthenticatedRequest, res) => {
+    try {
+      const rfq = await storage.getRFQ(req.params.rfqId);
+      if (!rfq || rfq.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "RFQ not found" });
+      }
+
+      const vendors = await storage.getVendorsByOrganization(req.user!.organizationId);
+      const rfqLines = await storage.getRFQLines(req.params.rfqId);
+
+      if (vendors.length === 0 || rfqLines.length === 0) {
+        return res.status(400).json({ error: "No vendors or RFQ lines found" });
+      }
+
+      // Create sample quotes from vendors
+      const sampleQuotes = [];
+      for (let i = 0; i < Math.min(vendors.length, 3); i++) {
+        const vendor = vendors[i];
+        
+        // Generate realistic pricing variations
+        const baseMultiplier = 0.85 + (i * 0.15); // First vendor gets 85%, second 100%, third 115%
+        const randomVariation = 0.95 + (Math.random() * 0.1); // +/- 5% variation
+        const priceMultiplier = baseMultiplier * randomVariation;
+
+        let totalAmount = 0;
+        const quoteLines = [];
+
+        for (const rfqLine of rfqLines) {
+          const basePrice = 50 + (Math.random() * 200); // Random base price between $50-250
+          const unitPrice = Math.round(basePrice * priceMultiplier * 100) / 100;
+          const lineTotal = Math.round(unitPrice * parseFloat(rfqLine.quantity) * 100) / 100;
+          totalAmount += lineTotal;
+
+          quoteLines.push({
+            rfqLineId: rfqLine.id,
+            unitPrice: unitPrice.toString(),
+            lineTotal: lineTotal.toString(),
+            leadTimeDays: 15 + Math.floor(Math.random() * 20), // 15-35 days
+            alternateDescription: Math.random() > 0.7 ? "Premium grade alternative available" : undefined
+          });
+        }
+
+        const quoteData = {
+          rfqId: req.params.rfqId,
+          vendorId: vendor.id,
+          totalAmount: (Math.round(totalAmount * 100) / 100).toString(),
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          notes: `Quote valid for 30 days. ${i === 0 ? 'Best price guarantee!' : i === 1 ? 'Premium quality materials.' : 'Fast delivery available.'}`
+        };
+
+        const quote = await storage.createQuote(quoteData);
+
+        // Create quote lines
+        for (const lineData of quoteLines) {
+          await storage.createQuoteLine({
+            quoteId: quote.id,
+            ...lineData
+          });
+        }
+
+        sampleQuotes.push(quote);
+      }
+
+      // Update RFQ status to 'quoted'
+      await storage.updateRFQStatus(req.params.rfqId, 'quoted');
+
+      res.json({ 
+        message: `Created ${sampleQuotes.length} sample quotes`,
+        quotes: sampleQuotes
+      });
+    } catch (error) {
+      console.error('Sample quote creation error:', error);
+      res.status(500).json({ error: "Failed to create sample quotes" });
     }
   });
 

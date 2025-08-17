@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowLeft, Eye, FileText, Calendar, Building2, Package, Users } from "lucide-react";
+import { ArrowLeft, Eye, FileText, Calendar, Building2, Package, Users, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,10 +42,29 @@ const statusColors = {
 export default function RFQView() {
   const { id } = useParams<{ id: string }>();
 
-  const { data: rfq, isLoading, error } = useQuery<RFQ>({
+  const { data: rfq, isLoading, error, refetch } = useQuery<RFQ>({
     queryKey: ['/api/rfqs', id],
     enabled: !!id,
   });
+
+  const handleCreateSampleQuotes = async () => {
+    try {
+      const response = await fetch(`/api/rfqs/${id}/quotes/sample`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (response.ok) {
+        // Refresh the RFQ data to show updated status
+        refetch();
+      }
+    } catch (error) {
+      console.error('Failed to create sample quotes:', error);
+    }
+  };
 
   const { data: rfqLines } = useQuery<RFQLine[]>({
     queryKey: ['/api/rfqs', id, 'lines'],
@@ -116,9 +135,20 @@ export default function RFQView() {
           {rfq.status === 'quoted' && (
             <Button variant="outline" size="sm" asChild data-testid="button-view-quotes">
               <Link to={`/rfqs/${rfq.id}/quotes`}>
-                <FileText className="w-4 h-4 mr-2" />
-                View Quotes
+                <DollarSign className="w-4 h-4 mr-2" />
+                Compare Quotes
               </Link>
+            </Button>
+          )}
+          {rfq.status === 'draft' && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleCreateSampleQuotes()}
+              data-testid="button-create-sample-quotes"
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Generate Sample Quotes
             </Button>
           )}
         </div>
