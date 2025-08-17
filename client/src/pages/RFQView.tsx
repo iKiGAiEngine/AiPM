@@ -43,31 +43,21 @@ export default function RFQView() {
   const { id } = useParams<{ id: string }>();
 
   const { data: rfq, isLoading, error } = useQuery<RFQ>({
-    queryKey: ['rfq', id],
-    queryFn: () => fetch(`/api/rfqs/${id}`).then(res => {
-      if (!res.ok) throw new Error('Failed to fetch RFQ');
-      return res.json();
-    }),
+    queryKey: ['/api/rfqs', id],
     enabled: !!id,
   });
 
   const { data: rfqLines } = useQuery<RFQLine[]>({
-    queryKey: ['rfq-lines', id],
-    queryFn: () => fetch(`/api/rfqs/${id}/lines`).then(res => {
-      if (!res.ok) throw new Error('Failed to fetch RFQ lines');
-      return res.json();
-    }),
+    queryKey: ['/api/rfqs', id, 'lines'],
     enabled: !!id,
   });
 
   const { data: vendors } = useQuery({
-    queryKey: ['vendors'],
-    queryFn: () => fetch('/api/vendors').then(res => res.json()),
+    queryKey: ['/api/vendors'],
   });
 
   const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => fetch('/api/projects').then(res => res.json()),
+    queryKey: ['/api/projects'],
   });
 
   if (isLoading) {
