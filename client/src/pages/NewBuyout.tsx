@@ -11,21 +11,41 @@ export default function NewBuyout() {
   const [searchParams] = useSearchParams();
   const requisitionId = searchParams.get('requisitionId');
 
-  // Scroll to top when component loads
+  // Force scroll to top immediately and after navigation
   useEffect(() => {
-    // Force immediate scroll to top
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    
-    // Additional scroll after slight delay to ensure DOM is ready
-    const timer = setTimeout(() => {
+    const scrollToTop = () => {
+      // Multiple methods to ensure scroll works
+      window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    }, 50);
+      
+      // Find and scroll the main content container
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        mainContent.scrollTop = 0;
+      }
+      
+      // Find any scrollable parent containers
+      const scrollableElements = document.querySelectorAll('[data-radix-scroll-area-viewport]');
+      scrollableElements.forEach(el => {
+        el.scrollTop = 0;
+      });
+    };
     
-    return () => clearTimeout(timer);
-  }, []); // Only run once on mount
+    // Immediate scroll
+    scrollToTop();
+    
+    // Backup scroll after DOM updates
+    const timer1 = setTimeout(scrollToTop, 0);
+    const timer2 = setTimeout(scrollToTop, 100);
+    const timer3 = setTimeout(scrollToTop, 300);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [requisitionId]);
 
   // Fetch requisition details if creating from a requisition
   const { data: requisition, isLoading } = useQuery<Requisition>({

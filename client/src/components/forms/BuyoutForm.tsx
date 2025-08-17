@@ -111,10 +111,14 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: 'lines',
   });
+
+  // Watch form values for debugging
+  const watchedLines = form.watch('lines');
+  console.log('Watched lines in form:', watchedLines);
 
   // Update form when requisition lines are fetched
   useEffect(() => {
@@ -122,23 +126,28 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
       console.log('Fetched lines:', fetchedLines);
       setRequisitionLines(fetchedLines);
       
-      // Clear existing lines and add requisition lines
-      form.setValue('lines', []);
+      // Build the lines array first
+      const mappedLines = fetchedLines.map(line => ({
+        description: line.description || '',
+        quantity: Number(line.quantity) || 1,
+        unit: line.unit || 'Each',
+        materialId: line.materialId || undefined,
+      }));
       
-      // Add lines one by one with proper data mapping
-      fetchedLines.forEach((line, index) => {
-        console.log(`Adding line ${index}:`, line);
-        append({
-          description: line.description || '',
-          quantity: Number(line.quantity) || 1,
-          unit: line.unit || 'Each',
-          materialId: line.materialId || undefined,
-        });
-      });
+      console.log('Mapped lines:', mappedLines);
       
-      console.log('Form lines after update:', form.getValues('lines'));
+      // Use replace method from useFieldArray to properly update fields
+      replace(mappedLines);
+      
+      // Force form to trigger re-render after a short delay
+      setTimeout(() => {
+        form.trigger();
+      }, 100);
+      
+      console.log('Final form lines after replace:', form.getValues('lines'));
+      console.log('Fields length after replace:', mappedLines.length);
     }
-  }, [fetchedLines, append, form]);
+  }, [fetchedLines, form, replace]);
 
   // Create RFQ mutation
   const createRFQMutation = useMutation({

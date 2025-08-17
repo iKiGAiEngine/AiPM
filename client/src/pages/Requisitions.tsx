@@ -383,7 +383,14 @@ export default function Requisitions() {
                               size="sm" 
                               onClick={() => {
                                 console.log('Create Buyout clicked for requisition:', requisition.id);
+                                // Navigate first
                                 navigate(`/buyout/new?requisitionId=${requisition.id}`);
+                                // Force scroll to top after navigation
+                                setTimeout(() => {
+                                  window.scrollTo(0, 0);
+                                  document.documentElement.scrollTop = 0;
+                                  document.body.scrollTop = 0;
+                                }, 100);
                               }}
                               className="flex-1"
                               data-testid={`button-create-buyout-${requisition.id}`}
