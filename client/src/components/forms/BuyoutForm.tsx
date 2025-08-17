@@ -119,18 +119,24 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
   // Update form when requisition lines are fetched
   useEffect(() => {
     if (fetchedLines && fetchedLines.length > 0) {
+      console.log('Fetched lines:', fetchedLines);
       setRequisitionLines(fetchedLines);
       
       // Clear existing lines and add requisition lines
       form.setValue('lines', []);
-      fetchedLines.forEach(line => {
+      
+      // Add lines one by one with proper data mapping
+      fetchedLines.forEach((line, index) => {
+        console.log(`Adding line ${index}:`, line);
         append({
-          description: line.description,
-          quantity: Number(line.quantity),
-          unit: line.unit,
+          description: line.description || '',
+          quantity: Number(line.quantity) || 1,
+          unit: line.unit || 'Each',
           materialId: line.materialId || undefined,
         });
       });
+      
+      console.log('Form lines after update:', form.getValues('lines'));
     }
   }, [fetchedLines, append, form]);
 
@@ -256,7 +262,7 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Project</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select project" />
@@ -439,7 +445,11 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
                           <FormItem>
                             <FormLabel className="sr-only">Description</FormLabel>
                             <FormControl>
-                              <Input placeholder="Material description" {...field} />
+                              <Input 
+                                placeholder="Material description" 
+                                {...field}
+                                value={field.value || ''}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -460,6 +470,7 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
                                 step="0.01"
                                 placeholder="Qty"
                                 {...field}
+                                value={field.value || ''}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                               />
                             </FormControl>
@@ -477,7 +488,11 @@ export default function BuyoutForm({ fromRequisition }: BuyoutFormProps) {
                           <FormItem>
                             <FormLabel className="sr-only">Unit</FormLabel>
                             <FormControl>
-                              <Input placeholder="Unit" {...field} />
+                              <Input 
+                                placeholder="Unit" 
+                                {...field}
+                                value={field.value || ''}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

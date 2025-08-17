@@ -13,8 +13,19 @@ export default function NewBuyout() {
 
   // Scroll to top when component loads
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+    // Force immediate scroll to top
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Additional scroll after slight delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, []); // Only run once on mount
 
   // Fetch requisition details if creating from a requisition
   const { data: requisition, isLoading } = useQuery<Requisition>({
