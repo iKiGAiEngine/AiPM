@@ -230,6 +230,9 @@ export const quotes = pgTable("quotes", {
   notes: text("notes"),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }),
   isSelected: boolean("is_selected").default(false),
+  documentUrl: text("document_url"), // URL to uploaded quote document
+  documentName: text("document_name"), // Original filename
+  isDemo: boolean("is_demo").default(false), // Track demo/sample quotes
   createdAt: timestamp("created_at").defaultNow()
 }, (table) => ({
   rfqIdx: index("quotes_rfq_idx").on(table.rfqId),

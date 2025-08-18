@@ -2,7 +2,16 @@
 
 This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract estimates, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
-## Recent Updates (August 13, 2025)
+## Recent Updates (August 18, 2025)
+- **QUOTE DOCUMENT MANAGEMENT SYSTEM**: Successfully integrated complete quote document upload and viewing functionality
+- **Object Storage Integration**: Added Replit Object Storage for secure document storage with presigned URL uploads
+- **Demo vs Real Quote Distinction**: Enhanced quote comparison to clearly identify demo/sample quotes vs actual vendor documents
+- **Document Download Links**: Added direct document viewing capabilities with download buttons in quote comparison
+- **Enhanced Quote Schema**: Extended database schema with documentUrl, documentName, and isDemo fields
+- **QuoteUploader Component**: Created reusable component for vendors to upload quote documents with progress tracking
+- **Comprehensive Quote APIs**: Added /api/quotes/upload, /api/quotes/{id}/document endpoints for document management
+
+## Previous Updates (August 13, 2025)
 - **BUYOUT PROCESS (COMPETITIVE BIDDING) IMPLEMENTED**: Successfully created complete "Buyout" workflow for converting approved requisitions to RFQs with vendor competitive bidding
 - **Requisition Approval System**: Added comprehensive approval interface for PM/Admin users with approve/reject buttons and role-based access control
 - **Create Buyout Action**: Approved requisitions now show "Create Buyout" button for initiating competitive bidding process

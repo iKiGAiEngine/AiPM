@@ -731,7 +731,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           vendorId: vendor.id,
           totalAmount: (Math.round(totalAmount * 100) / 100).toString(),
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          notes: `Quote valid for 30 days. ${i === 0 ? 'Best price guarantee!' : i === 1 ? 'Premium quality materials.' : 'Fast delivery available.'}`
+          notes: `Quote valid for 30 days. ${i === 0 ? 'Best price guarantee!' : i === 1 ? 'Premium quality materials.' : 'Fast delivery available.'}`,
+          isDemo: true // Mark as demo quote
         };
 
         const quote = await storage.createQuote(quoteData);
@@ -757,6 +758,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Sample quote creation error:', error);
       res.status(500).json({ error: "Failed to create sample quotes" });
+    }
+  });
+
+  // Quote document upload
+  app.post("/api/quotes/upload", async (req: AuthenticatedRequest, res) => {
+    try {
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorage = new ObjectStorageService();
+      
+      const uploadURL = await objectStorage.getUploadURL("quotes");
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Quote upload URL error:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  // Update quote with document info after upload
+  app.put("/api/quotes/:id/document", async (req: AuthenticatedRequest, res) => {
+    try {
+      const { documentUrl, documentName } = req.body;
+      
+      if (!documentUrl || !documentName) {
+        return res.status(400).json({ error: "Document URL and name required" });
+      }
+
+      // Update quote with document information
+      await storage.updateQuote(req.params.id, {
+        documentUrl,
+        documentName
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Quote document update error:", error);
+      res.status(500).json({ error: "Failed to update quote document" });
+    }
+  });
+
+  // View quote document
+  app.get("/api/quotes/:id/document", async (req: AuthenticatedRequest, res) => {
+    try {
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote || !quote.documentUrl) {
+        return res.status(404).json({ error: "Quote document not found" });
+      }
+
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorage = new ObjectStorageService();
+      
+      const file = await objectStorage.getFile(quote.documentUrl);
+      await objectStorage.downloadObject(file, res);
+    } catch (error) {
+      console.error("Quote document download error:", error);
+      res.status(500).json({ error: "Failed to download quote document" });
     }
   });
 

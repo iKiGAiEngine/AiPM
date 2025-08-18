@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, CheckCircle, Building2, Calendar, DollarSign, Truck } from "lucide-react";
+import { ArrowLeft, CheckCircle, Building2, Calendar, DollarSign, Truck, FileText, Download, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,9 @@ interface Quote {
   quotedAt: string;
   validUntil?: string;
   notes?: string;
+  documentUrl?: string;
+  documentName?: string;
+  isDemo?: boolean;
   lines: QuoteLine[];
 }
 
@@ -202,6 +205,12 @@ export default function QuoteComparison() {
                             Lowest Price
                           </Badge>
                         )}
+                        {quote.isDemo && (
+                          <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Demo Quote
+                          </Badge>
+                        )}
                         <Badge variant="outline">Rank #{index + 1}</Badge>
                       </div>
                       <div className="text-right">
@@ -227,11 +236,36 @@ export default function QuoteComparison() {
                       </div>
                     </div>
 
-                    {quote.notes && (
-                      <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
-                        <strong>Notes:</strong> {quote.notes}
-                      </div>
-                    )}
+                    {/* Document and Notes Section */}
+                    <div className="mt-2 space-y-2">
+                      {quote.documentUrl && quote.documentName && (
+                        <div className="flex items-center space-x-2 text-sm">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <a 
+                            href={`/api/quotes/${quote.id}/document`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-1"
+                          >
+                            <span>{quote.documentName}</span>
+                            <Download className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
+                      
+                      {quote.notes && (
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
+                          <strong>Notes:</strong> {quote.notes}
+                        </div>
+                      )}
+                      
+                      {quote.isDemo && (
+                        <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-sm text-yellow-800 dark:text-yellow-200">
+                          <strong>Demo Data:</strong> This is sample quote data generated for testing. 
+                          In production, vendors would upload their actual quote documents.
+                        </div>
+                      )}
+                    </div>
                   </Label>
                 </div>
               ))}
