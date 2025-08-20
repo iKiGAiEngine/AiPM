@@ -33,6 +33,7 @@ export const organizations = pgTable("organizations", {
   name: text("name").notNull(),
   domain: text("domain").unique(),
   settings: jsonb("settings"),
+  demoMode: boolean("demo_mode").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });

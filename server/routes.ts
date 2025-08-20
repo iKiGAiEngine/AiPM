@@ -686,6 +686,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create sample quotes for demonstration
   app.post("/api/rfqs/:rfqId/quotes/sample", async (req: AuthenticatedRequest, res) => {
     try {
+      const user = req.user!;
+      const demoMode = await storage.getDemoMode(user.organizationId);
+      
+      if (!demoMode) {
+        return res.status(403).json({ 
+          error: "Sample quote generation is only available in demo mode. Enable demo mode in the profile menu to use this feature." 
+        });
+      }
       const rfq = await storage.getRFQ(req.params.rfqId);
       if (!rfq || rfq.organizationId !== req.user!.organizationId) {
         return res.status(404).json({ error: "RFQ not found" });
@@ -813,6 +821,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Quote document download error:", error);
       res.status(500).json({ error: "Failed to download quote document" });
+    }
+  });
+
+  // Demo mode settings
+  app.get("/api/settings/demo-mode", async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = req.user!;
+      const demoMode = await storage.getDemoMode(user.organizationId);
+      res.json({ enabled: demoMode });
+    } catch (error) {
+      console.error("Get demo mode error:", error);
+      res.status(500).json({ error: "Failed to get demo mode setting" });
+    }
+  });
+
+  app.put("/api/settings/demo-mode", async (req: AuthenticatedRequest, res) => {
+    try {
+      const { enabled } = req.body;
+      const user = req.user!;
+      
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ error: "enabled must be a boolean" });
+      }
+
+      await storage.setDemoMode(user.organizationId, enabled);
+      res.json({ success: true, enabled });
+    } catch (error) {
+      console.error("Set demo mode error:", error);
+      res.status(500).json({ error: "Failed to update demo mode setting" });
     }
   });
 

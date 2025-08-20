@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bell, Menu, Command, LogOut, User, Settings } from "lucide-react";
+import { Search, Bell, Menu, Command, LogOut, User, Settings, TestTube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Switch } from "@/components/ui/switch";
 
 interface TopAppBarProps {
   onMobileMenuToggle?: () => void;
@@ -24,12 +27,44 @@ interface TopAppBarProps {
 export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, pageTitle, pageSubtitle }: TopAppBarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [notifications] = useState(true); // Mock notification state
+
+  // Get current demo mode status
+  const { data: demoMode = false } = useQuery({
+    queryKey: ['/api/settings/demo-mode'],
+    enabled: !!user,
+  });
+
+  // Toggle demo mode mutation
+  const demoModeToggle = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const response = await fetch('/api/settings/demo-mode', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({ enabled }),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/settings/demo-mode'] });
+      // Force refresh of all data since demo mode affects many components
+      queryClient.invalidateQueries();
+      window.location.reload(); // Refresh to ensure all components update
+    },
+  });
 
   const handleLogout = () => {
     logout();
     // Navigate to login page after logout
     navigate('/login');
+  };
+
+  const handleDemoModeToggle = (enabled: boolean) => {
+    demoModeToggle.mutate(enabled);
   };
 
   const currentPage = pageTitle || "Dashboard";
@@ -144,6 +179,25 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
+              
+              {/* Demo Mode Toggle */}
+              <DropdownMenuItem 
+                onSelect={(e) => e.preventDefault()}
+                className="focus:bg-transparent"
+                data-testid="menu-item-demo-mode"
+              >
+                <TestTube className="mr-2 h-4 w-4" />
+                <div className="flex items-center justify-between w-full">
+                  <span>Demo Mode</span>
+                  <Switch
+                    checked={Boolean(demoMode)}
+                    onCheckedChange={handleDemoModeToggle}
+                    disabled={demoModeToggle.isPending}
+                    className="ml-2"
+                  />
+                </div>
+              </DropdownMenuItem>
+              
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={handleLogout}

@@ -30,6 +30,9 @@ export interface IStorage {
   // Organizations
   createOrganization(org: InsertOrganization): Promise<Organization>;
   getOrganization(id: string): Promise<Organization | undefined>;
+  updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization>;
+  getDemoMode(organizationId: string): Promise<boolean>;
+  setDemoMode(organizationId: string, enabled: boolean): Promise<void>;
   
   // Users
   createUser(user: InsertUser): Promise<User>;
@@ -154,6 +157,27 @@ export class DatabaseStorage implements IStorage {
   async getOrganization(id: string): Promise<Organization | undefined> {
     const [organization] = await db.select().from(organizations).where(eq(organizations.id, id));
     return organization || undefined;
+  }
+
+  async updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization> {
+    const [updatedOrg] = await db.update(organizations)
+      .set(updates)
+      .where(eq(organizations.id, id))
+      .returning();
+    return updatedOrg;
+  }
+
+  async getDemoMode(organizationId: string): Promise<boolean> {
+    const [org] = await db.select({ demoMode: organizations.demoMode })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId));
+    return org?.demoMode || false;
+  }
+
+  async setDemoMode(organizationId: string, enabled: boolean): Promise<void> {
+    await db.update(organizations)
+      .set({ demoMode: enabled })
+      .where(eq(organizations.id, organizationId));
   }
 
   // Users
