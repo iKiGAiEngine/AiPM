@@ -36,8 +36,63 @@ export default function NewRFQ() {
           <CardTitle>RFQ Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="p-6 bg-muted/50 rounded-lg text-center">
-            <p>RFQ form temporarily disabled for navigation debugging</p>
+          <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">RFQ Title *</label>
+                <input 
+                  type="text"
+                  placeholder="Enter RFQ title"
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Project *</label>
+                <select className="w-full px-3 py-2 border border-input bg-background rounded-md">
+                  <option value="">Select a project</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <textarea 
+                placeholder="Enter RFQ description"
+                rows={4}
+                className="w-full px-3 py-2 border border-input bg-background rounded-md resize-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Bid Due Date</label>
+                <input 
+                  type="datetime-local"
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ship To Address</label>
+                <input 
+                  type="text"
+                  placeholder="Enter delivery address"
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/rfqs")}
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
+              <Button data-testid="button-create-rfq">
+                Create RFQ
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

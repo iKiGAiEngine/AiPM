@@ -9,7 +9,7 @@ export default function NewPurchaseOrder() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/purchase-orders">
+          <Link to="/purchase-orders">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Purchase Orders
           </Link>
