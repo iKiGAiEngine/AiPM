@@ -1,7 +1,8 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowLeft, Eye, FileText, Calendar, Building2, Package, Users, DollarSign } from "lucide-react";
+import { ArrowLeft, Eye, FileText, Calendar, Building2, Package, Users, DollarSign, TestTube, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,12 @@ export default function RFQView() {
     queryKey: ['/api/rfqs', id],
     enabled: !!id,
   });
+
+  // Get demo mode status
+  const { data: demoModeData } = useQuery<{ enabled: boolean }>({
+    queryKey: ['/api/settings/demo-mode'],
+  });
+  const isDemoMode = demoModeData?.enabled || false;
 
   const handleCreateSampleQuotes = async () => {
     try {
@@ -152,15 +159,38 @@ export default function RFQView() {
             </Button>
           )}
           {rfq.status === 'draft' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => handleCreateSampleQuotes()}
-              data-testid="button-create-sample-quotes"
-            >
-              <DollarSign className="w-4 h-4 mr-2" />
-              Generate Sample Quotes
-            </Button>
+            <div className="space-y-3">
+              {/* Demo Mode Banner */}
+              {!isDemoMode && (
+                <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                  <TestTube className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-800 dark:text-orange-200">
+                    Demo mode is disabled. Enable demo mode in your profile menu to generate sample quotes for testing.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {isDemoMode && (
+                <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800 dark:text-blue-200">
+                    Demo mode is active. Sample quotes will be generated for testing purposes.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleCreateSampleQuotes()}
+                disabled={!isDemoMode}
+                data-testid="button-create-sample-quotes"
+              >
+                <DollarSign className="w-4 h-4 mr-2" />
+                Generate Sample Quotes
+                {!isDemoMode && <span className="ml-2 text-xs opacity-70">(Demo Mode Required)</span>}
+              </Button>
+            </div>
           )}
         </div>
       </div>
