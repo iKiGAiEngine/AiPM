@@ -377,15 +377,82 @@ export class DatabaseStorage implements IStorage {
     return newPO;
   }
 
-  async getPurchaseOrder(id: string): Promise<PurchaseOrder | undefined> {
-    const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, id));
+  async getPurchaseOrder(id: string): Promise<any | undefined> {
+    const [po] = await db.select({
+      id: purchaseOrders.id,
+      organizationId: purchaseOrders.organizationId,
+      projectId: purchaseOrders.projectId,
+      vendorId: purchaseOrders.vendorId,
+      createdById: purchaseOrders.createdById,
+      number: purchaseOrders.number,
+      status: purchaseOrders.status,
+      shipToAddress: purchaseOrders.shipToAddress,
+      requestedDeliveryDate: purchaseOrders.requestedDeliveryDate,
+      paymentTerms: purchaseOrders.paymentTerms,
+      deliveryNotes: purchaseOrders.deliveryNotes,
+      subtotal: purchaseOrders.subtotal,
+      taxAmount: purchaseOrders.taxAmount,
+      freightAmount: purchaseOrders.freightAmount,
+      totalAmount: purchaseOrders.totalAmount,
+      sentAt: purchaseOrders.sentAt,
+      acknowledgedAt: purchaseOrders.acknowledgedAt,
+      createdAt: purchaseOrders.createdAt,
+      updatedAt: purchaseOrders.updatedAt,
+      vendor: {
+        id: vendors.id,
+        name: vendors.name,
+        company: vendors.company
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        projectNumber: projects.projectNumber
+      }
+    })
+    .from(purchaseOrders)
+    .leftJoin(vendors, eq(purchaseOrders.vendorId, vendors.id))
+    .leftJoin(projects, eq(purchaseOrders.projectId, projects.id))
+    .where(eq(purchaseOrders.id, id));
     return po || undefined;
   }
 
-  async getPurchaseOrdersByOrganization(organizationId: string): Promise<PurchaseOrder[]> {
-    return await db.select().from(purchaseOrders)
-      .where(eq(purchaseOrders.organizationId, organizationId))
-      .orderBy(desc(purchaseOrders.createdAt));
+  async getPurchaseOrdersByOrganization(organizationId: string): Promise<any[]> {
+    return await db.select({
+      id: purchaseOrders.id,
+      organizationId: purchaseOrders.organizationId,
+      projectId: purchaseOrders.projectId,
+      vendorId: purchaseOrders.vendorId,
+      createdById: purchaseOrders.createdById,
+      number: purchaseOrders.number,
+      status: purchaseOrders.status,
+      shipToAddress: purchaseOrders.shipToAddress,
+      requestedDeliveryDate: purchaseOrders.requestedDeliveryDate,
+      paymentTerms: purchaseOrders.paymentTerms,
+      deliveryNotes: purchaseOrders.deliveryNotes,
+      subtotal: purchaseOrders.subtotal,
+      taxAmount: purchaseOrders.taxAmount,
+      freightAmount: purchaseOrders.freightAmount,
+      totalAmount: purchaseOrders.totalAmount,
+      sentAt: purchaseOrders.sentAt,
+      acknowledgedAt: purchaseOrders.acknowledgedAt,
+      createdAt: purchaseOrders.createdAt,
+      updatedAt: purchaseOrders.updatedAt,
+      vendor: {
+        id: vendors.id,
+        name: vendors.name,
+        company: vendors.company
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        projectNumber: projects.projectNumber
+      }
+    })
+    .from(purchaseOrders)
+    .leftJoin(vendors, eq(purchaseOrders.vendorId, vendors.id))
+    .leftJoin(projects, eq(purchaseOrders.projectId, projects.id))
+    .where(eq(purchaseOrders.organizationId, organizationId))
+    .orderBy(desc(purchaseOrders.createdAt));
   }
 
   async getPurchaseOrdersByProject(projectId: string): Promise<PurchaseOrder[]> {
@@ -394,10 +461,43 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(purchaseOrders.createdAt));
   }
 
-  async getPurchaseOrdersByVendor(vendorId: string): Promise<PurchaseOrder[]> {
-    return await db.select().from(purchaseOrders)
-      .where(eq(purchaseOrders.vendorId, vendorId))
-      .orderBy(desc(purchaseOrders.createdAt));
+  async getPurchaseOrdersByVendor(vendorId: string): Promise<any[]> {
+    return await db.select({
+      id: purchaseOrders.id,
+      organizationId: purchaseOrders.organizationId,
+      projectId: purchaseOrders.projectId,
+      vendorId: purchaseOrders.vendorId,
+      createdById: purchaseOrders.createdById,
+      number: purchaseOrders.number,
+      status: purchaseOrders.status,
+      shipToAddress: purchaseOrders.shipToAddress,
+      requestedDeliveryDate: purchaseOrders.requestedDeliveryDate,
+      paymentTerms: purchaseOrders.paymentTerms,
+      deliveryNotes: purchaseOrders.deliveryNotes,
+      subtotal: purchaseOrders.subtotal,
+      taxAmount: purchaseOrders.taxAmount,
+      freightAmount: purchaseOrders.freightAmount,
+      totalAmount: purchaseOrders.totalAmount,
+      sentAt: purchaseOrders.sentAt,
+      acknowledgedAt: purchaseOrders.acknowledgedAt,
+      createdAt: purchaseOrders.createdAt,
+      updatedAt: purchaseOrders.updatedAt,
+      vendor: {
+        id: vendors.id,
+        name: vendors.name,
+        company: vendors.company
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        projectNumber: projects.projectNumber
+      }
+    })
+    .from(purchaseOrders)
+    .leftJoin(vendors, eq(purchaseOrders.vendorId, vendors.id))
+    .leftJoin(projects, eq(purchaseOrders.projectId, projects.id))
+    .where(eq(purchaseOrders.vendorId, vendorId))
+    .orderBy(desc(purchaseOrders.createdAt));
   }
 
   async updatePurchaseOrderStatus(id: string, status: string): Promise<void> {

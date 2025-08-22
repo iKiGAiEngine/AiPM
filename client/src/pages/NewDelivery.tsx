@@ -17,7 +17,7 @@ import { CalendarIcon, Truck, Save, ArrowLeft, Plus, Trash2, Check, X } from "lu
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import type { Vendor, PurchaseOrder, PurchaseOrderLine } from "@shared/schema";
+import type { Vendor, PurchaseOrder, PurchaseOrderLine, Project } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 
 // Form schema for delivery creation
@@ -38,6 +38,7 @@ const deliveryFormSchema = z.object({
     quantityReceived: z.number().min(0, "Quantity received must be positive"),
     quantityDamaged: z.number().min(0).optional(),
     discrepancyNotes: z.string().optional(),
+    isChecked: z.boolean().default(true),
   })).optional(),
 });
 
@@ -69,9 +70,28 @@ export default function NewDelivery() {
     queryKey: ['/api/vendors'],
   });
 
-  // Fetch purchase orders for the dropdown
-  const { data: purchaseOrders = [] } = useQuery<PurchaseOrder[]>({
-    queryKey: ['/api/purchase-orders'],
+  // Watch vendor ID to filter purchase orders
+  const selectedVendorId = form.watch("vendorId");
+
+  // Fetch purchase orders for the dropdown with vendor filtering
+  const { data: purchaseOrders = [] } = useQuery<any[]>({
+    queryKey: ['/api/purchase-orders', selectedVendorId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedVendorId && selectedVendorId !== "") {
+        params.append('vendorId', selectedVendorId);
+      }
+      
+      const response = await fetch(`/api/purchase-orders?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch purchase orders');
+      const data = await response.json();
+      // Filter only incomplete POs (not fully received)
+      return data.filter((po: any) => po.status !== 'received');
+    },
   });
 
   // Get selected PO details including lines
@@ -175,7 +195,16 @@ export default function NewDelivery() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Vendor *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Clear PO selection when vendor changes
+                          if (value !== field.value) {
+                            form.setValue("poId", "none");
+                          }
+                        }}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-vendor">
                             <SelectValue placeholder="Select a vendor" />
@@ -199,9 +228,21 @@ export default function NewDelivery() {
                   control={form.control}
                   name="poId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-2">
                       <FormLabel>Purchase Order (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || "none"}>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Auto-populate vendor when PO is selected
+                          if (value !== "none") {
+                            const selectedPO = purchaseOrders.find(po => po.id === value);
+                            if (selectedPO?.vendor?.id) {
+                              form.setValue("vendorId", selectedPO.vendor.id);
+                            }
+                          }
+                        }} 
+                        value={field.value || "none"}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-purchase-order">
                             <SelectValue placeholder="Select a purchase order" />
@@ -210,9 +251,18 @@ export default function NewDelivery() {
                         <SelectContent>
                           <SelectItem value="none">No Purchase Order</SelectItem>
                           {purchaseOrders.map((po) => (
-                            <SelectItem key={po.id} value={po.id}>
-                              {po.number}
-                            </SelectItem>
+                            <div key={po.id} className="flex flex-col">
+                              <SelectItem value={po.id}>
+                                <div className="flex flex-col space-y-1">
+                                  <div className="font-medium">{po.number}</div>
+                                  {po.project?.name && (
+                                    <div className="text-sm text-muted-foreground">
+                                      {po.project.projectNumber ? `${po.project.projectNumber} - ` : ""}{po.project.name}
+                                    </div>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            </div>
                           ))}
                         </SelectContent>
                       </Select>
@@ -361,6 +411,7 @@ export default function NewDelivery() {
                           quantityReceived: 0,
                           quantityDamaged: 0,
                           discrepancyNotes: "",
+                          isChecked: true,
                         })}
                         data-testid="button-add-line"
                       >
@@ -381,7 +432,36 @@ export default function NewDelivery() {
                   )}
                   
                   {fields.map((field, index) => (
-                    <div key={field.id} className="relative grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border border-border rounded-lg bg-background">
+                    <div key={field.id} className="relative grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border border-border rounded-lg bg-background">
+                      {/* Checkbox */}
+                      <FormField
+                        control={form.control}
+                        name={`lines.${index}.isChecked`}
+                        render={({ field: checkboxField }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={checkboxField.value}
+                                onCheckedChange={(checked) => {
+                                  checkboxField.onChange(checked);
+                                  // If unchecked, set received quantity to 0
+                                  if (!checked) {
+                                    form.setValue(`lines.${index}.quantityReceived`, 0);
+                                  } else {
+                                    // If checked, restore to ordered quantity
+                                    const orderedQty = form.getValues(`lines.${index}.quantityOrdered`) || 0;
+                                    form.setValue(`lines.${index}.quantityReceived`, orderedQty);
+                                  }
+                                }}
+                                data-testid={`checkbox-line-${index}`}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal text-sm pt-1">
+                              Include
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
                       {/* Description */}
                       <FormField
                         control={form.control}
@@ -393,6 +473,7 @@ export default function NewDelivery() {
                               <Input
                                 placeholder="Item description"
                                 {...field}
+                                disabled={!form.watch(`lines.${index}.isChecked`)}
                                 data-testid={`input-line-description-${index}`}
                               />
                             </FormControl>
@@ -416,6 +497,7 @@ export default function NewDelivery() {
                                 {...field}
                                 value={field.value || ""}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                disabled={!form.watch(`lines.${index}.isChecked`)}
                                 data-testid={`input-line-ordered-${index}`}
                               />
                             </FormControl>
@@ -438,6 +520,7 @@ export default function NewDelivery() {
                                 {...field}
                                 value={field.value || ""}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                disabled={!form.watch(`lines.${index}.isChecked`)}
                                 data-testid={`input-line-received-${index}`}
                               />
                             </FormControl>
@@ -460,6 +543,7 @@ export default function NewDelivery() {
                                 {...field}
                                 value={field.value || ""}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                disabled={!form.watch(`lines.${index}.isChecked`)}
                                 data-testid={`input-line-damaged-${index}`}
                               />
                             </FormControl>
@@ -495,6 +579,7 @@ export default function NewDelivery() {
                                 className="min-h-[60px]"
                                 {...field}
                                 value={field.value || ""}
+                                disabled={!form.watch(`lines.${index}.isChecked`)}
                                 data-testid={`textarea-line-notes-${index}`}
                               />
                             </FormControl>
@@ -527,7 +612,7 @@ export default function NewDelivery() {
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Select which items from the purchase order were included in this delivery.
+                      All items from the purchase order will be loaded. Use the checkboxes in the delivery items to mark items as not received (backordered).
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -537,14 +622,8 @@ export default function NewDelivery() {
                         className="flex items-center space-x-4 p-3 border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors"
                       >
                         <Checkbox
-                          checked={selectedPoLines.includes(line.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedPoLines([...selectedPoLines, line.id]);
-                            } else {
-                              setSelectedPoLines(selectedPoLines.filter(id => id !== line.id));
-                            }
-                          }}
+                          checked={true}
+                          disabled
                           data-testid={`checkbox-po-line-${line.id}`}
                         />
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
@@ -559,62 +638,45 @@ export default function NewDelivery() {
                       </div>
                     ))}
                     
-                    <div className="flex justify-between items-center pt-4 border-t">
-                      <div className="text-sm text-muted-foreground">
-                        {selectedPoLines.length} of {poLines.length} items selected
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (selectedPoLines.length === poLines.length) {
-                              setSelectedPoLines([]);
-                            } else {
-                              setSelectedPoLines(poLines.map(line => line.id));
-                            }
-                          }}
-                          data-testid="button-toggle-all-po-lines"
-                        >
-                          {selectedPoLines.length === poLines.length ? "Deselect All" : "Select All"}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            // Add selected lines to delivery
-                            const selectedLines = poLines
-                              .filter(line => selectedPoLines.includes(line.id))
-                              .map(line => ({
-                                poLineId: line.id,
-                                description: line.description,
-                                quantityOrdered: parseFloat(line.quantity),
-                                quantityReceived: 0,
-                                quantityDamaged: 0,
-                                discrepancyNotes: "",
-                              }));
-                            
-                            // Add to existing lines or replace
-                            const existingLines = form.getValues("lines") || [];
-                            form.setValue("lines", [...existingLines, ...selectedLines]);
-                            
-                            // Close selector
-                            setShowPoLineSelector(false);
-                            setSelectedPoLines([]);
-                            
-                            toast({
-                              title: "Items Added",
-                              description: `${selectedLines.length} items added to delivery record.`,
-                            });
-                          }}
-                          disabled={selectedPoLines.length === 0}
-                          data-testid="button-add-selected-lines"
-                        >
-                          <Check className="w-4 h-4 mr-2" />
-                          Add Selected ({selectedPoLines.length})
-                        </Button>
-                      </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        type="button"
+                        variant="default"
+                        onClick={() => {
+                          // Clear existing lines first
+                          while (fields.length > 0) {
+                            remove(0);
+                          }
+                          
+                          // Add all PO lines with checkmarks
+                          const linesToAdd = poLines.map(line => ({
+                            poLineId: line.id,
+                            description: line.description,
+                            quantityOrdered: parseFloat(line.quantity),
+                            quantityReceived: parseFloat(line.quantity), // Default to full quantity
+                            quantityDamaged: 0,
+                            discrepancyNotes: "",
+                            isChecked: true, // All items checked by default
+                          }));
+                          
+                          linesToAdd.forEach(line => append(line));
+                          
+                          setShowPoLineSelector(false);
+                        }}
+                        data-testid="button-add-selected-lines"
+                      >
+                        Load All Items
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowPoLineSelector(false);
+                        }}
+                        data-testid="button-cancel-selection"
+                      >
+                        Cancel
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
