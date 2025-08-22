@@ -917,6 +917,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/purchase-orders/:id/delivered-quantities", async (req: AuthenticatedRequest, res) => {
+    try {
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+      
+      const deliveredQuantities = await storage.getPreviouslyDeliveredQuantities(req.params.id);
+      res.json(deliveredQuantities);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch delivered quantities" });
+    }
+  });
+
   app.post("/api/purchase-orders", requireRole(['Admin', 'PM', 'Purchaser']), async (req: AuthenticatedRequest, res) => {
     try {
       const poData = insertPurchaseOrderSchema.parse(req.body);

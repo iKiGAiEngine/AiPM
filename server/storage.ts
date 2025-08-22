@@ -541,6 +541,28 @@ export class DatabaseStorage implements IStorage {
     await db.update(deliveries).set({ status: status as any }).where(eq(deliveries.id, id));
   }
 
+  // Get previously delivered quantities for a purchase order
+  async getPreviouslyDeliveredQuantities(poId: string): Promise<Record<string, number>> {
+    const result = await db
+      .select({
+        poLineId: deliveryLines.poLineId,
+        totalReceived: sql<number>`SUM(${deliveryLines.quantityReceived})`
+      })
+      .from(deliveryLines)
+      .innerJoin(deliveries, eq(deliveryLines.deliveryId, deliveries.id))
+      .where(eq(deliveries.poId, poId))
+      .groupBy(deliveryLines.poLineId);
+
+    const quantities: Record<string, number> = {};
+    result.forEach(row => {
+      if (row.poLineId) {
+        quantities[row.poLineId] = Number(row.totalReceived) || 0;
+      }
+    });
+    
+    return quantities;
+  }
+
   // Delivery Lines
   async createDeliveryLine(line: InsertDeliveryLine): Promise<DeliveryLine> {
     const [newLine] = await db.insert(deliveryLines).values(line).returning();

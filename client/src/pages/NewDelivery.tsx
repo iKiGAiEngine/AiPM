@@ -51,6 +51,7 @@ export default function NewDelivery() {
   const [showPoLineSelector, setShowPoLineSelector] = useState(false);
   const [selectedPoLines, setSelectedPoLines] = useState<string[]>([]);
   const [poLineQuantities, setPoLineQuantities] = useState<Record<string, number>>({});
+  const [previouslyReceived, setPreviouslyReceived] = useState<Record<string, number>>({});
 
   const form = useForm<DeliveryFormData>({
     resolver: zodResolver(deliveryFormSchema),
@@ -111,26 +112,96 @@ export default function NewDelivery() {
     },
   });
 
-  // Initialize quantities when PO lines are loaded
+  // Get previously delivered quantities for the selected PO
+  const { data: deliveredQuantities = {} } = useQuery<Record<string, number>>({
+    queryKey: ['/api/purchase-orders', selectedPoId, 'delivered-quantities'],
+    enabled: !!selectedPoId && selectedPoId !== "none",
+    queryFn: async () => {
+      const response = await fetch(`/api/purchase-orders/${selectedPoId}/delivered-quantities`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch delivered quantities');
+      return response.json();
+    },
+  });
+
+  // Initialize quantities when PO lines and delivered quantities are loaded
   useEffect(() => {
     if (poLines.length > 0) {
       const quantities: Record<string, number> = {};
+      const received: Record<string, number> = {};
+      
       poLines.forEach(line => {
-        quantities[line.id] = parseInt(line.quantity);
+        const ordered = parseInt(line.quantity);
+        const previouslyDelivered = deliveredQuantities[line.id] || 0;
+        const remaining = Math.max(0, ordered - previouslyDelivered);
+        
+        quantities[line.id] = remaining; // Default to remaining quantity
+        received[line.id] = previouslyDelivered;
       });
+      
       setPoLineQuantities(quantities);
-      // Select all lines by default
-      setSelectedPoLines(poLines.map(line => line.id));
+      setPreviouslyReceived(received);
+      
+      // Select only lines that have remaining quantities
+      const linesWithRemaining = poLines.filter(line => {
+        const ordered = parseInt(line.quantity);
+        const previouslyDelivered = deliveredQuantities[line.id] || 0;
+        return ordered > previouslyDelivered;
+      });
+      
+      setSelectedPoLines(linesWithRemaining.map(line => line.id));
     }
-  }, [poLines]);
+  }, [poLines, deliveredQuantities]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "lines",
   });
 
+  // Calculate delivery status based on quantities
+  const calculateDeliveryStatus = (lines: DeliveryFormData['lines']) => {
+    if (!lines || lines.length === 0) return 'pending';
+    
+    const checkedLines = lines.filter(line => line.isChecked);
+    if (checkedLines.length === 0) return 'pending';
+    
+    let allItemsFullyReceived = true;
+    let someItemsReceived = false;
+    
+    for (const line of checkedLines) {
+      const ordered = line.quantityOrdered || 0;
+      const received = line.quantityReceived || 0;
+      
+      if (received > 0) {
+        someItemsReceived = true;
+      }
+      
+      if (received < ordered) {
+        allItemsFullyReceived = false;
+      }
+    }
+    
+    // If all checked items are fully received, it's complete
+    if (allItemsFullyReceived && someItemsReceived) {
+      return 'complete';
+    }
+    
+    // If some items are received but not all are fully received, it's partial
+    if (someItemsReceived) {
+      return 'partial';
+    }
+    
+    return 'pending';
+  };
+
   const createDeliveryMutation = useMutation({
     mutationFn: async (data: DeliveryFormData) => {
+      // Calculate status automatically
+      const status = calculateDeliveryStatus(data.lines);
+      
       const response = await fetch('/api/deliveries', {
         method: 'POST',
         headers: {
@@ -140,6 +211,7 @@ export default function NewDelivery() {
         body: JSON.stringify({
           ...data,
           poId: data.poId === "none" ? null : data.poId, // Convert "none" to null
+          status, // Use calculated status
           lines: data.lines || [], // Include delivery lines
         }),
       });
@@ -624,11 +696,18 @@ export default function NewDelivery() {
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Select which items were received in this delivery. Adjust quantities as needed, then add the selected items to your delivery record.
+                      Only remaining items that need delivery are shown below. Previously received quantities are tracked separately. Select items and adjust quantities for this delivery.
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {poLines.map((line) => (
+                    {poLines
+                      .filter(line => {
+                        // Only show lines that have remaining quantity to deliver
+                        const ordered = parseInt(line.quantity);
+                        const previouslyDelivered = previouslyReceived[line.id] || 0;
+                        return ordered > previouslyDelivered;
+                      })
+                      .map((line) => (
                       <div
                         key={line.id}
                         className="flex items-center space-x-4 p-3 border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors"
@@ -644,10 +723,13 @@ export default function NewDelivery() {
                           }}
                           data-testid={`checkbox-po-line-${line.id}`}
                         />
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
                           <div className="font-medium text-sm">{line.description}</div>
                           <div className="text-sm text-muted-foreground">
                             Ordered Quantity: {line.quantity} {line.unit}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Received Qty: {previouslyReceived[line.id] || 0} {line.unit}
                           </div>
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
@@ -658,18 +740,21 @@ export default function NewDelivery() {
                                 value={poLineQuantities[line.id] || ""}
                                 onChange={(e) => {
                                   const newQty = parseInt(e.target.value) || 0;
+                                  const maxAllowed = parseInt(line.quantity) - (previouslyReceived[line.id] || 0);
+                                  const adjustedQty = Math.min(newQty, maxAllowed);
                                   setPoLineQuantities(prev => ({
                                     ...prev,
-                                    [line.id]: newQty
+                                    [line.id]: adjustedQty
                                   }));
                                 }}
                                 className="w-20 h-8 text-sm"
                                 disabled={!selectedPoLines.includes(line.id)}
+                                max={parseInt(line.quantity) - (previouslyReceived[line.id] || 0)}
                                 data-testid={`input-po-line-qty-${line.id}`}
                               />
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Backordered: {Math.max(0, parseInt(line.quantity) - (poLineQuantities[line.id] || 0))} {line.unit}
+                              Remaining: {Math.max(0, parseInt(line.quantity) - (previouslyReceived[line.id] || 0) - (poLineQuantities[line.id] || 0))} {line.unit}
                             </div>
                           </div>
                         </div>
