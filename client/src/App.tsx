@@ -28,6 +28,7 @@ import Projects from "@/pages/Projects";
 import NewProject from "@/pages/NewProject";
 import EditProject from "@/pages/EditProject";
 import NewPurchaseOrder from "@/pages/NewPurchaseOrder";
+import PurchaseOrderDetail from "@/pages/PurchaseOrderDetail";
 import ProjectDetail from "@/pages/ProjectDetail";
 import ProjectMaterialUpload from "@/pages/ProjectMaterialUpload";
 import Reports from "@/pages/Reports";
@@ -160,6 +161,11 @@ export default function App() {
               <Route path="/purchase-orders/new" element={
                 <ProtectedRoute>
                   <NewPurchaseOrder />
+                </ProtectedRoute>
+              } />
+              <Route path="/purchase-orders/:id" element={
+                <ProtectedRoute>
+                  <PurchaseOrderDetail />
                 </ProtectedRoute>
               } />
               <Route path="/purchase-orders" element={

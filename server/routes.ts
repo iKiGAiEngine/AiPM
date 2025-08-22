@@ -891,6 +891,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/purchase-orders/:id", async (req: AuthenticatedRequest, res) => {
+    try {
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+      res.json(po);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch purchase order" });
+    }
+  });
+
+  app.get("/api/purchase-orders/:id/lines", async (req: AuthenticatedRequest, res) => {
+    try {
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+      
+      const lines = await storage.getPurchaseOrderLines(req.params.id);
+      res.json(lines);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch purchase order lines" });
+    }
+  });
+
   app.post("/api/purchase-orders", requireRole(['Admin', 'PM', 'Purchaser']), async (req: AuthenticatedRequest, res) => {
     try {
       const poData = insertPurchaseOrderSchema.parse(req.body);
