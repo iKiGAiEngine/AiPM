@@ -976,16 +976,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/deliveries", requireRole(['Admin', 'PM', 'Field']), async (req: AuthenticatedRequest, res) => {
     try {
-      const deliveryData = insertDeliverySchema.parse(req.body);
+      console.log('Delivery creation request:', JSON.stringify(req.body, null, 2));
+      
+      const { lines, ...deliveryBody } = req.body;
+      
+      // Convert deliveryDate to proper timestamp if it's a string
+      if (deliveryBody.deliveryDate && typeof deliveryBody.deliveryDate === 'string') {
+        deliveryBody.deliveryDate = new Date(deliveryBody.deliveryDate);
+      }
+      
+      // Ensure attachments is an array
+      if (!deliveryBody.attachments) {
+        deliveryBody.attachments = [];
+      }
+      
+      console.log('Processed delivery data:', JSON.stringify(deliveryBody, null, 2));
+      
+      const deliveryData = insertDeliverySchema.parse(deliveryBody);
       const delivery = await storage.createDelivery({
         ...deliveryData,
         organizationId: req.user!.organizationId,
         receiverId: req.user!.id
       });
       
+      // Create delivery lines if provided
+      if (lines && Array.isArray(lines)) {
+        for (const line of lines) {
+          await storage.createDeliveryLine({
+            deliveryId: delivery.id,
+            poLineId: line.poLineId || null,
+            description: line.description,
+            quantityOrdered: line.quantityOrdered ? line.quantityOrdered.toString() : null,
+            quantityReceived: line.quantityReceived.toString(),
+            quantityDamaged: line.quantityDamaged ? line.quantityDamaged.toString() : '0',
+            discrepancyNotes: line.discrepancyNotes || null
+          });
+        }
+      }
+      
       res.status(201).json(delivery);
     } catch (error) {
-      res.status(400).json({ error: "Invalid delivery data" });
+      console.error('Delivery creation error:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: "Invalid delivery data" });
+      }
     }
   });
 

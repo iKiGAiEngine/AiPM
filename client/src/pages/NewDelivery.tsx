@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,11 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Truck, Save, ArrowLeft } from "lucide-react";
+import { CalendarIcon, Truck, Save, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import type { Vendor, PurchaseOrder } from "@shared/schema";
+import type { Vendor, PurchaseOrder, PurchaseOrderLine } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 
 // Form schema for delivery creation
@@ -30,6 +30,14 @@ const deliveryFormSchema = z.object({
   trackingNumber: z.string().optional(),
   status: z.enum(["pending", "partial", "complete", "damaged"]).default("pending"),
   notes: z.string().optional(),
+  lines: z.array(z.object({
+    poLineId: z.string().optional(),
+    description: z.string().min(1, "Description is required"),
+    quantityOrdered: z.number().optional(),
+    quantityReceived: z.number().min(0, "Quantity received must be positive"),
+    quantityDamaged: z.number().min(0).optional(),
+    discrepancyNotes: z.string().optional(),
+  })).optional(),
 });
 
 type DeliveryFormData = z.infer<typeof deliveryFormSchema>;
@@ -49,6 +57,7 @@ export default function NewDelivery() {
       trackingNumber: "",
       status: "pending",
       notes: "",
+      lines: [],
     },
   });
 
@@ -62,6 +71,27 @@ export default function NewDelivery() {
     queryKey: ['/api/purchase-orders'],
   });
 
+  // Get selected PO details including lines
+  const selectedPoId = form.watch("poId");
+  const { data: poLines = [] } = useQuery<PurchaseOrderLine[]>({
+    queryKey: ['/api/purchase-orders', selectedPoId, 'lines'],
+    enabled: !!selectedPoId && selectedPoId !== "none",
+    queryFn: async () => {
+      const response = await fetch(`/api/purchase-orders/${selectedPoId}/lines`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch PO lines');
+      return response.json();
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "lines",
+  });
+
   const createDeliveryMutation = useMutation({
     mutationFn: async (data: DeliveryFormData) => {
       const response = await fetch('/api/deliveries', {
@@ -73,6 +103,7 @@ export default function NewDelivery() {
         body: JSON.stringify({
           ...data,
           poId: data.poId === "none" ? null : data.poId, // Convert "none" to null
+          lines: data.lines || [], // Include delivery lines
         }),
       });
       
@@ -297,16 +328,203 @@ export default function NewDelivery() {
                 />
               </div>
 
+              {/* Delivery Lines */}
+              <Card className="bg-muted/20">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Delivery Items</CardTitle>
+                    <div className="flex gap-2">
+                      {selectedPoId && selectedPoId !== "none" && poLines.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Auto-populate from PO lines
+                            const newLines = poLines.map(line => ({
+                              poLineId: line.id,
+                              description: line.description,
+                              quantityOrdered: parseFloat(line.quantity),
+                              quantityReceived: 0,
+                              quantityDamaged: 0,
+                              discrepancyNotes: "",
+                            }));
+                            form.setValue("lines", newLines);
+                          }}
+                          data-testid="button-populate-po-lines"
+                        >
+                          Load from PO
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => append({
+                          poLineId: "",
+                          description: "",
+                          quantityOrdered: 0,
+                          quantityReceived: 0,
+                          quantityDamaged: 0,
+                          discrepancyNotes: "",
+                        })}
+                        data-testid="button-add-line"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Item
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {fields.length === 0 && (
+                    <p className="text-muted-foreground text-center py-6">
+                      {selectedPoId && selectedPoId !== "none" 
+                        ? "Click 'Load from PO' to import purchase order items, or 'Add Item' to manually add items."
+                        : "Add items to track what was delivered. This is especially useful for partial deliveries."
+                      }
+                    </p>
+                  )}
+                  
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border border-border rounded-lg bg-background">
+                      {/* Description */}
+                      <FormField
+                        control={form.control}
+                        name={`lines.${index}.description`}
+                        render={({ field }) => (
+                          <FormItem className="col-span-2">
+                            <FormLabel>Description *</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Item description"
+                                {...field}
+                                data-testid={`input-line-description-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Quantity Ordered */}
+                      <FormField
+                        control={form.control}
+                        name={`lines.${index}.quantityOrdered`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ordered</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0"
+                                {...field}
+                                value={field.value || ""}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                data-testid={`input-line-ordered-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Quantity Received */}
+                      <FormField
+                        control={form.control}
+                        name={`lines.${index}.quantityReceived`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Received *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0"
+                                {...field}
+                                value={field.value || ""}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                data-testid={`input-line-received-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Quantity Damaged */}
+                      <FormField
+                        control={form.control}
+                        name={`lines.${index}.quantityDamaged`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Damaged</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0"
+                                {...field}
+                                value={field.value || ""}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                data-testid={`input-line-damaged-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Remove Button */}
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => remove(index)}
+                          className="text-destructive hover:text-destructive"
+                          data-testid={`button-remove-line-${index}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {/* Discrepancy Notes (full width) */}
+                      <FormField
+                        control={form.control}
+                        name={`lines.${index}.discrepancyNotes`}
+                        render={({ field }) => (
+                          <FormItem className="col-span-full">
+                            <FormLabel>Notes / Discrepancies</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Add notes about discrepancies, damage, or missing items..."
+                                className="min-h-[60px]"
+                                {...field}
+                                value={field.value || ""}
+                                data-testid={`textarea-line-notes-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
               {/* Notes */}
               <FormField
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes</FormLabel>
+                    <FormLabel>General Notes</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Add any notes about the delivery..."
+                        placeholder="Add any general notes about the delivery..."
                         className="min-h-[100px]"
                         {...field}
                         value={field.value || ""}
