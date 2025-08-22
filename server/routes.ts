@@ -1173,13 +1173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Update invoice with PO link and manual match details
-      const updatedRows = await storage.db.update(invoices).set({
-        poId: poId,
-        matchAmount: matchAmount.toString(),
-        matchedAt: new Date(),
-        matchedById: req.user!.id,
-        updatedAt: new Date()
-      }).where(eq(invoices.id, invoiceId)).returning();
+      await storage.updateInvoiceManualMatch(invoiceId, poId, matchAmount, req.user!.id);
 
       const updatedInvoice = await storage.getInvoice(invoiceId);
       res.json(updatedInvoice);

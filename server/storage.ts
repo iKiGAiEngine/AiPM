@@ -122,6 +122,7 @@ export interface IStorage {
   getInvoicesByVendor(vendorId: string): Promise<Invoice[]>;
   updateInvoiceStatus(id: string, status: string): Promise<void>;
   updateInvoiceMatchStatus(id: string, matchStatus: string, variance?: number, exceptions?: any): Promise<void>;
+  updateInvoiceManualMatch(id: string, poId: string, matchAmount: number, matchedById: string): Promise<void>;
   
   // Invoice Lines
   createInvoiceLine(line: InsertInvoiceLine): Promise<InvoiceLine>;
@@ -696,6 +697,16 @@ export class DatabaseStorage implements IStorage {
       matchStatus: matchStatus as any, 
       matchVariance: variance ? variance.toString() : null,
       exceptions 
+    }).where(eq(invoices.id, id));
+  }
+
+  async updateInvoiceManualMatch(id: string, poId: string, matchAmount: number, matchedById: string): Promise<void> {
+    await db.update(invoices).set({
+      poId,
+      matchAmount: matchAmount.toString(),
+      matchedAt: new Date(),
+      matchedById,
+      updatedAt: new Date()
     }).where(eq(invoices.id, id));
   }
 
