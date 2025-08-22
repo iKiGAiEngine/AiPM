@@ -50,6 +50,7 @@ export interface IStorage {
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   getVendor(id: string): Promise<Vendor | undefined>;
   getVendorsByOrganization(organizationId: string): Promise<Vendor[]>;
+  getVendorByName(name: string, organizationId: string): Promise<Vendor | undefined>;
   
   // Materials
   createMaterial(material: InsertMaterial): Promise<Material>;
@@ -236,6 +237,14 @@ export class DatabaseStorage implements IStorage {
 
   async getVendorsByOrganization(organizationId: string): Promise<Vendor[]> {
     return await db.select().from(vendors).where(eq(vendors.organizationId, organizationId));
+  }
+
+  async getVendorByName(name: string, organizationId: string): Promise<Vendor | undefined> {
+    const [vendor] = await db
+      .select()
+      .from(vendors)
+      .where(and(eq(vendors.name, name), eq(vendors.organizationId, organizationId)));
+    return vendor || undefined;
   }
 
   // Materials

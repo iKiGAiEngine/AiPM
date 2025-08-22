@@ -1123,14 +1123,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Received invoice data:', req.body);
       
-      // Validate the incoming data and convert date strings to Date objects
+      // Find or create vendor by name
+      let vendor = await storage.getVendorByName(req.body.vendorName, req.user!.organizationId);
+      if (!vendor) {
+        // Create a new vendor if it doesn't exist
+        vendor = await storage.createVendor({
+          name: req.body.vendorName,
+          organizationId: req.user!.organizationId,
+          contactEmail: '',
+          contactPhone: '',
+          address: '',
+          status: 'active'
+        });
+      }
+      
+      // Prepare invoice data with vendor ID and convert dates
       const invoiceData = {
         invoiceNumber: req.body.invoiceNumber,
-        vendorName: req.body.vendorName,
-        amount: req.body.amount.toString(),
+        vendorId: vendor.id,
+        totalAmount: req.body.amount.toString(),
         invoiceDate: new Date(req.body.invoiceDate),
         dueDate: new Date(req.body.dueDate),
-        description: req.body.description || '',
         status: req.body.status || 'pending',
         poId: req.body.poId || null,
         documentUrl: req.body.documentUrl || null,
