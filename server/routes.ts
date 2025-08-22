@@ -11,7 +11,8 @@ import {
   type AuthenticatedRequest 
 } from "./middleware/auth";
 import { z } from "zod";
-import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, type InsertProject } from "@shared/schema";
+import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, type InsertProject, invoices } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { threeWayMatchService } from "./services/three-way-match";
 import { emailService } from "./services/email";
 import { ocrService } from "./services/ocr";
@@ -1131,6 +1132,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/invoices/:id/manual-match", requireRole(['Admin', 'PM', 'AP']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const invoiceId = req.params.id;
+      const { poId, amount } = req.body;
+
+      // Validate input
+      if (!poId || !amount) {
+        return res.status(400).json({ error: "Purchase order ID and amount are required" });
+      }
+
+      const matchAmount = parseFloat(amount);
+      if (isNaN(matchAmount) || matchAmount <= 0) {
+        return res.status(400).json({ error: "Invalid amount provided" });
+      }
+
+      // Verify invoice exists and user has access
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice || invoice.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      // Verify PO exists and user has access
+      const po = await storage.getPurchaseOrder(poId);
+      if (!po || po.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      // Verify PO is in the same project as the invoice
+      if (invoice.projectId !== po.projectId) {
+        return res.status(400).json({ error: "Invoice and purchase order must be in the same project" });
+      }
+
+      // Update invoice with manual match
+      await storage.updateInvoiceMatchStatus(
+        invoiceId,
+        'matched',
+        0, // No variance for manual matches
+        [] // Clear exceptions
+      );
+
+      // Update invoice with PO link and manual match details
+      const updatedRows = await storage.db.update(invoices).set({
+        poId: poId,
+        matchAmount: matchAmount.toString(),
+        matchedAt: new Date(),
+        matchedById: req.user!.id,
+        updatedAt: new Date()
+      }).where(eq(invoices.id, invoiceId)).returning();
+
+      const updatedInvoice = await storage.getInvoice(invoiceId);
+      res.json(updatedInvoice);
+    } catch (error) {
+      console.error('Manual invoice matching error:', error);
+      res.status(500).json({ error: "Failed to manually match invoice" });
+    }
+  });
+
   app.post("/api/invoices", requireRole(['Admin', 'PM', 'AP']), async (req: AuthenticatedRequest, res) => {
     try {
       console.log('Received invoice data:', req.body);
@@ -1141,11 +1199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create a new vendor if it doesn't exist
         vendor = await storage.createVendor({
           name: req.body.vendorName,
+          company: req.body.vendorName,
+          email: req.body.vendorName,
           organizationId: req.user!.organizationId,
-          contactEmail: '',
-          contactPhone: '',
-          address: '',
-          status: 'active'
         });
       }
       
