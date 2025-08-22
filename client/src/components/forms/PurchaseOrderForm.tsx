@@ -105,12 +105,28 @@ export default function PurchaseOrderForm() {
         },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to create purchase order");
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('PO Creation Error:', errorData);
+        throw new Error(errorData.error || "Failed to create purchase order");
+      }
       return response.json();
     },
     onSuccess: () => {
+      toast({
+        title: "Purchase Order created successfully",
+        description: "The purchase order has been created and is ready for processing.",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
       navigate("/purchase-orders");
+    },
+    onError: (error) => {
+      console.error('PO Creation Failed:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to create purchase order",
+        description: error instanceof Error ? error.message : "Please check your form data and try again.",
+      });
     },
   });
 
@@ -194,6 +210,75 @@ export default function PurchaseOrderForm() {
   };
 
   const onSubmit = (data: Omit<PurchaseOrderFormData, 'lines'>) => {
+    console.log('Form submission data:', { ...data, lines });
+    console.log('Form validation state:', form.formState.errors);
+    
+    // Basic validation
+    if (!data.vendorId) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please select a vendor.",
+      });
+      return;
+    }
+    
+    if (!data.projectId) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error", 
+        description: "Please select a project.",
+      });
+      return;
+    }
+    
+    if (!data.shipToAddress?.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please enter a ship-to address.",
+      });
+      return;
+    }
+    
+    if (lines.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please add at least one line item.",
+      });
+      return;
+    }
+    
+    // Validate line items
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.description?.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: `Line item ${i + 1}: Description is required.`,
+        });
+        return;
+      }
+      if (line.quantity <= 0) {
+        toast({
+          variant: "destructive", 
+          title: "Validation Error",
+          description: `Line item ${i + 1}: Quantity must be greater than 0.`,
+        });
+        return;
+      }
+      if (line.unitPrice < 0) {
+        toast({
+          variant: "destructive",
+          title: "Validation Error", 
+          description: `Line item ${i + 1}: Unit price cannot be negative.`,
+        });
+        return;
+      }
+    }
+    
     const formData = { ...data, lines };
     createMutation.mutate(formData);
   };
