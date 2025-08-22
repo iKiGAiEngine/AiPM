@@ -90,7 +90,7 @@ export default function Deliveries() {
           <p className="text-muted-foreground">Track and manage material deliveries</p>
         </div>
         <Button asChild data-testid="button-new-delivery">
-          <Link href="/deliveries/new">
+          <Link to="/deliveries/new">
             <Plus className="w-4 h-4 mr-2" />
             Record Delivery
           </Link>
@@ -202,7 +202,7 @@ export default function Deliveries() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild data-testid={`button-view-delivery-${delivery.id}`}>
-                        <Link href={`/deliveries/${delivery.id}`}>
+                        <Link to={`/deliveries/${delivery.id}`}>
                           <Eye className="w-4 h-4" />
                         </Link>
                       </Button>

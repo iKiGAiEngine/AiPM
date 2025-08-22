@@ -123,7 +123,7 @@ export default function PurchaseOrders() {
           <p className="text-muted-foreground">Manage purchase orders and vendor communications</p>
         </div>
         <Button asChild data-testid="button-new-po">
-          <Link href="/purchase-orders/new">
+          <Link to="/purchase-orders/new">
             <Plus className="w-4 h-4 mr-2" />
             New Purchase Order
           </Link>
@@ -237,7 +237,7 @@ export default function PurchaseOrders() {
                           <Download className="w-4 h-4" />
                         </Button>
                         <Button variant="ghost" size="sm" asChild data-testid={`button-view-po-${po.id}`}>
-                          <Link href={`/purchase-orders/${po.id}`}>
+                          <Link to={`/purchase-orders/${po.id}`}>
                             <Eye className="w-4 h-4" />
                           </Link>
                         </Button>

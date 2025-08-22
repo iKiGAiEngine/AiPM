@@ -251,7 +251,7 @@ export default function Invoices() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild data-testid={`button-view-invoice-${invoice.id}`}>
-                        <Link href={`/invoices/${invoice.id}`}>
+                        <Link to={`/invoices/${invoice.id}`}>
                           <Eye className="w-4 h-4" />
                         </Link>
                       </Button>
