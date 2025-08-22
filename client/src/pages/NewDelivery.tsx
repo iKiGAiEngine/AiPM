@@ -116,7 +116,7 @@ export default function NewDelivery() {
     if (poLines.length > 0) {
       const quantities: Record<string, number> = {};
       poLines.forEach(line => {
-        quantities[line.id] = parseFloat(line.quantity);
+        quantities[line.id] = parseInt(line.quantity);
       });
       setPoLineQuantities(quantities);
       // Select all lines by default
@@ -463,7 +463,7 @@ export default function NewDelivery() {
                                     form.setValue(`lines.${index}.quantityReceived`, 0);
                                   } else {
                                     // If checked, restore to ordered quantity
-                                    const orderedQty = form.getValues(`lines.${index}.quantityOrdered`) || 0;
+                                    const orderedQty = parseInt(form.getValues(`lines.${index}.quantityOrdered`)) || 0;
                                     form.setValue(`lines.${index}.quantityReceived`, orderedQty);
                                   }
                                 }}
@@ -506,11 +506,10 @@ export default function NewDelivery() {
                             <FormControl>
                               <Input
                                 type="number"
-                                step="0.01"
-                                placeholder="0"
+                                step="1"
                                 {...field}
                                 value={field.value || ""}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 disabled={!form.watch(`lines.${index}.isChecked`)}
                                 data-testid={`input-line-ordered-${index}`}
                               />
@@ -529,11 +528,10 @@ export default function NewDelivery() {
                             <FormControl>
                               <Input
                                 type="number"
-                                step="0.01"
-                                placeholder="0"
+                                step="1"
                                 {...field}
                                 value={field.value || ""}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 disabled={!form.watch(`lines.${index}.isChecked`)}
                                 data-testid={`input-line-received-${index}`}
                               />
@@ -552,11 +550,10 @@ export default function NewDelivery() {
                             <FormControl>
                               <Input
                                 type="number"
-                                step="0.01"
-                                placeholder="0"
+                                step="1"
                                 {...field}
                                 value={field.value || ""}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 disabled={!form.watch(`lines.${index}.isChecked`)}
                                 data-testid={`input-line-damaged-${index}`}
                               />
@@ -657,10 +654,10 @@ export default function NewDelivery() {
                               <span className="text-sm text-muted-foreground">Qty:</span>
                               <Input
                                 type="number"
-                                step="0.01"
-                                value={poLineQuantities[line.id] || 0}
+                                step="1"
+                                value={poLineQuantities[line.id] || ""}
                                 onChange={(e) => {
-                                  const newQty = parseFloat(e.target.value) || 0;
+                                  const newQty = parseInt(e.target.value) || 0;
                                   setPoLineQuantities(prev => ({
                                     ...prev,
                                     [line.id]: newQty
@@ -672,7 +669,7 @@ export default function NewDelivery() {
                               />
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Backordered: {Math.max(0, parseFloat(line.quantity) - (poLineQuantities[line.id] || 0))} {line.unit}
+                              Backordered: {Math.max(0, parseInt(line.quantity) - (poLineQuantities[line.id] || 0))} {line.unit}
                             </div>
                           </div>
                         </div>
@@ -695,8 +692,8 @@ export default function NewDelivery() {
                             .map(line => ({
                               poLineId: line.id,
                               description: line.description,
-                              quantityOrdered: poLineQuantities[line.id] || 0,
-                              quantityReceived: poLineQuantities[line.id] || 0, // Default to adjusted quantity
+                              quantityOrdered: parseInt(line.quantity),
+                              quantityReceived: poLineQuantities[line.id] || 0,
                               quantityDamaged: 0,
                               discrepancyNotes: "",
                               isChecked: true, // All items checked by default
