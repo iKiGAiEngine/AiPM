@@ -518,122 +518,112 @@ export default function NewDelivery() {
                   )}
                   
                   {fields.map((field, index) => (
-                    <div key={field.id} className="relative grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border border-border rounded-lg bg-background">
-                      {/* Checkbox */}
-                      <FormField
-                        control={form.control}
-                        name={`lines.${index}.isChecked`}
-                        render={({ field: checkboxField }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={checkboxField.value}
-                                onCheckedChange={(checked) => {
-                                  checkboxField.onChange(checked);
-                                  // If unchecked, set received quantity to 0
-                                  if (!checked) {
-                                    form.setValue(`lines.${index}.quantityReceived`, 0);
-                                  } else {
-                                    // If checked, restore to ordered quantity
-                                    const orderedQty = parseInt(form.getValues(`lines.${index}.quantityOrdered`)) || 0;
-                                    form.setValue(`lines.${index}.quantityReceived`, orderedQty);
-                                  }
-                                }}
-                                data-testid={`checkbox-line-${index}`}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal text-sm pt-1">
-                              Include
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                      {/* Description */}
-                      <FormField
-                        control={form.control}
-                        name={`lines.${index}.description`}
-                        render={({ field }) => (
-                          <FormItem className="col-span-2">
-                            <FormLabel>Description *</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Item description"
-                                {...field}
-                                disabled={!form.watch(`lines.${index}.isChecked`)}
-                                data-testid={`input-line-description-${index}`}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <div key={field.id} className="relative p-4 border border-border rounded-lg bg-background">
+                      {/* Row 1: Include checkbox and item details (read-only) */}
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-3">
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.isChecked`}
+                          render={({ field: checkboxField }) => (
+                            <FormItem className="lg:col-span-1 flex flex-row items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={checkboxField.value}
+                                  onCheckedChange={(checked) => {
+                                    checkboxField.onChange(checked);
+                                    // If unchecked, set received quantity to 0
+                                    if (!checked) {
+                                      form.setValue(`lines.${index}.quantityReceived`, 0);
+                                    } else {
+                                      // If checked, restore to ordered quantity
+                                      const orderedQty = form.getValues(`lines.${index}.quantityOrdered`) || 0;
+                                      form.setValue(`lines.${index}.quantityReceived`, orderedQty);
+                                    }
+                                  }}
+                                  data-testid={`checkbox-line-${index}`}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal text-sm">
+                                Include
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
 
-                      {/* Quantities in single row */}
-                      <FormField
-                        control={form.control}
-                        name={`lines.${index}.quantityOrdered`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ordered</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="1"
-                                {...field}
-                                value={field.value || ""}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                disabled={!form.watch(`lines.${index}.isChecked`)}
-                                data-testid={`input-line-ordered-${index}`}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        {/* Description - Read Only */}
+                        <div className="lg:col-span-5">
+                          <FormLabel className="text-sm font-medium">Description</FormLabel>
+                          <div className="mt-1 p-2 bg-muted/30 rounded-md text-sm min-h-[40px] flex items-center">
+                            {form.watch(`lines.${index}.description`) || "No description"}
+                          </div>
+                        </div>
 
-                      <FormField
-                        control={form.control}
-                        name={`lines.${index}.quantityReceived`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Received *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="1"
-                                {...field}
-                                value={field.value || ""}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                disabled={!form.watch(`lines.${index}.isChecked`)}
-                                data-testid={`input-line-received-${index}`}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        {/* Ordered Quantity - Read Only */}
+                        <div className="lg:col-span-2">
+                          <FormLabel className="text-sm font-medium">Ordered</FormLabel>
+                          <div className="mt-1 p-2 bg-muted/30 rounded-md text-sm min-h-[40px] flex items-center justify-center font-mono">
+                            {form.watch(`lines.${index}.quantityOrdered`) || 0}
+                          </div>
+                        </div>
 
-                      <FormField
-                        control={form.control}
-                        name={`lines.${index}.quantityDamaged`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Damaged</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="1"
-                                {...field}
-                                value={field.value || ""}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                disabled={!form.watch(`lines.${index}.isChecked`)}
-                                data-testid={`input-line-damaged-${index}`}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        {/* Received Quantity - Read Only */}
+                        <div className="lg:col-span-2">
+                          <FormLabel className="text-sm font-medium">Received</FormLabel>
+                          <div className="mt-1 p-2 bg-muted/30 rounded-md text-sm min-h-[40px] flex items-center justify-center font-mono">
+                            {form.watch(`lines.${index}.quantityReceived`) || 0}
+                          </div>
+                        </div>
+
+                        {/* Damaged Quantity - Editable */}
+                        <div className="lg:col-span-2">
+                          <FormField
+                            control={form.control}
+                            name={`lines.${index}.quantityDamaged`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium">Damaged</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="1"
+                                    {...field}
+                                    value={field.value || ""}
+                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                    disabled={!form.watch(`lines.${index}.isChecked`)}
+                                    className="text-center font-mono"
+                                    data-testid={`input-line-damaged-${index}`}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Row 2: Notes - Editable */}
+                      <div className="grid grid-cols-1 gap-4">
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.discrepancyNotes`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Notes / Discrepancies</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="Add notes about discrepancies, damage, or missing items..."
+                                  className="min-h-[60px] resize-none"
+                                  {...field}
+                                  value={field.value || ""}
+                                  disabled={!form.watch(`lines.${index}.isChecked`)}
+                                  data-testid={`textarea-line-notes-${index}`}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       {/* Remove Button - positioned in top right */}
                       <div className="absolute top-2 right-2">
@@ -648,28 +638,6 @@ export default function NewDelivery() {
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
-
-                      {/* Discrepancy Notes (second row, full width) */}
-                      <FormField
-                        control={form.control}
-                        name={`lines.${index}.discrepancyNotes`}
-                        render={({ field }) => (
-                          <FormItem className="col-span-full">
-                            <FormLabel>Notes / Discrepancies</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Add notes about discrepancies, damage, or missing items..."
-                                className="min-h-[60px]"
-                                {...field}
-                                value={field.value || ""}
-                                disabled={!form.watch(`lines.${index}.isChecked`)}
-                                data-testid={`textarea-line-notes-${index}`}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
                   ))}
                 </CardContent>
