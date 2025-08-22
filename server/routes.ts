@@ -176,6 +176,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/projects/:id/summary", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const projectId = req.params.id;
+      
+      // Verify project access
+      const project = await storage.getProject(projectId);
+      if (!project || project.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Fetch all project-related data
+      const [requisitions, purchaseOrders, deliveries, invoices] = await Promise.all([
+        storage.getRequisitionsByProject(projectId),
+        storage.getPurchaseOrdersByProject(projectId),
+        storage.getDeliveriesByOrganization(req.user!.organizationId),
+        storage.getInvoicesByOrganization(req.user!.organizationId)
+      ]);
+
+      // Filter deliveries and invoices for this project through POs
+      const projectPOIds = new Set(purchaseOrders.map(po => po.id));
+      const projectDeliveries = deliveries.filter(delivery => 
+        delivery.poId && projectPOIds.has(delivery.poId)
+      );
+      const projectInvoices = invoices.filter(invoice => 
+        invoice.projectId === projectId
+      );
+
+      // Calculate summaries
+      const requisitionsByStatus = requisitions.reduce((acc, req) => {
+        acc[req.status] = (acc[req.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const posByStatus = purchaseOrders.reduce((acc, po) => {
+        acc[po.status] = (acc[po.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const deliveriesByStatus = projectDeliveries.reduce((acc, delivery) => {
+        acc[delivery.status] = (acc[delivery.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const invoicesByStatus = projectInvoices.reduce((acc, invoice) => {
+        acc[invoice.status] = (acc[invoice.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const invoicesByMatchStatus = projectInvoices.reduce((acc, invoice) => {
+        if (invoice.matchStatus) {
+          acc[invoice.matchStatus] = (acc[invoice.matchStatus] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      const poTotalValue = purchaseOrders.reduce((sum, po) => 
+        sum + (po.totalAmount ? parseFloat(po.totalAmount.toString()) : 0), 0
+      );
+
+      const invoiceTotalValue = projectInvoices.reduce((sum, invoice) => 
+        sum + (invoice.totalAmount ? parseFloat(invoice.totalAmount.toString()) : 0), 0
+      );
+
+      const summary = {
+        requisitions: {
+          total: requisitions.length,
+          byStatus: requisitionsByStatus
+        },
+        purchaseOrders: {
+          total: purchaseOrders.length,
+          totalValue: poTotalValue,
+          byStatus: posByStatus
+        },
+        deliveries: {
+          total: projectDeliveries.length,
+          byStatus: deliveriesByStatus
+        },
+        invoices: {
+          total: projectInvoices.length,
+          totalValue: invoiceTotalValue,
+          byStatus: invoicesByStatus,
+          byMatchStatus: invoicesByMatchStatus
+        },
+        financial: {
+          budgetUsed: invoiceTotalValue,
+          committed: poTotalValue,
+          invoiced: invoiceTotalValue,
+          paid: projectInvoices
+            .filter(inv => inv.status === 'paid')
+            .reduce((sum, inv) => sum + (inv.totalAmount ? parseFloat(inv.totalAmount.toString()) : 0), 0)
+        }
+      };
+
+      res.json(summary);
+    } catch (error) {
+      console.error('Project summary error:', error);
+      res.status(500).json({ error: "Failed to fetch project summary" });
+    }
+  });
+
   app.put("/api/projects/:id", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
     try {
       const projectData = {
