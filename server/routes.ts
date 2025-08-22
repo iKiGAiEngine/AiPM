@@ -1014,6 +1014,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single delivery by ID
+  app.get("/api/deliveries/:id", async (req: AuthenticatedRequest, res) => {
+    try {
+      const delivery = await storage.getDelivery(req.params.id);
+      if (!delivery || delivery.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      res.json(delivery);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch delivery" });
+    }
+  });
+
+  // Get delivery lines by delivery ID
+  app.get("/api/deliveries/:id/lines", async (req: AuthenticatedRequest, res) => {
+    try {
+      const delivery = await storage.getDelivery(req.params.id);
+      if (!delivery || delivery.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      
+      const lines = await storage.getDeliveryLines(req.params.id);
+      res.json(lines);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch delivery lines" });
+    }
+  });
+
   app.post("/api/deliveries", requireRole(['Admin', 'PM', 'Field']), async (req: AuthenticatedRequest, res) => {
     try {
       console.log('Delivery creation request:', JSON.stringify(req.body, null, 2));

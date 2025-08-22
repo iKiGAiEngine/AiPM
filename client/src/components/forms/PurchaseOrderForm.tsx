@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
 
 const poLineSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -35,6 +36,7 @@ type POLine = z.infer<typeof poLineSchema>;
 export default function PurchaseOrderForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [lines, setLines] = useState<POLine[]>([
     { description: "", quantity: 1, unitPrice: 0, unit: "EA" }
   ]);

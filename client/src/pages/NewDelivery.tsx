@@ -670,13 +670,16 @@ export default function NewDelivery() {
                           }}
                           data-testid={`checkbox-po-line-${line.id}`}
                         />
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-2 items-center">
                           <div className="font-medium text-sm">{line.description}</div>
                           <div className="text-sm text-muted-foreground">
-                            Ordered Quantity: {line.quantity} {line.unit}
+                            Ordered: {line.quantity} {line.unit}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Received Qty: {previouslyReceived[line.id] || 0} {line.unit}
+                            Previously Received: {previouslyReceived[line.id] || 0} {line.unit}
+                          </div>
+                          <div className="text-sm font-medium text-primary">
+                            Available to Receive: {Math.max(0, parseInt(line.quantity) - (previouslyReceived[line.id] || 0))} {line.unit}
                           </div>
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
