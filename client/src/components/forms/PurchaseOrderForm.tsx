@@ -483,7 +483,7 @@ export default function PurchaseOrderForm() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setLocation("/purchase-orders")}
+              onClick={() => navigate("/purchase-orders")}
               data-testid="button-cancel"
             >
               Cancel
