@@ -205,22 +205,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate summaries
       const requisitionsByStatus = requisitions.reduce((acc, req) => {
-        acc[req.status] = (acc[req.status] || 0) + 1;
+        const status = req.status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
       const posByStatus = purchaseOrders.reduce((acc, po) => {
-        acc[po.status] = (acc[po.status] || 0) + 1;
+        const status = po.status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
       const deliveriesByStatus = projectDeliveries.reduce((acc, delivery) => {
-        acc[delivery.status] = (acc[delivery.status] || 0) + 1;
+        const status = delivery.status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
       const invoicesByStatus = projectInvoices.reduce((acc, invoice) => {
-        acc[invoice.status] = (acc[invoice.status] || 0) + 1;
+        const status = invoice.status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
