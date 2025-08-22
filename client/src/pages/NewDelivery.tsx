@@ -198,6 +198,19 @@ export default function NewDelivery() {
       // Calculate status automatically
       const status = calculateDeliveryStatus(data.lines);
       
+      // Get current user info for organizationId and receiverId
+      const userResponse = await fetch('/api/users/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      
+      if (!userResponse.ok) {
+        throw new Error('Failed to get current user');
+      }
+      
+      const currentUser = await userResponse.json();
+      
       const response = await fetch('/api/deliveries', {
         method: 'POST',
         headers: {
@@ -206,6 +219,8 @@ export default function NewDelivery() {
         },
         body: JSON.stringify({
           ...data,
+          organizationId: currentUser.organizationId,
+          receiverId: currentUser.id,
           poId: data.poId === "none" ? null : data.poId, // Convert "none" to null
           status, // Use calculated status
           lines: data.lines || [], // Include delivery lines
