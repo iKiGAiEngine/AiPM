@@ -164,7 +164,7 @@ export default function Deliveries() {
                   <TableRow key={delivery.id} className="cursor-pointer hover:bg-muted/50" data-testid={`delivery-row-${delivery.id}`}>
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">
-                        {getStatusIcon(delivery.status)}
+                        {getStatusIcon(delivery.status || 'pending')}
                         <span data-testid={`delivery-date-${delivery.id}`}>
                           {delivery.deliveryDate ? format(new Date(delivery.deliveryDate), 'MMM dd, yyyy') : 'Not set'}
                         </span>

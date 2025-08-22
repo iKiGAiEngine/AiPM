@@ -17,6 +17,7 @@ import QuoteComparison from "@/pages/QuoteComparison";
 import NewRFQ from "@/pages/NewRFQ";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import Deliveries from "@/pages/Deliveries";
+import NewDelivery from "@/pages/NewDelivery";
 import Invoices from "@/pages/Invoices";
 import InvoiceDetail from "@/pages/InvoiceDetail";
 import InvoiceUpload from "@/pages/InvoiceUpload";
@@ -175,6 +176,11 @@ export default function App() {
               } />
               
               {/* Deliveries */}
+              <Route path="/deliveries/new" element={
+                <ProtectedRoute>
+                  <NewDelivery />
+                </ProtectedRoute>
+              } />
               <Route path="/deliveries" element={
                 <ProtectedRoute>
                   <Deliveries />
