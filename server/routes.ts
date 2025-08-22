@@ -1123,13 +1123,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Received invoice data:', req.body);
       
-      // Validate the incoming data
+      // Validate the incoming data and convert date strings to Date objects
       const invoiceData = {
         invoiceNumber: req.body.invoiceNumber,
         vendorName: req.body.vendorName,
         amount: req.body.amount.toString(),
-        invoiceDate: req.body.invoiceDate,
-        dueDate: req.body.dueDate,
+        invoiceDate: new Date(req.body.invoiceDate),
+        dueDate: new Date(req.body.dueDate),
         description: req.body.description || '',
         status: req.body.status || 'pending',
         poId: req.body.poId || null,
