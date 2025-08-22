@@ -170,48 +170,47 @@ export default function InvoiceUpload() {
   };
 
   const onSubmit = async (data: UploadFormData) => {
-    if (!uploadedFile) {
-      toast({
-        title: "No File Selected",
-        description: "Please upload an invoice file first",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsUploading(true);
 
     try {
-      // Create form data for file upload
-      const formData = new FormData();
-      formData.append('file', uploadedFile);
-      formData.append('vendorName', data.vendorName);
-      formData.append('invoiceNumber', data.invoiceNumber);
-      formData.append('amount', data.amount);
-      formData.append('invoiceDate', data.invoiceDate);
-      formData.append('dueDate', data.dueDate);
-      if (data.description) formData.append('description', data.description);
+      // Prepare invoice data
+      const invoiceData = {
+        invoiceNumber: data.invoiceNumber,
+        vendorName: data.vendorName,
+        amount: parseFloat(data.amount),
+        invoiceDate: data.invoiceDate,
+        dueDate: data.dueDate,
+        description: data.description || '',
+        status: 'pending' as const,
+        poId: null, // Will be linked later during matching process
+        documentUrl: null, // File handling can be added later if needed
+      };
 
       const response = await fetch('/api/invoices', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify(invoiceData),
       });
 
-      if (!response.ok) throw new Error('Failed to upload invoice');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create invoice');
+      }
 
       toast({
-        title: "Invoice Uploaded Successfully",
-        description: "Your invoice has been processed and added to the system",
+        title: "Invoice Created Successfully",
+        description: "Your invoice has been added to the system and is ready for processing",
       });
 
       navigate("/invoices");
     } catch (error) {
+      console.error('Invoice creation error:', error);
       toast({
         title: "Upload Failed",
-        description: "Failed to upload invoice. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create invoice. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -490,7 +489,7 @@ export default function InvoiceUpload() {
               <div className="flex gap-3 pt-4">
                 <Button
                   type="submit"
-                  disabled={isUploading || !uploadedFile}
+                  disabled={isUploading}
                   className="flex-1"
                   data-testid="button-submit-invoice"
                 >

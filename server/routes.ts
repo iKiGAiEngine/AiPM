@@ -1121,7 +1121,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/invoices", requireRole(['Admin', 'PM', 'AP']), async (req: AuthenticatedRequest, res) => {
     try {
-      const invoiceData = insertInvoiceSchema.parse(req.body);
+      console.log('Received invoice data:', req.body);
+      
+      // Validate the incoming data
+      const invoiceData = {
+        invoiceNumber: req.body.invoiceNumber,
+        vendorName: req.body.vendorName,
+        amount: req.body.amount.toString(),
+        invoiceDate: req.body.invoiceDate,
+        dueDate: req.body.dueDate,
+        description: req.body.description || '',
+        status: req.body.status || 'pending',
+        poId: req.body.poId || null,
+        documentUrl: req.body.documentUrl || null,
+      };
+
       const invoice = await storage.createInvoice({
         ...invoiceData,
         organizationId: req.user!.organizationId,
@@ -1143,7 +1157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(invoice);
     } catch (error) {
-      res.status(400).json({ error: "Invalid invoice data" });
+      console.error('Invoice creation error:', error);
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid invoice data" });
     }
   });
 
