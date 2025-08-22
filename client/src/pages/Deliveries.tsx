@@ -171,9 +171,21 @@ export default function Deliveries() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span data-testid={`delivery-vendor-${delivery.id}`}>
-                        Vendor {delivery.vendorId.slice(-4)}
-                      </span>
+                      <div className="space-y-1">
+                        <span className="font-medium" data-testid={`delivery-vendor-${delivery.id}`}>
+                          {(delivery as any).vendorName || `Vendor ${delivery.vendorId.slice(-4)}`}
+                        </span>
+                        {(delivery as any).poNumber && (
+                          <div className="text-xs text-muted-foreground">
+                            PO: {(delivery as any).poNumber}
+                          </div>
+                        )}
+                        {(delivery as any).projectName && (
+                          <div className="text-xs text-muted-foreground">
+                            Project: {(delivery as any).projectName}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm font-mono" data-testid={`delivery-packing-slip-${delivery.id}`}>

@@ -525,10 +525,27 @@ export class DatabaseStorage implements IStorage {
     return delivery || undefined;
   }
 
-  async getDeliveriesByOrganization(organizationId: string): Promise<Delivery[]> {
-    return await db.select().from(deliveries)
+  async getDeliveriesByOrganization(organizationId: string): Promise<any[]> {
+    const results = await db
+      .select({
+        delivery: deliveries,
+        vendor: vendors,
+        purchaseOrder: purchaseOrders,
+        project: projects
+      })
+      .from(deliveries)
+      .leftJoin(vendors, eq(deliveries.vendorId, vendors.id))
+      .leftJoin(purchaseOrders, eq(deliveries.poId, purchaseOrders.id))
+      .leftJoin(projects, eq(purchaseOrders.projectId, projects.id))
       .where(eq(deliveries.organizationId, organizationId))
       .orderBy(desc(deliveries.createdAt));
+
+    return results.map(result => ({
+      ...result.delivery,
+      vendorName: result.vendor?.name,
+      poNumber: result.purchaseOrder?.number,
+      projectName: result.project?.name
+    }));
   }
 
   async getDeliveriesByPurchaseOrder(poId: string): Promise<Delivery[]> {

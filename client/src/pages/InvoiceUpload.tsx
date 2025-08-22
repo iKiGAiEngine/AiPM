@@ -22,6 +22,8 @@ import {
   Eye,
   Scan
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
 
 const uploadSchema = z.object({
   file: z.any().optional(),
@@ -53,6 +55,20 @@ export default function InvoiceUpload() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [ocrResult, setOCRResult] = useState<OCRResult | null>(null);
+
+  // Fetch vendors for the dropdown
+  const { data: vendors = [] } = useQuery<any[]>({
+    queryKey: ['/api/vendors'],
+    queryFn: async () => {
+      const response = await fetch('/api/vendors', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch vendors');
+      return response.json();
+    },
+  });
 
   const form = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
@@ -391,12 +407,21 @@ export default function InvoiceUpload() {
 
                 <div className="space-y-2">
                   <Label htmlFor="vendorName">Vendor Name *</Label>
-                  <Input
-                    {...form.register("vendorName")}
-                    id="vendorName"
-                    placeholder="ABC Supply Co."
-                    data-testid="input-vendor-name"
-                  />
+                  <Select
+                    value={form.watch("vendorName")}
+                    onValueChange={(value) => form.setValue("vendorName", value)}
+                  >
+                    <SelectTrigger data-testid="select-vendor-name">
+                      <SelectValue placeholder="Select vendor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendors.map((vendor: any) => (
+                        <SelectItem key={vendor.id} value={vendor.name}>
+                          {vendor.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {form.formState.errors.vendorName && (
                     <p className="text-sm text-destructive">
                       {form.formState.errors.vendorName.message}
