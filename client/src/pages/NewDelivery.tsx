@@ -42,7 +42,7 @@ export default function NewDelivery() {
   const form = useForm<DeliveryFormData>({
     resolver: zodResolver(deliveryFormSchema),
     defaultValues: {
-      poId: "",
+      poId: "none",
       vendorId: "",
       deliveryDate: new Date(),
       packingSlipNumber: "",
@@ -72,7 +72,7 @@ export default function NewDelivery() {
         },
         body: JSON.stringify({
           ...data,
-          poId: data.poId || null, // Convert empty string to null
+          poId: data.poId === "none" ? null : data.poId, // Convert "none" to null
         }),
       });
       
@@ -167,14 +167,14 @@ export default function NewDelivery() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Purchase Order (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <Select onValueChange={field.onChange} value={field.value || "none"}>
                         <FormControl>
                           <SelectTrigger data-testid="select-purchase-order">
                             <SelectValue placeholder="Select a purchase order" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No Purchase Order</SelectItem>
+                          <SelectItem value="none">No Purchase Order</SelectItem>
                           {purchaseOrders.map((po) => (
                             <SelectItem key={po.id} value={po.id}>
                               {po.number}
