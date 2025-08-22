@@ -1160,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const matchResult = await threeWayMatchService.performMatch(invoice);
         await storage.updateInvoiceMatchStatus(
           invoice.id, 
-          matchResult.matched ? 'matched' : 'exception',
+          matchResult.matched ? 'matched' : 'missing_po',
           matchResult.summary.totalVariance,
           matchResult.exceptions
         );
