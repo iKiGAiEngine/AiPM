@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Truck, Save, ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { CalendarIcon, Truck, Save, ArrowLeft, Plus, Trash2, Check, X } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +47,8 @@ export default function NewDelivery() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPoLineSelector, setShowPoLineSelector] = useState(false);
+  const [selectedPoLines, setSelectedPoLines] = useState<string[]>([]);
 
   const form = useForm<DeliveryFormData>({
     resolver: zodResolver(deliveryFormSchema),
@@ -340,16 +343,7 @@ export default function NewDelivery() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            // Auto-populate from PO lines
-                            const newLines = poLines.map(line => ({
-                              poLineId: line.id,
-                              description: line.description,
-                              quantityOrdered: parseFloat(line.quantity),
-                              quantityReceived: 0,
-                              quantityDamaged: 0,
-                              discrepancyNotes: "",
-                            }));
-                            form.setValue("lines", newLines);
+                            setShowPoLineSelector(true);
                           }}
                           data-testid="button-populate-po-lines"
                         >
@@ -387,7 +381,7 @@ export default function NewDelivery() {
                   )}
                   
                   {fields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border border-border rounded-lg bg-background">
+                    <div key={field.id} className="relative grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border border-border rounded-lg bg-background">
                       {/* Description */}
                       <FormField
                         control={form.control}
@@ -407,7 +401,7 @@ export default function NewDelivery() {
                         )}
                       />
 
-                      {/* Quantity Ordered */}
+                      {/* Quantities in single row */}
                       <FormField
                         control={form.control}
                         name={`lines.${index}.quantityOrdered`}
@@ -430,7 +424,6 @@ export default function NewDelivery() {
                         )}
                       />
 
-                      {/* Quantity Received */}
                       <FormField
                         control={form.control}
                         name={`lines.${index}.quantityReceived`}
@@ -453,7 +446,6 @@ export default function NewDelivery() {
                         )}
                       />
 
-                      {/* Quantity Damaged */}
                       <FormField
                         control={form.control}
                         name={`lines.${index}.quantityDamaged`}
@@ -476,21 +468,21 @@ export default function NewDelivery() {
                         )}
                       />
 
-                      {/* Remove Button */}
-                      <div className="flex items-end">
+                      {/* Remove Button - positioned in top right */}
+                      <div className="absolute top-2 right-2">
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => remove(index)}
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive h-6 w-6 p-0"
                           data-testid={`button-remove-line-${index}`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
 
-                      {/* Discrepancy Notes (full width) */}
+                      {/* Discrepancy Notes (second row, full width) */}
                       <FormField
                         control={form.control}
                         name={`lines.${index}.discrepancyNotes`}
@@ -514,6 +506,119 @@ export default function NewDelivery() {
                   ))}
                 </CardContent>
               </Card>
+
+              {/* PO Line Selector Modal */}
+              {showPoLineSelector && (
+                <Card className="border-2 border-primary bg-primary/5">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Select Items from Purchase Order</CardTitle>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowPoLineSelector(false);
+                          setSelectedPoLines([]);
+                        }}
+                        data-testid="button-close-po-selector"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Select which items from the purchase order were included in this delivery.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {poLines.map((line) => (
+                      <div
+                        key={line.id}
+                        className="flex items-center space-x-4 p-3 border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors"
+                      >
+                        <Checkbox
+                          checked={selectedPoLines.includes(line.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedPoLines([...selectedPoLines, line.id]);
+                            } else {
+                              setSelectedPoLines(selectedPoLines.filter(id => id !== line.id));
+                            }
+                          }}
+                          data-testid={`checkbox-po-line-${line.id}`}
+                        />
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                          <div className="font-medium text-sm">{line.description}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Qty: {line.quantity} {line.unit}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            ${parseFloat(line.unitPrice).toFixed(2)} each
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="flex justify-between items-center pt-4 border-t">
+                      <div className="text-sm text-muted-foreground">
+                        {selectedPoLines.length} of {poLines.length} items selected
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (selectedPoLines.length === poLines.length) {
+                              setSelectedPoLines([]);
+                            } else {
+                              setSelectedPoLines(poLines.map(line => line.id));
+                            }
+                          }}
+                          data-testid="button-toggle-all-po-lines"
+                        >
+                          {selectedPoLines.length === poLines.length ? "Deselect All" : "Select All"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            // Add selected lines to delivery
+                            const selectedLines = poLines
+                              .filter(line => selectedPoLines.includes(line.id))
+                              .map(line => ({
+                                poLineId: line.id,
+                                description: line.description,
+                                quantityOrdered: parseFloat(line.quantity),
+                                quantityReceived: 0,
+                                quantityDamaged: 0,
+                                discrepancyNotes: "",
+                              }));
+                            
+                            // Add to existing lines or replace
+                            const existingLines = form.getValues("lines") || [];
+                            form.setValue("lines", [...existingLines, ...selectedLines]);
+                            
+                            // Close selector
+                            setShowPoLineSelector(false);
+                            setSelectedPoLines([]);
+                            
+                            toast({
+                              title: "Items Added",
+                              description: `${selectedLines.length} items added to delivery record.`,
+                            });
+                          }}
+                          disabled={selectedPoLines.length === 0}
+                          data-testid="button-add-selected-lines"
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Add Selected ({selectedPoLines.length})
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Notes */}
               <FormField
