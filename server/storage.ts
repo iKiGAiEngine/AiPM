@@ -24,7 +24,7 @@ import {
   notifications, projectMaterials
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, like, or, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, asc, like, or, inArray, sql, ne } from "drizzle-orm";
 
 export interface IStorage {
   // Organizations
@@ -561,6 +561,71 @@ export class DatabaseStorage implements IStorage {
     });
     
     return quantities;
+  }
+
+  async checkAndUpdatePOCompletionStatus(poId: string): Promise<void> {
+    // Get PO lines and their ordered quantities
+    const poLines = await this.getPurchaseOrderLines(poId);
+    const deliveredQuantities = await this.getPreviouslyDeliveredQuantities(poId);
+    
+    // Check if all lines are fully received
+    let isFullyReceived = true;
+    for (const line of poLines) {
+      const ordered = parseFloat(line.quantity);
+      const delivered = deliveredQuantities[line.id] || 0;
+      
+      if (delivered < ordered) {
+        isFullyReceived = false;
+        break;
+      }
+    }
+    
+    // Update PO status if fully received
+    if (isFullyReceived) {
+      await this.updatePurchaseOrderStatus(poId, 'received');
+    }
+  }
+
+  async getAvailablePurchaseOrdersForDelivery(organizationId: string): Promise<any[]> {
+    // Get all POs that are not fully received
+    const pos = await db
+      .select()
+      .from(purchaseOrders)
+      .where(
+        and(
+          eq(purchaseOrders.organizationId, organizationId),
+          ne(purchaseOrders.status, 'received'), // Exclude fully received POs
+          ne(purchaseOrders.status, 'closed')    // Exclude closed POs
+        )
+      )
+      .orderBy(desc(purchaseOrders.createdAt));
+
+    // Filter out POs that are actually fully received but status not updated
+    const availablePOs = [];
+    for (const po of pos) {
+      const poLines = await this.getPurchaseOrderLines(po.id);
+      const deliveredQuantities = await this.getPreviouslyDeliveredQuantities(po.id);
+      
+      let hasRemainingQuantity = false;
+      for (const line of poLines) {
+        const ordered = parseFloat(line.quantity);
+        const delivered = deliveredQuantities[line.id] || 0;
+        
+        if (delivered < ordered) {
+          hasRemainingQuantity = true;
+          break;
+        }
+      }
+      
+      if (hasRemainingQuantity) {
+        availablePOs.push(po);
+      } else {
+        // Update status if not already updated
+        await this.updatePurchaseOrderStatus(po.id, 'received');
+      }
+    }
+    
+    return availablePOs;
   }
 
   // Delivery Lines

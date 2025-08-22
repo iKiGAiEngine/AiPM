@@ -83,15 +83,16 @@ export default function NewDelivery() {
         params.append('vendorId', selectedVendorId);
       }
       
+      // Add forDelivery parameter to get only POs with remaining quantities
+      params.append('forDelivery', 'true');
+      
       const response = await fetch(`/api/purchase-orders?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (!response.ok) throw new Error('Failed to fetch purchase orders');
-      const data = await response.json();
-      // Filter only incomplete POs (not fully received)
-      return data.filter((po: any) => po.status !== 'received');
+      return response.json(); // Server now handles filtering
     },
   });
 

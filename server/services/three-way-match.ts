@@ -125,6 +125,15 @@ class ThreeWayMatchService {
 
   async autoApproveInvoice(invoice: Invoice): Promise<boolean> {
     try {
+      // Check if related PO is fully received before approving
+      if (invoice.poId) {
+        const po = await storage.getPurchaseOrder(invoice.poId);
+        if (!po || po.status !== 'received') {
+          console.log(`Invoice ${invoice.id} cannot be auto-approved: PO ${invoice.poId} not fully received (status: ${po?.status})`);
+          return false;
+        }
+      }
+      
       const matchResult = await this.performMatch(invoice);
       
       if (matchResult.matched) {

@@ -874,10 +874,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase Order routes
   app.get("/api/purchase-orders", async (req: AuthenticatedRequest, res) => {
     try {
-      const { projectId, vendorId } = req.query;
+      const { projectId, vendorId, forDelivery } = req.query;
       let purchaseOrders;
       
-      if (projectId && typeof projectId === 'string') {
+      if (forDelivery === 'true') {
+        // Return only POs that have remaining quantities to deliver
+        purchaseOrders = await storage.getAvailablePurchaseOrdersForDelivery(req.user!.organizationId);
+      } else if (projectId && typeof projectId === 'string') {
         purchaseOrders = await storage.getPurchaseOrdersByProject(projectId);
       } else if (vendorId && typeof vendorId === 'string') {
         purchaseOrders = await storage.getPurchaseOrdersByVendor(vendorId);
@@ -1080,6 +1083,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             discrepancyNotes: line.discrepancyNotes || null
           });
         }
+      }
+      
+      // Check and update PO completion status if this delivery has a PO
+      if (deliveryData.poId) {
+        await storage.checkAndUpdatePOCompletionStatus(deliveryData.poId);
       }
       
       res.status(201).json(delivery);
