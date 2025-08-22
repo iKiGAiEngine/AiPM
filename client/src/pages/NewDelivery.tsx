@@ -650,25 +650,30 @@ export default function NewDelivery() {
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
                           <div className="font-medium text-sm">{line.description}</div>
                           <div className="text-sm text-muted-foreground">
-                            Unit: {line.unit}
+                            Ordered Quantity: {line.quantity} {line.unit}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Qty:</span>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={poLineQuantities[line.id] || 0}
-                              onChange={(e) => {
-                                const newQty = parseFloat(e.target.value) || 0;
-                                setPoLineQuantities(prev => ({
-                                  ...prev,
-                                  [line.id]: newQty
-                                }));
-                              }}
-                              className="w-20 h-8 text-sm"
-                              disabled={!selectedPoLines.includes(line.id)}
-                              data-testid={`input-po-line-qty-${line.id}`}
-                            />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">Qty:</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={poLineQuantities[line.id] || 0}
+                                onChange={(e) => {
+                                  const newQty = parseFloat(e.target.value) || 0;
+                                  setPoLineQuantities(prev => ({
+                                    ...prev,
+                                    [line.id]: newQty
+                                  }));
+                                }}
+                                className="w-20 h-8 text-sm"
+                                disabled={!selectedPoLines.includes(line.id)}
+                                data-testid={`input-po-line-qty-${line.id}`}
+                              />
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Backordered: {Math.max(0, parseFloat(line.quantity) - (poLineQuantities[line.id] || 0))} {line.unit}
+                            </div>
                           </div>
                         </div>
                       </div>
