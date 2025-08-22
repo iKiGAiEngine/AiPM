@@ -29,6 +29,7 @@ const uploadSchema = z.object({
   file: z.any().optional(),
   invoiceNumber: z.string().min(1, "Invoice number is required"),
   vendorName: z.string().min(1, "Vendor name is required"),
+  projectId: z.string().min(1, "Project is required"),
   amount: z.string().min(1, "Amount is required"),
   invoiceDate: z.string().min(1, "Invoice date is required"),
   dueDate: z.string().min(1, "Due date is required"),
@@ -70,11 +71,26 @@ export default function InvoiceUpload() {
     },
   });
 
+  // Fetch projects for the dropdown
+  const { data: projects = [] } = useQuery<any[]>({
+    queryKey: ['/api/projects'],
+    queryFn: async () => {
+      const response = await fetch('/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch projects');
+      return response.json();
+    },
+  });
+
   const form = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
       invoiceNumber: "",
       vendorName: "",
+    projectId: "",
       amount: "",
       invoiceDate: "",
       dueDate: "",
@@ -177,6 +193,7 @@ export default function InvoiceUpload() {
       const invoiceData = {
         invoiceNumber: data.invoiceNumber,
         vendorName: data.vendorName,
+        projectId: data.projectId,
         amount: parseFloat(data.amount),
         invoiceDate: data.invoiceDate,
         dueDate: data.dueDate,
@@ -424,6 +441,30 @@ export default function InvoiceUpload() {
                   {form.formState.errors.vendorName && (
                     <p className="text-sm text-destructive">
                       {form.formState.errors.vendorName.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="projectId">Project *</Label>
+                  <Select
+                    value={form.watch("projectId")}
+                    onValueChange={(value) => form.setValue("projectId", value)}
+                  >
+                    <SelectTrigger data-testid="select-project">
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project: any) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.projectId && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.projectId.message}
                     </p>
                   )}
                 </div>

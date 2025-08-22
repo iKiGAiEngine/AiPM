@@ -338,6 +338,7 @@ export const deliveryLines = pgTable("delivery_lines", {
 export const invoices = pgTable("invoices", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
   vendorId: uuid("vendor_id").references(() => vendors.id).notNull(),
   poId: uuid("po_id").references(() => purchaseOrders.id),
   deliveryId: uuid("delivery_id").references(() => deliveries.id),

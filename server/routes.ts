@@ -1119,6 +1119,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/invoices/:id", requireRole(['Admin', 'PM', 'AP']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice || invoice.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invoice" });
+    }
+  });
+
   app.post("/api/invoices", requireRole(['Admin', 'PM', 'AP']), async (req: AuthenticatedRequest, res) => {
     try {
       console.log('Received invoice data:', req.body);
@@ -1140,6 +1152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Prepare invoice data with vendor ID and convert dates
       const invoiceData = {
         invoiceNumber: req.body.invoiceNumber,
+        projectId: req.body.projectId,
         vendorId: vendor.id,
         totalAmount: req.body.amount.toString(),
         invoiceDate: new Date(req.body.invoiceDate),

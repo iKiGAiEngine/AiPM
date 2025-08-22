@@ -22,6 +22,7 @@ import DeliveryView from "@/pages/DeliveryView";
 import Invoices from "@/pages/Invoices";
 import InvoiceDetail from "@/pages/InvoiceDetail";
 import InvoiceUpload from "@/pages/InvoiceUpload";
+import InvoiceView from "@/pages/InvoiceView";
 import Materials from "@/pages/Materials";
 import NewMaterial from "@/pages/NewMaterial";
 import ImportMaterials from "@/pages/ImportMaterials";
@@ -201,7 +202,7 @@ export default function App() {
               } />
               <Route path="/invoices/:id" element={
                 <ProtectedRoute>
-                  <InvoiceDetail />
+                  <InvoiceView />
                 </ProtectedRoute>
               } />
               <Route path="/invoices" element={
