@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -50,6 +50,7 @@ export default function NewDelivery() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPoLineSelector, setShowPoLineSelector] = useState(false);
   const [selectedPoLines, setSelectedPoLines] = useState<string[]>([]);
+  const [poLineQuantities, setPoLineQuantities] = useState<Record<string, number>>({});
 
   const form = useForm<DeliveryFormData>({
     resolver: zodResolver(deliveryFormSchema),
@@ -109,6 +110,19 @@ export default function NewDelivery() {
       return response.json();
     },
   });
+
+  // Initialize quantities when PO lines are loaded
+  useEffect(() => {
+    if (poLines.length > 0) {
+      const quantities: Record<string, number> = {};
+      poLines.forEach(line => {
+        quantities[line.id] = parseFloat(line.quantity);
+      });
+      setPoLineQuantities(quantities);
+      // Select all lines by default
+      setSelectedPoLines(poLines.map(line => line.id));
+    }
+  }, [poLines]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -605,6 +619,7 @@ export default function NewDelivery() {
                         onClick={() => {
                           setShowPoLineSelector(false);
                           setSelectedPoLines([]);
+                          setPoLineQuantities({});
                         }}
                         data-testid="button-close-po-selector"
                       >
@@ -612,7 +627,7 @@ export default function NewDelivery() {
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      All items from the purchase order will be loaded. Use the checkboxes in the delivery items to mark items as not received (backordered).
+                      Select which items were received in this delivery. Adjust quantities as needed, then add the selected items to your delivery record.
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -622,17 +637,38 @@ export default function NewDelivery() {
                         className="flex items-center space-x-4 p-3 border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors"
                       >
                         <Checkbox
-                          checked={true}
-                          disabled
+                          checked={selectedPoLines.includes(line.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedPoLines([...selectedPoLines, line.id]);
+                            } else {
+                              setSelectedPoLines(selectedPoLines.filter(id => id !== line.id));
+                            }
+                          }}
                           data-testid={`checkbox-po-line-${line.id}`}
                         />
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
                           <div className="font-medium text-sm">{line.description}</div>
                           <div className="text-sm text-muted-foreground">
-                            Qty: {line.quantity} {line.unit}
+                            Unit: {line.unit}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            ${parseFloat(line.unitPrice).toFixed(2)} each
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Qty:</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={poLineQuantities[line.id] || 0}
+                              onChange={(e) => {
+                                const newQty = parseFloat(e.target.value) || 0;
+                                setPoLineQuantities(prev => ({
+                                  ...prev,
+                                  [line.id]: newQty
+                                }));
+                              }}
+                              className="w-20 h-8 text-sm"
+                              disabled={!selectedPoLines.includes(line.id)}
+                              data-testid={`input-po-line-qty-${line.id}`}
+                            />
                           </div>
                         </div>
                       </div>
@@ -648,30 +684,42 @@ export default function NewDelivery() {
                             remove(0);
                           }
                           
-                          // Add all PO lines with checkmarks
-                          const linesToAdd = poLines.map(line => ({
-                            poLineId: line.id,
-                            description: line.description,
-                            quantityOrdered: parseFloat(line.quantity),
-                            quantityReceived: parseFloat(line.quantity), // Default to full quantity
-                            quantityDamaged: 0,
-                            discrepancyNotes: "",
-                            isChecked: true, // All items checked by default
-                          }));
+                          // Add only selected PO lines with their adjusted quantities
+                          const linesToAdd = poLines
+                            .filter(line => selectedPoLines.includes(line.id))
+                            .map(line => ({
+                              poLineId: line.id,
+                              description: line.description,
+                              quantityOrdered: poLineQuantities[line.id] || 0,
+                              quantityReceived: poLineQuantities[line.id] || 0, // Default to adjusted quantity
+                              quantityDamaged: 0,
+                              discrepancyNotes: "",
+                              isChecked: true, // All items checked by default
+                            }));
                           
                           linesToAdd.forEach(line => append(line));
                           
                           setShowPoLineSelector(false);
+                          setSelectedPoLines([]);
+                          setPoLineQuantities({});
+                          
+                          toast({
+                            title: "Items Added",
+                            description: `${linesToAdd.length} items added to delivery record.`,
+                          });
                         }}
+                        disabled={selectedPoLines.length === 0}
                         data-testid="button-add-selected-lines"
                       >
-                        Load All Items
+                        Add Selected Items ({selectedPoLines.length})
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => {
                           setShowPoLineSelector(false);
+                          setSelectedPoLines([]);
+                          setPoLineQuantities({});
                         }}
                         data-testid="button-cancel-selection"
                       >
