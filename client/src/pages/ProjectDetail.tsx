@@ -314,8 +314,10 @@ export default function ProjectDetail() {
   }
 
   const budgetUsed = summary?.financial.budgetUsed || 0;
-  const budgetTotal = project.budget ? parseFloat(project.budget.toString()) : 0;
-  const budgetUtilization = budgetTotal > 0 ? (budgetUsed / budgetTotal) * 100 : 0;
+  const costBudget = project.budget ? parseFloat(project.budget.toString()) : 0; // Cost Budget
+  const overheadFee = project.overheadFee ? parseFloat(project.overheadFee.toString()) : 0; // Overhead/Fee  
+  const contractValue = project.contractValue ? parseFloat(project.contractValue.toString()) : 0; // Total Contract Value
+  const budgetUtilization = costBudget > 0 ? (budgetUsed / costBudget) * 100 : 0;
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
@@ -350,8 +352,8 @@ export default function ProjectDetail() {
       {/* Key Metrics Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <ProjectSummaryCard
-          title="Total Budget"
-          value={formatCurrency(budgetTotal)}
+          title="Cost Budget" 
+          value={formatCurrency(costBudget)}
           subtitle={`${budgetUtilization.toFixed(1)}% utilized`}
           icon={DollarSign}
           trend={budgetUtilization > 80 ? 'up' : budgetUtilization > 50 ? 'neutral' : 'down'}
@@ -360,16 +362,16 @@ export default function ProjectDetail() {
         
         <ProjectSummaryCard
           title="Purchase Orders"
-          value={summary?.purchaseOrders.total || 0}
+          value={(summary?.purchaseOrders.total || 0).toString()}
           subtitle={formatCurrency(summary?.purchaseOrders.totalValue || 0)}
           icon={ShoppingCart}
           trend="neutral"
-          trendValue={`${Object.values(summary?.purchaseOrders.byStatus || {}).filter(status => ['sent', 'acknowledged'].includes(status)).reduce((a, b) => a + b, 0)} active`}
+          trendValue={`${Object.entries(summary?.purchaseOrders.byStatus || {}).filter(([status]) => ['sent', 'acknowledged'].includes(status)).reduce((sum, [, count]) => sum + count, 0)} active`}
         />
         
         <ProjectSummaryCard
           title="Deliveries"
-          value={summary?.deliveries.total || 0}
+          value={(summary?.deliveries.total || 0).toString()}
           subtitle={`${summary?.deliveries.byStatus.complete || 0} complete`}
           icon={Truck}
           trend="up"
@@ -378,10 +380,10 @@ export default function ProjectDetail() {
         
         <ProjectSummaryCard
           title="Invoices"
-          value={summary?.invoices.total || 0}
+          value={(summary?.invoices.total || 0).toString()}
           subtitle={formatCurrency(summary?.invoices.totalValue || 0)}
           icon={Receipt}
-          trend={summary?.invoices.byMatchStatus.exception > 0 ? 'down' : 'up'}
+          trend={(summary?.invoices.byMatchStatus.exception || 0) > 0 ? 'down' : 'up'}
           trendValue={`${summary?.invoices.byMatchStatus.matched || 0} matched`}
         />
       </div>
@@ -468,14 +470,26 @@ export default function ProjectDetail() {
                 {/* Budget Progress Bar */}
                 <div className="pt-4 border-t">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-muted-foreground">Budget Utilization</label>
+                    <label className="text-sm font-medium text-muted-foreground">Cost Budget Utilization</label>
                     <span className="text-sm font-medium">{budgetUtilization.toFixed(1)}%</span>
                   </div>
                   <Progress value={budgetUtilization} className="h-3" />
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>Used: {formatCurrency(budgetUsed)}</span>
-                    <span>Total: {formatCurrency(budgetTotal)}</span>
+                    <span>Cost Budget: {formatCurrency(costBudget)}</span>
                   </div>
+                  
+                  {/* Contract Value Breakdown */}
+                  {(overheadFee > 0 || contractValue > 0) && (
+                    <div className="mt-3 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Contract Breakdown</div>
+                      <div className="flex justify-between text-xs">
+                        <span>Cost Budget: {formatCurrency(costBudget)}</span>
+                        <span>Overhead/Fee: {formatCurrency(overheadFee)}</span>
+                        <span className="font-semibold">Total: {formatCurrency(contractValue)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -511,7 +525,36 @@ export default function ProjectDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="procurement" className="space-y-4">
+        <TabsContent value="procurement" className="space-y-6">
+          {/* Procurement Workflow Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {!summaryLoading && summary && (
+              <>
+                <StatusBreakdownCard
+                  title="Requisitions"
+                  data={summary.requisitions.byStatus}
+                  icon={FileSpreadsheet}
+                />
+                <StatusBreakdownCard
+                  title="Purchase Orders"
+                  data={summary.purchaseOrders.byStatus}
+                  icon={ShoppingCart}
+                />
+                <StatusBreakdownCard
+                  title="Deliveries"
+                  data={summary.deliveries.byStatus}
+                  icon={Truck}
+                />
+                <StatusBreakdownCard
+                  title="Invoice Matching"
+                  data={summary.invoices.byMatchStatus}
+                  icon={Receipt}
+                />
+              </>
+            )}
+          </div>
+
+          {/* Quick Actions */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Button 
               variant="outline" 
@@ -520,7 +563,7 @@ export default function ProjectDetail() {
             >
               <Link to={`/requisitions?projectId=${project.id}`}>
                 <FileSpreadsheet className="w-6 h-6" />
-                <span className="text-sm">Requisitions</span>
+                <span className="text-sm">View All Requisitions</span>
               </Link>
             </Button>
             <Button 
@@ -530,7 +573,7 @@ export default function ProjectDetail() {
             >
               <Link to={`/rfqs?projectId=${project.id}`}>
                 <Users className="w-6 h-6" />
-                <span className="text-sm">RFQs</span>
+                <span className="text-sm">View All RFQs</span>
               </Link>
             </Button>
             <Button 
@@ -540,7 +583,7 @@ export default function ProjectDetail() {
             >
               <Link to={`/purchase-orders?projectId=${project.id}`}>
                 <ShoppingCart className="w-6 h-6" />
-                <span className="text-sm">Purchase Orders</span>
+                <span className="text-sm">View All Purchase Orders</span>
               </Link>
             </Button>
             <Button 
@@ -550,7 +593,7 @@ export default function ProjectDetail() {
             >
               <Link to={`/deliveries?projectId=${project.id}`}>
                 <Truck className="w-6 h-6" />
-                <span className="text-sm">Deliveries</span>
+                <span className="text-sm">View All Deliveries</span>
               </Link>
             </Button>
           </div>
@@ -565,8 +608,16 @@ export default function ProjectDetail() {
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Budget</span>
-                    <span className="font-medium">{formatCurrency(budgetTotal)}</span>
+                    <span className="text-muted-foreground">Cost Budget</span>
+                    <span className="font-medium">{formatCurrency(costBudget)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Overhead/Fee</span>
+                    <span className="font-medium">{formatCurrency(overheadFee)}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2">
+                    <span className="font-medium">Total Contract Value</span>
+                    <span className="font-medium">{formatCurrency(contractValue)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Committed (POs)</span>
@@ -581,9 +632,9 @@ export default function ProjectDetail() {
                     <span className="font-medium">{formatCurrency(summary?.financial.paid || 0)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-3">
-                    <span className="font-medium">Remaining Budget</span>
+                    <span className="font-medium">Remaining Cost Budget</span>
                     <span className="font-bold text-green-600">
-                      {formatCurrency(budgetTotal - (summary?.financial.committed || 0))}
+                      {formatCurrency(costBudget - (summary?.financial.committed || 0))}
                     </span>
                   </div>
                 </div>

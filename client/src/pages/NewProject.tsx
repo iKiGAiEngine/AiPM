@@ -36,7 +36,9 @@ import {
   FileSpreadsheet,
   Download,
   Upload,
-  AlertCircle
+  AlertCircle,
+  CheckCircle,
+  AlertTriangle
 } from "lucide-react";
 import { ProjectMaterialsStep } from "@/components/forms/ProjectMaterialsStep";
 
@@ -53,12 +55,22 @@ const projectSchema = z.object({
   projectNumber: z.string().min(1, "Project number is required"),
   client: z.string().min(1, "Client is required"),
   address: z.string().min(1, "Address is required"),
-  budget: z.string().min(1, "Budget is required"),
+  budget: z.string().min(1, "Cost Budget is required"), // Cost Budget
+  overheadFee: z.string().min(1, "Overhead/Fee is required"), // Overhead/Fee
+  contractValue: z.string().min(1, "Contract Value is required"), // Total Contract Value
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
   description: z.string().optional(),
   costCodes: z.array(costCodeSchema).optional(),
   status: z.enum(["active", "on_hold", "completed", "cancelled"]),
+}).refine((data) => {
+  const costBudget = parseFloat(data.budget) || 0;
+  const overheadFee = parseFloat(data.overheadFee) || 0;
+  const contractValue = parseFloat(data.contractValue) || 0;
+  return Math.abs((costBudget + overheadFee) - contractValue) < 0.01;
+}, {
+  message: "Cost Budget + Overhead/Fee must equal Contract Value",
+  path: ["contractValue"],
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -135,7 +147,9 @@ export default function NewProject() {
       projectNumber: "",
       client: "",
       address: "",
-      budget: "",
+      budget: "", // Cost Budget
+      overheadFee: "", // Overhead/Fee
+      contractValue: "", // Total Contract Value
       startDate: "",
       endDate: "",
       description: "",
@@ -152,7 +166,9 @@ export default function NewProject() {
         client: data.client || null,
         address: data.address || null,
         status: data.status,
-        budget: data.budget || null,
+        budget: data.budget || null, // Cost Budget
+        overheadFee: data.overheadFee || null, // Overhead/Fee
+        contractValue: data.contractValue || null, // Total Contract Value
         costCodes: data.costCodes?.map(cc => `${cc.scope} - ${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}`) || [],
         erpIds: null,
       };
@@ -468,34 +484,119 @@ export default function NewProject() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="budget">Total Contract Value *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-100 text-base font-medium z-10">
-                      $
-                    </span>
-                    <CurrencyInput
-                      id="budget"
-                      value={form.watch("budget") || ""}
-                      onChange={(value) => {
-                        form.setValue("budget", value);
-                        form.trigger("budget");
-                      }}
-                      placeholder="500,000.00"
-                      className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
-                      data-testid="input-budget"
+                {/* Budget Structure */}
+                <div className="space-y-4 p-4 border rounded-lg bg-slate-800/50 border-slate-600">
+                  <h3 className="text-lg font-semibold text-slate-100">Budget Breakdown</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Cost Budget */}
+                    <div className="space-y-2">
+                      <Label htmlFor="budget">Cost Budget *</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-100 text-base font-medium z-10">$</span>
+                        <CurrencyInput
+                          id="budget"
+                          value={form.watch("budget") || ""}
+                          onChange={(value) => {
+                            form.setValue("budget", value);
+                            form.trigger("budget");
+                            // Auto-calculate contract value if overhead/fee is set
+                            const overhead = parseFloat(form.watch("overheadFee") || "0");
+                            const cost = parseFloat(value || "0");
+                            if (overhead > 0 || cost > 0) {
+                              form.setValue("contractValue", (cost + overhead).toString());
+                              form.trigger("contractValue");
+                            }
+                          }}
+                          placeholder="400,000.00"
+                          className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
+                          data-testid="input-cost-budget"
+                        />
+                      </div>
+                      {form.formState.errors.budget && (
+                        <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
+                      )}
+                    </div>
 
-                    />
+                    {/* Overhead/Fee */}
+                    <div className="space-y-2">
+                      <Label htmlFor="overheadFee">Overhead/Fee *</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-100 text-base font-medium z-10">$</span>
+                        <CurrencyInput
+                          id="overheadFee"
+                          value={form.watch("overheadFee") || ""}
+                          onChange={(value) => {
+                            form.setValue("overheadFee", value);
+                            form.trigger("overheadFee");
+                            // Auto-calculate contract value
+                            const cost = parseFloat(form.watch("budget") || "0");
+                            const overhead = parseFloat(value || "0");
+                            if (cost > 0 || overhead > 0) {
+                              form.setValue("contractValue", (cost + overhead).toString());
+                              form.trigger("contractValue");
+                            }
+                          }}
+                          placeholder="100,000.00"
+                          className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
+                          data-testid="input-overhead-fee"
+                        />
+                      </div>
+                      {form.formState.errors.overheadFee && (
+                        <p className="text-sm text-destructive">{form.formState.errors.overheadFee.message}</p>
+                      )}
+                    </div>
+
+                    {/* Total Contract Value */}
+                    <div className="space-y-2">
+                      <Label htmlFor="contractValue">Total Contract Value *</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-100 text-base font-medium z-10">$</span>
+                        <CurrencyInput
+                          id="contractValue"
+                          value={form.watch("contractValue") || ""}
+                          onChange={(value) => {
+                            form.setValue("contractValue", value);
+                            form.trigger("contractValue");
+                          }}
+                          placeholder="500,000.00"
+                          className="h-12 text-base pl-8 bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
+                          data-testid="input-contract-value"
+                        />
+                      </div>
+                      {form.formState.errors.contractValue && (
+                        <p className="text-sm text-destructive">{form.formState.errors.contractValue.message}</p>
+                      )}
+                    </div>
                   </div>
-                  {form.formState.errors.budget && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.budget.message}
-                    </p>
-                  )}
-                  {form.watch("budget") && parseFloat(form.watch("budget")) > 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      Contract Value: ${parseFloat(form.watch("budget")).toLocaleString()}
-                    </p>
+
+                  {/* Budget Validation Status */}
+                  {(form.watch("budget") || form.watch("overheadFee") || form.watch("contractValue")) && (
+                    <div className="mt-4 p-3 rounded-lg bg-slate-700/50">
+                      {(() => {
+                        const costBudget = parseFloat(form.watch("budget") || "0");
+                        const overheadFee = parseFloat(form.watch("overheadFee") || "0");
+                        const contractValue = parseFloat(form.watch("contractValue") || "0");
+                        const calculatedTotal = costBudget + overheadFee;
+                        const isBalanced = Math.abs(calculatedTotal - contractValue) < 0.01;
+                        
+                        return (
+                          <div className={`flex items-center gap-2 ${isBalanced ? 'text-green-400' : 'text-red-400'}`}>
+                            {isBalanced ? (
+                              <>
+                                <CheckCircle className="w-5 h-5" />
+                                <span>Budget is balanced: ${calculatedTotal.toLocaleString()} = ${contractValue.toLocaleString()}</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangle className="w-5 h-5" />
+                                <span>Budget mismatch: ${calculatedTotal.toLocaleString()} ≠ ${contractValue.toLocaleString()} (Difference: ${Math.abs(calculatedTotal - contractValue).toLocaleString()})</span>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   )}
                 </div>
 

@@ -67,8 +67,9 @@ export const projects = pgTable("projects", {
   address: text("address"),
   description: text("description"),
   status: projectStatusEnum("status").default('active'),
-  budget: numeric("budget", { precision: 12, scale: 2 }),
-  contractValue: numeric("contract_value", { precision: 12, scale: 2 }),
+  budget: numeric("budget", { precision: 12, scale: 2 }), // Keeping for backwards compatibility, now represents Cost Budget
+  contractValue: numeric("contract_value", { precision: 12, scale: 2 }), // Total Contract Value
+  overheadFee: numeric("overhead_fee", { precision: 12, scale: 2 }), // Overhead/Fee amount
   costCodes: text("cost_codes").array(),
   erpIds: jsonb("erp_ids"),
   createdAt: timestamp("created_at").defaultNow(),
