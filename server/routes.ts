@@ -935,10 +935,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const poData = insertPurchaseOrderSchema.parse(req.body);
       
-      // Generate PO number
-      const year = new Date().getFullYear();
-      const count = (await storage.getPurchaseOrdersByOrganization(req.user!.organizationId)).length + 1;
-      const number = `PO-${year}-${count.toString().padStart(3, '0')}`;
+      // Generate PO number in format: Project Number - Phase Code - Users Initials
+      let number = '';
+      
+      // Get project details for project number and phase code
+      if (poData.projectId) {
+        const project = await storage.getProject(poData.projectId);
+        if (project) {
+          const projectNumber = project.projectNumber || 'PROJ';
+          
+          // Get sequential number for this project's POs
+          const projectPOs = await storage.getPurchaseOrdersByProject(poData.projectId);
+          const sequential = (projectPOs.length + 1).toString().padStart(2, '0');
+          
+          // Get user's initials from first and last name
+          const user = await storage.getUser(req.user!.id);
+          const userInitials = user && user.firstName && user.lastName 
+            ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
+            : 'XX';
+          
+          number = `${projectNumber}-${sequential}-${userInitials}`;
+        } else {
+          // Fallback if project not found
+          const count = (await storage.getPurchaseOrdersByOrganization(req.user!.organizationId)).length + 1;
+          number = `PO-${count.toString().padStart(3, '0')}`;
+        }
+      } else {
+        // Fallback if no project selected
+        const count = (await storage.getPurchaseOrdersByOrganization(req.user!.organizationId)).length + 1;
+        number = `PO-${count.toString().padStart(3, '0')}`;
+      }
       
       const purchaseOrder = await storage.createPurchaseOrder({
         ...poData,

@@ -38,7 +38,6 @@ const deliveryFormSchema = z.object({
     quantityReceived: z.number().min(0, "Quantity received must be positive"),
     quantityDamaged: z.number().min(0).optional(),
     discrepancyNotes: z.string().optional(),
-    isChecked: z.boolean().default(true),
   })).optional(),
 });
 
@@ -165,13 +164,10 @@ export default function NewDelivery() {
   const calculateDeliveryStatus = (lines: DeliveryFormData['lines']) => {
     if (!lines || lines.length === 0) return 'pending';
     
-    const checkedLines = lines.filter(line => line.isChecked);
-    if (checkedLines.length === 0) return 'pending';
-    
     let allItemsFullyReceived = true;
     let someItemsReceived = false;
     
-    for (const line of checkedLines) {
+    for (const line of lines) {
       const ordered = line.quantityOrdered || 0;
       const received = line.quantityReceived || 0;
       
@@ -184,7 +180,7 @@ export default function NewDelivery() {
       }
     }
     
-    // If all checked items are fully received, it's complete
+    // If all items are fully received, it's complete
     if (allItemsFullyReceived && someItemsReceived) {
       return 'complete';
     }
@@ -471,7 +467,7 @@ export default function NewDelivery() {
               <Card className="bg-muted/20">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Delivery Items</CardTitle>
+                    <CardTitle className="text-lg">Confirm Delivery Items</CardTitle>
                     <div className="flex gap-2">
                       {selectedPoId && selectedPoId !== "none" && poLines.length > 0 && (
                         <Button
@@ -497,7 +493,6 @@ export default function NewDelivery() {
                           quantityReceived: 0,
                           quantityDamaged: 0,
                           discrepancyNotes: "",
-                          isChecked: true,
                         })}
                         data-testid="button-add-line"
                       >
@@ -519,37 +514,8 @@ export default function NewDelivery() {
                   
                   {fields.map((field, index) => (
                     <div key={field.id} className="relative p-4 border border-border rounded-lg bg-background">
-                      {/* Row 1: Include checkbox and item details (read-only) */}
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-3">
-                        <FormField
-                          control={form.control}
-                          name={`lines.${index}.isChecked`}
-                          render={({ field: checkboxField }) => (
-                            <FormItem className="lg:col-span-1 flex flex-row items-center space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={checkboxField.value}
-                                  onCheckedChange={(checked) => {
-                                    checkboxField.onChange(checked);
-                                    // If unchecked, set received quantity to 0
-                                    if (!checked) {
-                                      form.setValue(`lines.${index}.quantityReceived`, 0);
-                                    } else {
-                                      // If checked, restore to ordered quantity
-                                      const orderedQty = form.getValues(`lines.${index}.quantityOrdered`) || 0;
-                                      form.setValue(`lines.${index}.quantityReceived`, orderedQty);
-                                    }
-                                  }}
-                                  data-testid={`checkbox-line-${index}`}
-                                />
-                              </FormControl>
-                              <FormLabel className="font-normal text-sm">
-                                Include
-                              </FormLabel>
-                            </FormItem>
-                          )}
-                        />
-
+                      {/* Row 1: Item details (read-only) */}
+                      <div className="grid grid-cols-1 lg:grid-cols-11 gap-4 mb-3">
                         {/* Description - Read Only */}
                         <div className="lg:col-span-5">
                           <FormLabel className="text-sm font-medium">Description</FormLabel>
@@ -589,7 +555,6 @@ export default function NewDelivery() {
                                     {...field}
                                     value={field.value || ""}
                                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                    disabled={!form.watch(`lines.${index}.isChecked`)}
                                     className="text-center font-mono"
                                     data-testid={`input-line-damaged-${index}`}
                                   />
@@ -615,7 +580,6 @@ export default function NewDelivery() {
                                   className="min-h-[60px] resize-none"
                                   {...field}
                                   value={field.value || ""}
-                                  disabled={!form.watch(`lines.${index}.isChecked`)}
                                   data-testid={`textarea-line-notes-${index}`}
                                 />
                               </FormControl>
@@ -749,7 +713,6 @@ export default function NewDelivery() {
                               quantityReceived: poLineQuantities[line.id] || 0,
                               quantityDamaged: 0,
                               discrepancyNotes: "",
-                              isChecked: true, // All items checked by default
                             }));
                           
                           linesToAdd.forEach(line => append(line));
