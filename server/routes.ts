@@ -305,7 +305,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project materials route
   app.get("/api/projects/:id/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const { available } = req.query;
+      const { available, search, category } = req.query;
+      
+      const filters: any = {};
+      if (search) filters.search = search as string;
+      if (category) filters.category = category as string;
       
       // If available=true query param, return only available materials (excluding used ones)
       if (available === 'true') {
@@ -318,12 +322,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Default behavior - return all project materials
         const materials = await storage.getProjectMaterialsByProject(
           req.params.id, 
-          req.user!.organizationId
+          req.user!.organizationId,
+          filters
         );
         res.json(materials);
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch project materials" });
+    }
+  });
+
+  // Update project material
+  app.patch("/api/project-materials/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const materialId = req.params.id;
+      const updates = req.body;
+      
+      const success = await storage.updateProjectMaterial(
+        materialId,
+        updates,
+        req.user!.organizationId
+      );
+      
+      if (success) {
+        res.json({ message: "Material updated successfully" });
+      } else {
+        res.status(404).json({ error: "Material not found or access denied" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update material" });
+    }
+  });
+
+  // Delete project material
+  app.delete("/api/project-materials/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const materialId = req.params.id;
+      
+      const success = await storage.deleteProjectMaterial(
+        materialId,
+        req.user!.organizationId
+      );
+      
+      if (success) {
+        res.json({ message: "Material deleted successfully" });
+      } else {
+        res.status(404).json({ error: "Material not found or access denied" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete material" });
     }
   });
 

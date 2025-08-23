@@ -843,13 +843,69 @@ export class DatabaseStorage implements IStorage {
       // Return material with updated quantity showing available amount
       return {
         ...material,
-        originalQuantity: material.qty,
-        quantity: availableQty,
-        usedQuantity: usedQty
+        qty: availableQty,
+        originalQty: Number(material.qty),
+        usedQty
       };
     });
 
     return availableMaterials;
+  }
+
+  async updateProjectMaterial(
+    materialId: string,
+    updates: Partial<any>,
+    organizationId: string
+  ): Promise<boolean> {
+    try {
+      // Verify the material belongs to this organization
+      const [material] = await db
+        .select({ projectId: projectMaterials.projectId })
+        .from(projectMaterials)
+        .where(and(
+          eq(projectMaterials.id, materialId),
+          eq(projectMaterials.organizationId, organizationId)
+        ));
+      
+      if (!material) return false;
+      
+      await db
+        .update(projectMaterials)
+        .set({ ...updates, updatedAt: sql`now()` })
+        .where(eq(projectMaterials.id, materialId));
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating project material:', error);
+      return false;
+    }
+  }
+
+  async deleteProjectMaterial(
+    materialId: string,
+    organizationId: string
+  ): Promise<boolean> {
+    try {
+      // Verify the material belongs to this organization
+      const [material] = await db
+        .select({ projectId: projectMaterials.projectId })
+        .from(projectMaterials)
+        .where(and(
+          eq(projectMaterials.id, materialId),
+          eq(projectMaterials.organizationId, organizationId)
+        ));
+      
+      if (!material) return false;
+      
+      await db
+        .delete(projectMaterials)
+        .where(eq(projectMaterials.id, materialId));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting project material:', error);
+      return false;
+    }
   }
 
   // Global Search

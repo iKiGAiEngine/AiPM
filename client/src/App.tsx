@@ -33,6 +33,7 @@ import EditProject from "@/pages/EditProject";
 import NewPurchaseOrder from "@/pages/NewPurchaseOrder";
 import PurchaseOrderDetail from "@/pages/PurchaseOrderDetail";
 import ProjectDetail from "@/pages/ProjectDetail";
+import ProjectMaterials from "@/pages/ProjectMaterials";
 import ProjectMaterialUpload from "@/pages/ProjectMaterialUpload";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
@@ -249,6 +250,11 @@ export default function App() {
               <Route path="/projects/:id/materials/upload" element={
                 <ProtectedRoute>
                   <ProjectMaterialUpload />
+                </ProtectedRoute>
+              } />
+              <Route path="/projects/:id/materials" element={
+                <ProtectedRoute>
+                  <ProjectMaterials />
                 </ProtectedRoute>
               } />
               <Route path="/projects/:id" element={

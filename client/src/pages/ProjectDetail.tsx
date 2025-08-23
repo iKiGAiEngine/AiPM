@@ -698,10 +698,12 @@ export default function ProjectDetail() {
             <Button 
               variant="outline" 
               className="h-20 flex flex-col items-center space-y-2"
-              onClick={() => navigate(`/materials?projectId=${project.id}`)}
+              asChild
             >
-              <Package className="w-6 h-6" />
-              <span className="text-sm">View Materials</span>
+              <Link to={`/projects/${project.id}/materials`}>
+                <Package className="w-6 h-6" />
+                <span className="text-sm">View Materials</span>
+              </Link>
             </Button>
             <Button 
               variant="outline" 
