@@ -214,6 +214,30 @@ router.patch('/material-imports/:runId/line/:lineId', authenticateToken, async (
   }
 });
 
+// Delete import line
+router.delete('/material-imports/:runId/line/:lineId', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { runId, lineId } = req.params;
+    
+    const success = await materialImportService.deleteImportLine(
+      lineId,
+      req.user!.organizationId
+    );
+
+    if (success) {
+      res.json({ message: 'Line deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'Line not found or access denied' });
+    }
+
+  } catch (error) {
+    console.error('Delete line error:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to delete line' 
+    });
+  }
+});
+
 // Approve import run
 router.post('/material-imports/:runId/approve', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {

@@ -216,6 +216,35 @@ export class MaterialImportService {
     }
   }
   
+  // Delete a single import line
+  async deleteImportLine(
+    lineId: string, 
+    organizationId: string
+  ): Promise<boolean> {
+    try {
+      // Verify the line belongs to a run in this organization
+      const [line] = await db
+        .select({ runId: materialImportLines.runId })
+        .from(materialImportLines)
+        .innerJoin(materialImportRuns, eq(materialImportLines.runId, materialImportRuns.id))
+        .where(and(
+          eq(materialImportLines.id, lineId),
+          eq(materialImportRuns.organizationId, organizationId)
+        ));
+      
+      if (!line) return false;
+      
+      await db
+        .delete(materialImportLines)
+        .where(eq(materialImportLines.id, lineId));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting import line:', error);
+      return false;
+    }
+  }
+  
   // Approve import run and create project materials
   async approveImportRun(runId: string, organizationId: string): Promise<{ success: boolean; message: string }> {
     try {

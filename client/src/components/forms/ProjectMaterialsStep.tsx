@@ -140,7 +140,7 @@ export function ProjectMaterialsStep({
   const costCodeBudgets = React.useMemo(() => {
     if (!project || !costCodes.length) return {};
     
-    const totalBudget = project.budget ? parseFloat(project.budget.toString()) : 0;
+    const totalBudget = project?.budget ? parseFloat(project.budget.toString()) : 0;
     const budgetPerCode = totalBudget / costCodes.length;
     return costCodes.reduce((acc, code) => {
       acc[code] = {
@@ -226,6 +226,65 @@ export function ProjectMaterialsStep({
         queryKey: [`/api/projects/${projectId}/materials`],
       });
       setCurrentRun(null);
+    },
+  });
+
+  // Mutation for updating import line
+  const updateLineMutation = useMutation({
+    mutationFn: async ({ lineId, updates }: { lineId: string; updates: any }) => {
+      const response = await fetch(`/api/material-imports/${currentRun?.id}/line/${lineId}`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("accessToken")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refresh the current run data
+      if (currentRun) {
+        fetch(`/api/material-imports/${currentRun.id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }).then(response => response.json()).then(setCurrentRun);
+      }
+      setEditingLine(null);
+    },
+  });
+
+  // Mutation for deleting import line
+  const deleteLineMutation = useMutation({
+    mutationFn: async (lineId: string) => {
+      const response = await fetch(`/api/material-imports/${currentRun?.id}/line/${lineId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refresh the current run data
+      if (currentRun) {
+        fetch(`/api/material-imports/${currentRun.id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }).then(response => response.json()).then(setCurrentRun);
+      }
     },
   });
 
@@ -418,14 +477,29 @@ export function ProjectMaterialsStep({
                       </TableCell>
                       <TableCell>{line.costCode}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingLine(line)}
-                          data-testid={`button-edit-${line.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingLine(line)}
+                            data-testid={`button-edit-${line.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this line?')) {
+                                deleteLineMutation.mutate(line.id);
+                              }
+                            }}
+                            data-testid={`button-delete-${line.id}`}
+                            disabled={deleteLineMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -786,7 +860,25 @@ export function ProjectMaterialsStep({
             <Button variant="outline" onClick={() => setEditingLine(null)}>
               Cancel
             </Button>
-            <Button data-testid="button-save-changes">Save Changes</Button>
+            <Button 
+              onClick={() => {
+                if (editingLine) {
+                  const updates = {
+                    description: (document.getElementById('edit-description') as HTMLInputElement)?.value,
+                    model: (document.getElementById('edit-model') as HTMLInputElement)?.value,
+                    unit: (document.getElementById('edit-unit') as HTMLInputElement)?.value,
+                    qty: (document.getElementById('edit-qty') as HTMLInputElement)?.value,
+                    unitPrice: (document.getElementById('edit-unitPrice') as HTMLInputElement)?.value,
+                    costCode: (document.getElementById('edit-costCode') as HTMLInputElement)?.value,
+                  };
+                  updateLineMutation.mutate({ lineId: editingLine.id, updates });
+                }
+              }}
+              disabled={updateLineMutation.isPending}
+              data-testid="button-save-changes"
+            >
+              {updateLineMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
