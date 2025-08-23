@@ -216,8 +216,13 @@ export default function NewProject() {
         setCurrentStep('budget');
       }
     } else if (currentStep === 'budget') {
-      // Create project when moving to materials step so we have a projectId
-      createProjectMutation.mutate(data);
+      // Only create project if it hasn't been created yet
+      if (!createdProjectId) {
+        createProjectMutation.mutate(data);
+      } else {
+        // Project already exists, just move to materials step
+        setCurrentStep('materials');
+      }
     } else {
       // Final step - navigate to projects list
       navigate("/projects");

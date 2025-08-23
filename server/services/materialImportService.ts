@@ -313,15 +313,17 @@ export class MaterialImportService {
     const mapping: ColumnMapping = {};
     const lowerHeaders = headers.map(h => h.toLowerCase());
     
-    // Map common column names
+    // Map common column names - order matters! More specific patterns first
     const mappings = [
       { patterns: ['category', 'cat'], target: 'category' },
       { patterns: ['model', 'model #', 'model number', 'part'], target: 'model' },
       { patterns: ['description', 'desc', 'name', 'item name'], target: 'description' },
       { patterns: ['unit', 'uom', 'unit of measure'], target: 'unit' },
       { patterns: ['qty', 'quantity', 'count', 'amount'], target: 'qty' },
-      { patterns: ['unit price', 'price', 'cost', 'unitprice'], target: 'unitPrice' },
-      { patterns: ['cost code', 'costcode', 'code'], target: 'costCode' },
+      // Cost code patterns MUST come before unit price to avoid 'cost' overlap
+      { patterns: ['cost code', 'costcode'], target: 'costCode' },
+      // Unit price patterns - removed 'cost' to avoid conflict with cost code
+      { patterns: ['unit price', 'price', 'unitprice'], target: 'unitPrice' },
       { patterns: ['phase', 'phase code', 'phasecode'], target: 'phaseCode' }
     ];
     
