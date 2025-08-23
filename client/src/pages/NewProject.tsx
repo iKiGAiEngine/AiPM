@@ -379,6 +379,7 @@ export default function NewProject() {
       {currentStep === 'materials' ? (
         <ProjectMaterialsStep 
           projectId={createdProjectId!} 
+          costCodes={form.getValues("costCodes")?.map(cc => `${cc.scope} - ${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}`) || []}
           onNext={() => navigate("/projects")}
           onPrevious={() => setCurrentStep('budget')}
         />

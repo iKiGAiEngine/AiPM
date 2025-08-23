@@ -88,12 +88,14 @@ interface MaterialImportRunDetails extends MaterialImportRun {
 
 interface ProjectMaterialsStepProps {
   projectId: string;
+  costCodes: string[];
   onNext: () => void;
   onPrevious: () => void;
 }
 
 export function ProjectMaterialsStep({
   projectId,
+  costCodes,
   onNext,
   onPrevious,
 }: ProjectMaterialsStepProps) {
@@ -117,8 +119,38 @@ export function ProjectMaterialsStep({
   const [editingLine, setEditingLine] = useState<MaterialImportLine | null>(
     null,
   );
+  const [selectedCostCode, setSelectedCostCode] = useState<string>("");
+  const [manualMaterial, setManualMaterial] = useState({
+    description: "",
+    manufacturer: "",
+    unit: "",
+    quantity: "",
+    unitPrice: "",
+  });
 
   const queryClient = useQueryClient();
+
+  // Fetch project data to get budget and cost code information
+  const { data: project } = useQuery({
+    queryKey: [`/api/projects/${projectId}`],
+    enabled: !!projectId,
+  });
+
+  // Calculate cost code budget breakdown
+  const costCodeBudgets = React.useMemo(() => {
+    if (!project || !costCodes.length) return {};
+    
+    const totalBudget = project.budget ? parseFloat(project.budget.toString()) : 0;
+    const budgetPerCode = totalBudget / costCodes.length;
+    return costCodes.reduce((acc, code) => {
+      acc[code] = {
+        allocated: budgetPerCode,
+        used: 0, // TODO: Calculate from existing materials
+        remaining: budgetPerCode
+      };
+      return acc;
+    }, {} as Record<string, { allocated: number; used: number; remaining: number }>);
+  }, [project, costCodes]);
 
   // Mutations for file upload and processing
   const uploadMutation = useMutation({
@@ -502,6 +534,52 @@ export function ProjectMaterialsStep({
         </TabsContent>
 
         <TabsContent value="manual" className="space-y-4">
+          {/* Cost Code Budget Summary */}
+          {costCodes.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-5 w-5" />
+                  Cost Code Budget Summary
+                </CardTitle>
+                <CardDescription>
+                  Track budget allocation and usage across cost codes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  {costCodes.map((code) => {
+                    const budget = costCodeBudgets[code];
+                    const utilizationPercent = budget ? (budget.used / budget.allocated) * 100 : 0;
+                    
+                    return (
+                      <div key={code} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{code}</h4>
+                          </div>
+                          <div className="text-right text-sm">
+                            <div className="font-medium">
+                              ${budget?.remaining.toFixed(2) || '0.00'} remaining
+                            </div>
+                            <div className="text-muted-foreground">
+                              of ${budget?.allocated.toFixed(2) || '0.00'} allocated
+                            </div>
+                          </div>
+                        </div>
+                        <Progress value={utilizationPercent} className="h-2" />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>Used: ${budget?.used.toFixed(2) || '0.00'}</span>
+                          <span>{utilizationPercent.toFixed(1)}% utilized</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Add Material Manually</CardTitle>
@@ -515,6 +593,8 @@ export function ProjectMaterialsStep({
                   <Label htmlFor="description">Description *</Label>
                   <Input
                     id="description"
+                    value={manualMaterial.description}
+                    onChange={(e) => setManualMaterial(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Material description"
                     data-testid="input-description"
                   />
@@ -523,13 +603,15 @@ export function ProjectMaterialsStep({
                   <Label htmlFor="manufacturer">Manufacturer</Label>
                   <Input
                     id="manufacturer"
+                    value={manualMaterial.manufacturer}
+                    onChange={(e) => setManualMaterial(prev => ({ ...prev, manufacturer: e.target.value }))}
                     placeholder="Manufacturer name"
                     data-testid="input-manufacturer"
                   />
                 </div>
                 <div>
                   <Label htmlFor="unit">Unit *</Label>
-                  <Select>
+                  <Select value={manualMaterial.unit} onValueChange={(value) => setManualMaterial(prev => ({ ...prev, unit: value }))}>
                     <SelectTrigger data-testid="select-unit">
                       <SelectValue placeholder="Select unit" />
                     </SelectTrigger>
@@ -548,6 +630,8 @@ export function ProjectMaterialsStep({
                   <Input
                     id="qty"
                     type="number"
+                    value={manualMaterial.quantity}
+                    onChange={(e) => setManualMaterial(prev => ({ ...prev, quantity: e.target.value }))}
                     placeholder="0"
                     data-testid="input-qty"
                   />
@@ -557,21 +641,44 @@ export function ProjectMaterialsStep({
                   <Input
                     id="unitPrice"
                     type="number"
+                    value={manualMaterial.unitPrice}
+                    onChange={(e) => setManualMaterial(prev => ({ ...prev, unitPrice: e.target.value }))}
                     placeholder="0.00"
                     data-testid="input-unit-price"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="costCode">Cost Code</Label>
-                  <Input
-                    id="costCode"
-                    placeholder="Cost code"
-                    data-testid="input-cost-code"
-                  />
+                  <Label htmlFor="costCode">Cost Code *</Label>
+                  <Select value={selectedCostCode} onValueChange={setSelectedCostCode}>
+                    <SelectTrigger data-testid="select-cost-code">
+                      <SelectValue placeholder="Select cost code" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {costCodes.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{code.split(' - ')[0]}</span>
+                            <span className="text-xs text-muted-foreground">
+                              ${costCodeBudgets[code]?.remaining.toFixed(2) || '0.00'} remaining
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="mt-4">
-                <Button data-testid="button-add-material">Add Material</Button>
+                <Button 
+                  onClick={() => {
+                    // TODO: Add material creation logic
+                    console.log('Adding material:', { ...manualMaterial, costCode: selectedCostCode });
+                  }}
+                  disabled={!manualMaterial.description || !manualMaterial.unit || !manualMaterial.quantity || !selectedCostCode}
+                  data-testid="button-add-material"
+                >
+                  Add Material
+                </Button>
               </div>
             </CardContent>
           </Card>
