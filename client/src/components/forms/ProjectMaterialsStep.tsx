@@ -138,7 +138,7 @@ export function ProjectMaterialsStep({
 
   // Calculate cost code budget breakdown
   const costCodeBudgets = React.useMemo(() => {
-    if (!project || !costCodes.length) return {};
+    if (!project || !costCodes || !Array.isArray(costCodes) || costCodes.length === 0) return {};
     
     const totalBudget = project?.budget ? parseFloat(project.budget.toString()) : 0;
     const budgetPerCode = totalBudget / costCodes.length;
@@ -609,7 +609,7 @@ export function ProjectMaterialsStep({
 
         <TabsContent value="manual" className="space-y-4">
           {/* Cost Code Budget Summary */}
-          {costCodes.length > 0 && (
+          {costCodes && Array.isArray(costCodes) && costCodes.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -622,7 +622,7 @@ export function ProjectMaterialsStep({
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4">
-                  {costCodes.map((code) => {
+                  {(costCodes || []).map((code) => {
                     const budget = costCodeBudgets[code];
                     const utilizationPercent = budget ? (budget.used / budget.allocated) * 100 : 0;
                     
@@ -728,7 +728,7 @@ export function ProjectMaterialsStep({
                       <SelectValue placeholder="Select cost code" />
                     </SelectTrigger>
                     <SelectContent>
-                      {costCodes.map((code) => (
+                      {(costCodes || []).map((code) => (
                         <SelectItem key={code} value={code}>
                           <div className="flex flex-col">
                             <span className="font-medium">{code.split(' - ')[0]}</span>
