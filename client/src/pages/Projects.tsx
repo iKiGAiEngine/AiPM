@@ -28,12 +28,13 @@ interface ProjectWithStats extends Project {
 
 export default function Projects() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active");
 
   const { data: projects = [], isLoading, error } = useQuery<ProjectWithStats[]>({
-    queryKey: ['/api/projects'],
+    queryKey: ['/api/projects', statusFilter],
     queryFn: async () => {
-      const response = await fetch('/api/projects', {
+      const includeInactive = statusFilter === 'all' ? 'true' : 'false';
+      const response = await fetch(`/api/projects?includeInactive=${includeInactive}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -134,8 +135,8 @@ export default function Projects() {
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="active">Active Projects</SelectItem>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="on_hold">On Hold</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
