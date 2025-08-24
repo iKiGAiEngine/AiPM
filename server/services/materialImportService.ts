@@ -340,7 +340,7 @@ export class MaterialImportService {
   // Helper methods
   private getDefaultColumnMapping(headers: string[]): ColumnMapping {
     const mapping: ColumnMapping = {};
-    const lowerHeaders = headers.map(h => h.toLowerCase());
+    const lowerHeaders = headers.map(h => h.toLowerCase().trim());
     
     // Map common column names - order matters! More specific patterns first
     const mappings = [
@@ -352,7 +352,7 @@ export class MaterialImportService {
       // Cost code patterns MUST come before unit price to avoid 'cost' overlap
       { patterns: ['cost code', 'costcode'], target: 'costCode' },
       // Unit price patterns - removed 'cost' to avoid conflict with cost code
-      { patterns: ['unit price', 'price', 'unitprice'], target: 'unitPrice' },
+      { patterns: ['unit price', 'price', 'unitprice', 'unit cost', 'each', 'cost each', 'rate', 'per unit', 'unit rate', 'cost per unit', 'price per unit'], target: 'unitPrice' },
       { patterns: ['phase', 'phase code', 'phasecode'], target: 'phaseCode' }
     ];
     
@@ -367,6 +367,7 @@ export class MaterialImportService {
       }
     }
     
+    console.log('Column mapping result:', mapping);
     return mapping;
   }
   
@@ -417,7 +418,12 @@ export class MaterialImportService {
     // Parse and validate unit price
     let unitPrice = 0;
     if (priceValue !== undefined && priceValue !== '') {
-      const parsedPrice = Number(priceValue);
+      // Clean price value: remove currency symbols, commas, and extra spaces
+      const cleanedPrice = String(priceValue)
+        .replace(/[$,\s]/g, '') // Remove $, commas, and spaces
+        .replace(/[^\d.-]/g, ''); // Keep only digits, dots, and minus signs
+      
+      const parsedPrice = Number(cleanedPrice);
       if (isNaN(parsedPrice) || parsedPrice < 0) {
         errors.push('Unit price must be a valid number >= 0');
       } else {
