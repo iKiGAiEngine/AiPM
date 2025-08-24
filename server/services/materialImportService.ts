@@ -98,8 +98,12 @@ export class MaterialImportService {
       const headers = jsonData[0] as string[];
       const dataRows = jsonData.slice(1) as any[][];
       
+      console.log('Excel headers found:', headers);
+      
       // Apply column mapping or use default mapping
       const mapping = columnMapping || this.getDefaultColumnMapping(headers);
+      
+      console.log('Final column mapping:', mapping);
       
       const parsedLines: InsertMaterialImportLine[] = [];
       
@@ -398,6 +402,8 @@ export class MaterialImportService {
     let costCode = this.cleanString(getValue('costCode'));
     const phaseCode = this.cleanString(getValue('phaseCode'));
     
+    console.log(`Row ${rowNumber}: priceValue =`, priceValue, 'typeof:', typeof priceValue);
+    
     // Validate required fields
     if (!description) errors.push('Description is required');
     if (!unit) errors.push('Unit is required');
@@ -423,12 +429,18 @@ export class MaterialImportService {
         .replace(/[$,\s]/g, '') // Remove $, commas, and spaces
         .replace(/[^\d.-]/g, ''); // Keep only digits, dots, and minus signs
       
+      console.log(`Row ${rowNumber}: cleanedPrice =`, cleanedPrice);
+      
       const parsedPrice = Number(cleanedPrice);
+      console.log(`Row ${rowNumber}: parsedPrice =`, parsedPrice);
+      
       if (isNaN(parsedPrice) || parsedPrice < 0) {
         errors.push('Unit price must be a valid number >= 0');
       } else {
         unitPrice = parsedPrice;
       }
+    } else {
+      console.log(`Row ${rowNumber}: priceValue is empty or undefined`);
     }
     
     // Handle cost code mapping
