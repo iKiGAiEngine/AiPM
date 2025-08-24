@@ -70,7 +70,7 @@ export default function ProjectMaterials() {
   });
 
   // Fetch project materials
-  const { data: materials = [], isLoading, error } = useQuery<ProjectMaterial[]>({
+  const { data: materialsResponse, isLoading, error } = useQuery({
     queryKey: [`/api/projects/${projectId}/materials`, searchQuery, categoryFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -87,6 +87,9 @@ export default function ProjectMaterials() {
     },
     enabled: !!projectId,
   });
+
+  // Extract materials array from response
+  const materials: ProjectMaterial[] = materialsResponse?.items || [];
 
   // Update material mutation
   const updateMaterialMutation = useMutation({
