@@ -333,6 +333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(materials);
       }
     } catch (error) {
+      console.error('Project materials error:', error);
       res.status(500).json({ error: "Failed to fetch project materials" });
     }
   });
