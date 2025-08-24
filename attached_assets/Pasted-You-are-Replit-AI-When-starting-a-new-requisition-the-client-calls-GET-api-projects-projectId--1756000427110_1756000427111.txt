@@ -1,0 +1,136 @@
+You are Replit AI. When starting a new requisition, the client calls:
+GET /api/projects/:projectId/materials?available=true
+and receives 500 (Internal Server Error). Material options don’t populate.
+
+I need you to:
+1) Implement a **robust API route** for project materials that NEVER throws 500 for normal cases (returns 200 [] if empty, 404 if project missing, 401/403 if unauthorized).
+2) Validate inputs (UUID, query params), enforce RBAC, and add safe error handling.
+3) Query ONLY active/available project materials when ?available=true.
+4) Return a consistent JSON shape the UI can consume.
+5) Update `RequisitionForm.tsx` to handle loading, empty state, and readable error messages (no crashes), with a simple retry.
+6) Add basic diagnostics so we can see what went wrong in logs.
+
+Assume TypeScript, Express (or our server), Prisma OR Drizzle (pick what the codebase uses), and our existing auth helpers.
+
+### A) Server route
+
+Create/replace: `apps/server/src/routes/projectMaterials.ts`
+
+```ts
+import { Router, Request, Response } from "express";
+import { z } from "zod";
+import { requireAuth } from "../middleware/auth"; // existing auth middleware
+import { getOrgIdFromReq } from "../middleware/org"; // helper if present
+import { prisma } from "@/packages/db/prisma"; // or import { db } ... for Drizzle
+
+const router = Router();
+
+const ParamsSchema = z.object({
+  projectId: z.string().uuid("projectId must be a valid UUID"),
+});
+
+const QuerySchema = z.object({
+  available: z
+    .union([z.string(), z.boolean()])
+    .optional()
+    .transform((v) => (typeof v === "string" ? v === "true" : !!v)),
+  search: z.string().optional(), // optional search by sku/desc
+  limit: z.coerce.number().int().min(1).max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+router.get(
+  "/api/projects/:projectId/materials",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const started = Date.now();
+    try {
+      const { projectId } = ParamsSchema.parse(req.params);
+      const { available, search, limit, offset } = QuerySchema.parse(req.query);
+
+      // RBAC: user must be able to view this project (implement/check your policy)
+      const user = (req as any).user;
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+      // Ensure project exists (and in user’s org, if multi-tenant)
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { id: true, organizationId: true },
+      });
+      if (!project) {
+        return res.status(404).json({ error: "Project not found", projectId });
+      }
+      const orgId = project.organizationId;
+      const reqOrgId = getOrgIdFromReq?.(req);
+      if (reqOrgId && reqOrgId !== orgId) {
+        return res.status(403).json({ error: "Forbidden (org mismatch)" });
+      }
+
+      // Build where clause
+      const where: any = {
+        projectId,
+      };
+      if (available) where.active = true; // or `available = true` if your schema uses that flag
+
+      if (search && search.trim()) {
+        const s = search.trim();
+        // search by SKU or description (adjust for your DB)
+        where.OR = [
+          { sku: { contains: s, mode: "insensitive" } },
+          { description: { contains: s, mode: "insensitive" } },
+          { manufacturer: { contains: s, mode: "insensitive" } },
+          { model: { contains: s, mode: "insensitive" } },
+        ];
+      }
+
+      // Query materials
+      const [items, total] = await Promise.all([
+        prisma.projectMaterial.findMany({
+          where,
+          orderBy: [{ description: "asc" }, { sku: "asc" }],
+          skip: offset,
+          take: limit,
+          select: {
+            id: true,
+            projectId: true,
+            costCode: true,
+            sku: true,
+            description: true,
+            unit: true,
+            defaultUnitPrice: true,
+            manufacturer: true,
+            model: true,
+            active: true,
+            requiresSubmittal: true,
+            updatedAt: true,
+          },
+        }),
+        prisma.projectMaterial.count({ where }),
+      ]);
+
+      return res.status(200).json({
+        projectId,
+        available: !!available,
+        total,
+        limit,
+        offset,
+        items,
+        tookMs: Date.now() - started,
+      });
+    } catch (err: any) {
+      console.error("GET /api/projects/:projectId/materials error:", {
+        message: err?.message,
+        stack: err?.stack,
+        params: req.params,
+        query: req.query,
+      });
+      // Force JSON response; no HTML
+      return res.status(500).json({
+        error: "Internal Server Error",
+        message: "Failed to load project materials",
+      });
+    }
+  }
+);
+
+export default router;

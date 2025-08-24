@@ -306,35 +306,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Project materials route
+  // Project materials route - robust with validation and error handling
   app.get("/api/projects/:id/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const started = Date.now();
+    
     try {
-      const { available, search, category } = req.query;
-      
-      const filters: any = {};
-      if (search) filters.search = search as string;
-      if (category) filters.category = category as string;
-      
-      // If available=true query param, return only available materials (excluding used ones)
-      if (available === 'true') {
-        const materials = await storage.getAvailableProjectMaterialsByProject(
-          req.params.id, 
-          req.user!.organizationId,
-          filters
-        );
-        res.json(materials);
-      } else {
-        // Default behavior - return all project materials
-        const materials = await storage.getProjectMaterialsByProject(
-          req.params.id, 
-          req.user!.organizationId,
-          filters
-        );
-        res.json(materials);
+      // Validate projectId is a UUID
+      const projectId = req.params.id;
+      if (!projectId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(projectId)) {
+        return res.status(400).json({ 
+          error: "Invalid project ID format", 
+          projectId: req.params.id 
+        });
       }
-    } catch (error) {
-      console.error('Project materials error:', error);
-      res.status(500).json({ error: "Failed to fetch project materials" });
+
+      // Validate user and org
+      const user = req.user;
+      if (!user || !user.organizationId) {
+        return res.status(401).json({ error: "Unauthorized - missing user or organization" });
+      }
+
+      // Validate query parameters
+      const { available, search, category, limit = "100", offset = "0" } = req.query;
+      const availableFlag = available === 'true';
+      const limitNum = Math.max(1, Math.min(200, parseInt(limit as string) || 100));
+      const offsetNum = Math.max(0, parseInt(offset as string) || 0);
+
+      // Check if project exists and belongs to user's organization
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ 
+          error: "Project not found", 
+          projectId 
+        });
+      }
+      
+      if (project.organizationId !== user.organizationId) {
+        return res.status(403).json({ 
+          error: "Access denied - project belongs to different organization" 
+        });
+      }
+
+      // Build filters
+      const filters: any = {};
+      if (search && typeof search === 'string' && search.trim()) {
+        filters.search = search.trim();
+      }
+      if (category && typeof category === 'string' && category.trim()) {
+        filters.category = category.trim();
+      }
+
+      // Get materials based on available flag
+      let materials;
+      if (availableFlag) {
+        materials = await storage.getAvailableProjectMaterialsByProject(
+          projectId, 
+          user.organizationId,
+          filters
+        );
+      } else {
+        materials = await storage.getProjectMaterialsByProject(
+          projectId, 
+          user.organizationId,
+          filters
+        );
+      }
+
+      // Ensure materials is always an array
+      const materialsArray = Array.isArray(materials) ? materials : [];
+
+      // Apply pagination if needed
+      const paginatedMaterials = materialsArray.slice(offsetNum, offsetNum + limitNum);
+
+      // Return consistent response format
+      return res.status(200).json({
+        projectId,
+        available: availableFlag,
+        total: materialsArray.length,
+        limit: limitNum,
+        offset: offsetNum,
+        items: paginatedMaterials,
+        tookMs: Date.now() - started
+      });
+
+    } catch (error: any) {
+      console.error('GET /api/projects/:id/materials error:', {
+        message: error?.message,
+        stack: error?.stack,
+        params: req.params,
+        query: req.query,
+        userId: req.user?.id,
+        orgId: req.user?.organizationId
+      });
+      
+      // Return consistent error format
+      return res.status(500).json({
+        error: "Internal Server Error",
+        message: "Failed to load project materials",
+        projectId: req.params.id,
+        tookMs: Date.now() - started
+      });
     }
   });
 

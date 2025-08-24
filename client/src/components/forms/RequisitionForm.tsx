@@ -71,25 +71,41 @@ export default function RequisitionForm() {
   });
 
   // Fetch available materials for selected project (excluding already used ones)
-  const { data: projectMaterials = [] } = useQuery<ProjectMaterial[]>({
+  const { 
+    data: materialsResponse, 
+    isLoading: materialsLoading, 
+    error: materialsError,
+    refetch: refetchMaterials 
+  } = useQuery({
     queryKey: ['/api/projects', selectedProject, 'materials', 'available'],
     queryFn: async () => {
-      if (!selectedProject) return [];
+      if (!selectedProject) return { items: [], total: 0 };
+      
       const response = await fetch(`/api/projects/${selectedProject}/materials?available=true`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
-      if (!response.ok) return [];
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: Failed to load materials`);
+      }
+      
       return response.json();
     },
     enabled: !!selectedProject,
+    retry: 2,
+    retryDelay: 1000,
   });
+
+  // Extract materials from the response
+  const projectMaterials = materialsResponse?.items || [];
 
   // Get unique scope types for filtering
   const scopeTypes = useMemo(() => {
     const types = Array.from(new Set(projectMaterials
-      .map(m => m.category)
+      .map((m: any) => m.category)
       .filter(Boolean)
     )).sort();
     return types;
@@ -98,7 +114,7 @@ export default function RequisitionForm() {
   // Initialize available quantities when project materials change
   useEffect(() => {
     const quantities: Record<string, number> = {};
-    projectMaterials.forEach(material => {
+    projectMaterials.forEach((material: any) => {
       // Use the available quantity returned from the server (after deducting used quantities)
       quantities[material.id] = parseFloat(material.estimatedQuantity || material.qty || '0');
     });
@@ -112,7 +128,7 @@ export default function RequisitionForm() {
     
     if (materialSearch) {
       const searchLower = materialSearch.toLowerCase();
-      filtered = filtered.filter(material => 
+      filtered = filtered.filter((material: any) => 
         material.description?.toLowerCase().includes(searchLower) ||
         material.model?.toLowerCase().includes(searchLower) ||
         material.category?.toLowerCase().includes(searchLower)
@@ -120,7 +136,7 @@ export default function RequisitionForm() {
     }
     
     if (selectedScopeType !== "all") {
-      filtered = filtered.filter(material => material.category === selectedScopeType);
+      filtered = filtered.filter((material: any) => material.category === selectedScopeType);
     }
     
     return filtered;
@@ -270,10 +286,10 @@ export default function RequisitionForm() {
   };
 
   const selectAllMaterials = () => {
-    const allMaterialIds = new Set(filteredMaterials.map(m => m.id));
+    const allMaterialIds = new Set<string>(filteredMaterials.map((m: any) => m.id));
     setSelectedMaterials(allMaterialIds);
     const quantities: Record<string, number> = {};
-    filteredMaterials.forEach(material => {
+    filteredMaterials.forEach((material: any) => {
       const availableQty = availableQuantities[material.id] || 0;
       quantities[material.id] = availableQty > 0 ? availableQty : 1;
     });
@@ -281,7 +297,7 @@ export default function RequisitionForm() {
   };
 
   const deselectAllMaterials = () => {
-    setSelectedMaterials(new Set());
+    setSelectedMaterials(new Set<string>());
     setMaterialQuantities({});
   };
 
@@ -326,9 +342,9 @@ export default function RequisitionForm() {
   };
 
   const addSelectedMaterials = () => {
-    const selectedMaterialsData = filteredMaterials.filter(m => selectedMaterials.has(m.id));
+    const selectedMaterialsData = filteredMaterials.filter((m: any) => selectedMaterials.has(m.id));
     
-    selectedMaterialsData.forEach(material => {
+    selectedMaterialsData.forEach((material: any) => {
       const quantity = materialQuantities[material.id] || 1;
       addMaterialToRequisition(material, quantity);
     });
@@ -569,7 +585,28 @@ export default function RequisitionForm() {
               )
             ) : (
               <div className="text-sm text-muted-foreground p-6 border border-dashed rounded-lg text-center">
-                Select a project to see available materials
+                {materialsLoading ? (
+                  <div className="space-y-2">
+                    <div>Loading materials...</div>
+                    <div className="animate-pulse bg-muted h-4 w-3/4 mx-auto rounded"></div>
+                  </div>
+                ) : materialsError ? (
+                  <div className="space-y-2">
+                    <div className="text-destructive">Failed to load materials</div>
+                    <div className="text-xs">{materialsError.message}</div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => refetchMaterials()}
+                      className="mt-2"
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                ) : (
+                  <div>Select a project to see available materials</div>
+                )}
               </div>
             )}
           </div>
