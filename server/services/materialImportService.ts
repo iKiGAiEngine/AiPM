@@ -98,12 +98,8 @@ export class MaterialImportService {
       const headers = jsonData[0] as string[];
       const dataRows = jsonData.slice(1) as any[][];
       
-      console.log('Excel headers found:', headers);
-      
       // Apply column mapping or use default mapping
       const mapping = columnMapping || this.getDefaultColumnMapping(headers);
-      
-      console.log('Final column mapping:', mapping);
       
       const parsedLines: InsertMaterialImportLine[] = [];
       
@@ -136,7 +132,75 @@ export class MaterialImportService {
         await db.insert(materialImportLines).values(parsedLines);
       }
       
-      // Update run status and row count
+      // Check if all lines are valid for auto-approval
+      const validLinesCount = parsedLines.filter(line => line.valid).length;
+      const allLinesValid = validLinesCount === parsedLines.length && parsedLines.length > 0;
+      
+      if (allLinesValid) {
+        // Auto-approve if all lines are valid
+        // Get the actual project ID from the run first
+        const [run] = await db.select().from(materialImportRuns).where(eq(materialImportRuns.id, runId));
+        if (!run) return { success: false, message: 'Import run not found', lineCount: 0 };
+        
+        const projectMaterialsData: InsertProjectMaterial[] = parsedLines.map(line => ({
+          projectId: run.projectId,
+          organizationId: run.organizationId,
+          category: line.category,
+          model: line.model,
+          description: line.description!,
+          unit: line.unit!,
+          qty: line.qty!,
+          unitPrice: line.unitPrice || '0',
+          costCode: line.costCode,
+          phaseCode: line.phaseCode,
+          projectCode: line.projectCode,
+          source: 'import',
+          importRunId: runId
+        }));
+        
+        await db.insert(projectMaterials).values(projectMaterialsData);
+        
+        // Update budget rollups - convert parsedLines to MaterialImportLine format
+        const budgetLines = parsedLines.map(line => ({
+          id: '', // Not needed for budget rollups
+          runId: line.runId,
+          rawRowJson: line.rawRowJson,
+          category: line.category || null,
+          model: line.model || null,
+          description: line.description || null,
+          unit: line.unit || null,
+          qty: line.qty || null,
+          unitPrice: line.unitPrice || null,
+          costCode: line.costCode || null,
+          phaseCode: line.phaseCode || null,
+          projectCode: line.projectCode || null,
+          valid: line.valid || null,
+          errorsJson: line.errorsJson || null,
+          suggestionsJson: line.suggestionsJson || null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }));
+        
+        await this.updateBudgetRollups(run.projectId, run.organizationId, budgetLines);
+        
+        // Mark run as approved
+        await db
+          .update(materialImportRuns)
+          .set({ 
+            status: 'approved',
+            rowCount: parsedLines.length,
+            updatedAt: sql`now()`
+          })
+          .where(eq(materialImportRuns.id, runId));
+        
+        return { 
+          success: true, 
+          message: `Successfully imported and added ${parsedLines.length} materials to project`, 
+          lineCount: parsedLines.length 
+        };
+      }
+      
+      // Default behavior - set to review if not all valid
       await db
         .update(materialImportRuns)
         .set({ 
@@ -148,7 +212,7 @@ export class MaterialImportService {
       
       return { 
         success: true, 
-        message: `Successfully parsed ${parsedLines.length} rows`, 
+        message: `Successfully parsed ${parsedLines.length} rows (${validLinesCount} valid, ${parsedLines.length - validLinesCount} need review)`, 
         lineCount: parsedLines.length 
       };
       
@@ -370,7 +434,6 @@ export class MaterialImportService {
       }
     }
     
-    console.log('Column mapping result:', mapping);
     return mapping;
   }
   
@@ -401,7 +464,6 @@ export class MaterialImportService {
     let costCode = this.cleanString(getValue('costCode'));
     const phaseCode = this.cleanString(getValue('phaseCode'));
     
-    console.log(`Row ${rowNumber}: priceValue =`, priceValue, 'typeof:', typeof priceValue);
     
     // Validate required fields
     if (!description) errors.push('Description is required');
@@ -428,18 +490,13 @@ export class MaterialImportService {
         .replace(/[$,\s]/g, '') // Remove $, commas, and spaces
         .replace(/[^\d.-]/g, ''); // Keep only digits, dots, and minus signs
       
-      console.log(`Row ${rowNumber}: cleanedPrice =`, cleanedPrice);
-      
       const parsedPrice = Number(cleanedPrice);
-      console.log(`Row ${rowNumber}: parsedPrice =`, parsedPrice);
       
       if (isNaN(parsedPrice) || parsedPrice < 0) {
         errors.push('Unit price must be a valid number >= 0');
       } else {
         unitPrice = parsedPrice;
       }
-    } else {
-      console.log(`Row ${rowNumber}: priceValue is empty or undefined`);
     }
     
     // Handle cost code mapping

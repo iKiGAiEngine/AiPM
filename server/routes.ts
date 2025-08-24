@@ -134,7 +134,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project routes
   app.get("/api/projects", async (req: AuthenticatedRequest, res) => {
     try {
-      const projects = await storage.getProjectsByOrganization(req.user!.organizationId);
+      const { includeInactive } = req.query;
+      const projects = await storage.getProjectsByOrganization(
+        req.user!.organizationId, 
+        includeInactive === 'true'
+      );
       res.json(projects);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch projects" });

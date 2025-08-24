@@ -213,8 +213,15 @@ export class DatabaseStorage implements IStorage {
     return project || undefined;
   }
 
-  async getProjectsByOrganization(organizationId: string): Promise<Project[]> {
-    return await db.select().from(projects).where(eq(projects.organizationId, organizationId));
+  async getProjectsByOrganization(organizationId: string, includeInactive?: boolean): Promise<Project[]> {
+    const conditions = [eq(projects.organizationId, organizationId)];
+    
+    // Exclude cancelled projects unless explicitly requested
+    if (!includeInactive) {
+      conditions.push(sql`${projects.status} != 'cancelled'`);
+    }
+    
+    return await db.select().from(projects).where(and(...conditions));
   }
 
   async updateProject(id: string, organizationId: string, data: Partial<Project>): Promise<Project | undefined> {
