@@ -351,12 +351,11 @@ export class MaterialImportService {
       { patterns: ['category', 'cat'], target: 'category' },
       { patterns: ['model', 'model #', 'model number', 'part'], target: 'model' },
       { patterns: ['description', 'desc', 'name', 'item name'], target: 'description' },
+      // Unit price patterns MUST come before 'unit' to avoid 'unit' matching 'unit price'
+      { patterns: ['unit price', 'unitprice', 'unit cost', 'each', 'cost each', 'rate', 'per unit', 'unit rate', 'cost per unit', 'price per unit', 'price'], target: 'unitPrice' },
       { patterns: ['unit', 'uom', 'unit of measure'], target: 'unit' },
       { patterns: ['qty', 'quantity', 'count', 'amount'], target: 'qty' },
-      // Cost code patterns MUST come before unit price to avoid 'cost' overlap
       { patterns: ['cost code', 'costcode'], target: 'costCode' },
-      // Unit price patterns - removed 'cost' to avoid conflict with cost code
-      { patterns: ['unit price', 'price', 'unitprice', 'unit cost', 'each', 'cost each', 'rate', 'per unit', 'unit rate', 'cost per unit', 'price per unit'], target: 'unitPrice' },
       { patterns: ['phase', 'phase code', 'phasecode'], target: 'phaseCode' }
     ];
     
