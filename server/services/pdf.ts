@@ -17,11 +17,13 @@ export class PDFService {
         });
 
         // Fetch related data if needed
-        const storage = require('../storage').default;
+        const storageModule = require('../storage');
+        const storageInstance = storageModule.storage || storageModule.default || storageModule;
+        
         const [vendor, project, lines] = await Promise.all([
-          po.vendorId ? storage.getVendor(po.vendorId) : null,
-          po.projectId ? storage.getProject(po.projectId) : null,
-          storage.getPurchaseOrderLines(po.id)
+          po.vendorId ? storageInstance.getVendor(po.vendorId).catch(() => null) : null,
+          po.projectId ? storageInstance.getProject(po.projectId).catch(() => null) : null,
+          storageInstance.getPurchaseOrderLines(po.id).catch(() => [])
         ]);
 
         // Header

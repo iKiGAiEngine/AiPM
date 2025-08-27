@@ -1239,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/purchase-orders/:id/pdf", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/purchase-orders/:id/pdf", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const po = await storage.getPurchaseOrder(req.params.id);
       if (!po || po.organizationId !== req.user!.organizationId) {
@@ -1252,7 +1252,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Disposition', `attachment; filename="PO-${po.number}.pdf"`);
       res.send(pdfBuffer);
     } catch (error) {
-      res.status(500).json({ error: "Failed to generate PDF" });
+      console.error("PDF generation error:", error);
+      res.status(500).json({ error: "Failed to generate PDF", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
