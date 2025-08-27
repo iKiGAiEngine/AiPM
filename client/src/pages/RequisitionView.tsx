@@ -1,11 +1,12 @@
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Calendar, User, MapPin, FileText, Package } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Calendar, User, MapPin, FileText, Package, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 import type { Requisition, RequisitionLine } from "@shared/schema";
 
 const statusColors = {
@@ -18,6 +19,8 @@ const statusColors = {
 
 export default function RequisitionView() {
   const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch requisition details
   const { data: requisition, isLoading, error } = useQuery<Requisition>({
@@ -48,6 +51,53 @@ export default function RequisitionView() {
     },
     enabled: !!id,
   });
+
+  // Mutation to submit draft requisition
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/requisitions/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({ status: 'submitted' }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit requisition');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/requisitions', id] });
+      toast({
+        title: 'Success',
+        description: 'Requisition submitted successfully and is now pending approval',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit requisition',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleSubmit = () => {
+    if (requisitionLines.length === 0) {
+      toast({
+        title: 'Cannot Submit',
+        description: 'Please add at least one material line item before submitting',
+        variant: 'destructive',
+      });
+      return;
+    }
+    submitMutation.mutate();
+  };
 
   if (isLoading) {
     return (
@@ -87,17 +137,31 @@ export default function RequisitionView() {
     <div className="p-3 sm:p-6 max-w-4xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/requisitions">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Back to Requisitions</span>
-              <span className="sm:hidden">Back</span>
-            </Link>
-          </Button>
-          <Badge className={statusColors[requisition.status as keyof typeof statusColors]}>
-            {requisition.status}
-          </Badge>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/requisitions">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Back to Requisitions</span>
+                <span className="sm:hidden">Back</span>
+              </Link>
+            </Button>
+            <Badge className={statusColors[requisition.status as keyof typeof statusColors]}>
+              {requisition.status}
+            </Badge>
+          </div>
+          
+          {/* Submit button for draft requisitions */}
+          {requisition.status === 'draft' && (
+            <Button 
+              onClick={handleSubmit}
+              disabled={submitMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {submitMutation.isPending ? 'Submitting...' : 'Submit Requisition'}
+            </Button>
+          )}
         </div>
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">{requisition.number}</h1>
