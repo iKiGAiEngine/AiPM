@@ -1,11 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Download, Send, FileText, Building, MapPin, Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 import type { PurchaseOrder, PurchaseOrderLine } from "@shared/schema";
 
 const statusColors = {
@@ -19,6 +20,8 @@ const statusColors = {
 export default function PurchaseOrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: purchaseOrder, isLoading, error } = useQuery<PurchaseOrder>({
     queryKey: ['/api/purchase-orders', id],
@@ -47,6 +50,53 @@ export default function PurchaseOrderDetail() {
     },
     enabled: !!id,
   });
+
+  // Mutation to send draft purchase order
+  const sendPOMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/purchase-orders/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({ status: 'sent' }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send purchase order');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders', id] });
+      toast({
+        title: 'Success',
+        description: 'Purchase order sent to vendor successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send purchase order',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleSendPO = () => {
+    if (lines.length === 0) {
+      toast({
+        title: 'Cannot Send',
+        description: 'Purchase order must have line items before sending',
+        variant: 'destructive',
+      });
+      return;
+    }
+    sendPOMutation.mutate();
+  };
 
   const formatCurrency = (amount: string | number) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -139,6 +189,20 @@ export default function PurchaseOrderDetail() {
           <Badge className={statusColors[purchaseOrder.status as keyof typeof statusColors]}>
             {purchaseOrder.status}
           </Badge>
+          
+          {/* Send button for draft POs */}
+          {purchaseOrder.status === 'draft' && (
+            <Button 
+              onClick={handleSendPO}
+              disabled={sendPOMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+              size="sm"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {sendPOMutation.isPending ? 'Sending...' : 'Send to Vendor'}
+            </Button>
+          )}
+          
           <Button 
             variant="outline" 
             size="sm" 

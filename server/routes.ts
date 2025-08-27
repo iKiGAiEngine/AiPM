@@ -1149,6 +1149,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update Purchase Order Status  
+  app.patch("/api/purchase-orders/:id/status", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { status } = req.body;
+      const user = req.user!;
+
+      // Validate status
+      const validStatuses = ['draft', 'sent', 'acknowledged', 'received', 'closed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      // Check if purchase order exists and belongs to user's organization
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== user.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      // Update status
+      await storage.updatePurchaseOrderStatus(req.params.id, status);
+      
+      res.json({ success: true, status });
+    } catch (error) {
+      console.error("Update PO status error:", error);
+      res.status(500).json({ error: "Failed to update purchase order status" });
+    }
+  });
+
   app.get("/api/purchase-orders/:id/delivered-quantities", async (req: AuthenticatedRequest, res) => {
     try {
       const po = await storage.getPurchaseOrder(req.params.id);

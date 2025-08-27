@@ -5,7 +5,7 @@ import { storage } from '../storage';
 
 export class PDFService {
   async generatePurchaseOrderPDF(po: any): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({ margin: 50 });
         const buffers: Buffer[] = [];
@@ -15,6 +15,14 @@ export class PDFService {
           const pdfBuffer = Buffer.concat(buffers);
           resolve(pdfBuffer);
         });
+
+        // Fetch related data if needed
+        const storage = require('../storage').default;
+        const [vendor, project, lines] = await Promise.all([
+          po.vendorId ? storage.getVendor(po.vendorId) : null,
+          po.projectId ? storage.getProject(po.projectId) : null,
+          storage.getPurchaseOrderLines(po.id)
+        ]);
 
         // Header
         doc.fontSize(20).text('PURCHASE ORDER', 50, 50);
@@ -27,15 +35,15 @@ export class PDFService {
 
         // Vendor Info
         doc.text('Vendor:', 50, 160);
-        doc.text(po.vendor?.name || '', 50, 175);
-        doc.text(po.vendor?.address || '', 50, 190);
+        doc.text(vendor?.name || 'N/A', 50, 175);
+        doc.text(vendor?.address || 'N/A', 50, 190);
 
         // Ship To
         doc.text('Ship To:', 300, 160);
-        doc.text(po.shipToAddress || '', 300, 175);
+        doc.text(po.shipToAddress || 'N/A', 300, 175);
 
         // Project Info
-        doc.text(`Project: ${po.project?.name || ''}`, 50, 230);
+        doc.text(`Project: ${project?.name || 'N/A'}`, 50, 230);
         doc.text(`Requested Delivery: ${po.requestedDeliveryDate ? new Date(po.requestedDeliveryDate).toLocaleDateString() : 'TBD'}`, 50, 245);
 
         // Line Items Table
@@ -52,15 +60,17 @@ export class PDFService {
         let currentY = startY + 25;
         let subtotal = 0;
 
-        if (po.lines) {
-          po.lines.forEach((line: any, index: number) => {
-            const lineTotal = parseFloat(line.lineTotal || 0);
+        if (lines && lines.length > 0) {
+          lines.forEach((line: any, index: number) => {
+            const unitPrice = parseFloat(line.unitPrice || 0);
+            const quantity = parseFloat(line.quantity || 0);
+            const lineTotal = unitPrice * quantity;
             subtotal += lineTotal;
 
             doc.text(`${index + 1}`, 50, currentY);
-            doc.text(line.description, 100, currentY, { width: 240 });
-            doc.text(line.quantity.toString(), 350, currentY);
-            doc.text(`$${parseFloat(line.unitPrice || 0).toFixed(2)}`, 400, currentY);
+            doc.text(line.description || 'N/A', 100, currentY, { width: 240 });
+            doc.text(quantity.toString(), 350, currentY);
+            doc.text(`$${unitPrice.toFixed(2)}`, 400, currentY);
             doc.text(`$${lineTotal.toFixed(2)}`, 480, currentY);
 
             currentY += 20;
