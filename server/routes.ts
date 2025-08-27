@@ -1559,25 +1559,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req: AuthenticatedRequest, res) => {
     try {
-      const [
-        requisitions,
-        purchaseOrders, 
-        invoices,
-        projects
-      ] = await Promise.all([
-        storage.getRequisitionsByOrganization(req.user!.organizationId),
-        storage.getPurchaseOrdersByOrganization(req.user!.organizationId),
-        storage.getInvoicesByOrganization(req.user!.organizationId),
-        storage.getProjectsByOrganization(req.user!.organizationId)
-      ]);
+      const { projectId } = req.query;
+      let requisitions, purchaseOrders, invoices, projects;
+
+      if (projectId && typeof projectId === 'string') {
+        // Get filtered data for specific project
+        [requisitions, purchaseOrders, invoices, projects] = await Promise.all([
+          storage.getRequisitionsByProject(projectId),
+          storage.getPurchaseOrdersByProject(projectId),
+          storage.getInvoicesByOrganization(req.user!.organizationId), // Invoices don't have project filtering yet
+          storage.getProjectsByOrganization(req.user!.organizationId)
+        ]);
+      } else {
+        // Get all data for organization
+        [requisitions, purchaseOrders, invoices, projects] = await Promise.all([
+          storage.getRequisitionsByOrganization(req.user!.organizationId),
+          storage.getPurchaseOrdersByOrganization(req.user!.organizationId),
+          storage.getInvoicesByOrganization(req.user!.organizationId),
+          storage.getProjectsByOrganization(req.user!.organizationId)
+        ]);
+      }
 
       const stats = {
-        openRequisitions: requisitions.filter(r => r.status === 'submitted').length,
-        pendingPOs: purchaseOrders.filter(po => po.status === 'draft' || po.status === 'sent').length,
-        invoiceExceptions: invoices.filter(i => i.status === 'exception').length,
+        openRequisitions: requisitions.filter((r: any) => r.status === 'submitted').length,
+        pendingPOs: purchaseOrders.filter((po: any) => po.status === 'draft' || po.status === 'sent').length,
+        invoiceExceptions: invoices.filter((i: any) => i.status === 'exception').length,
         costSavings: '23400', // This would be calculated from actual data
         totalProjects: projects.length,
-        activeProjects: projects.filter(p => p.status === 'active').length
+        activeProjects: projects.filter((p: any) => p.status === 'active').length
       };
 
       res.json(stats);

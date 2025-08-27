@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useProject } from "@/contexts/ProjectContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   ClipboardList, 
@@ -20,10 +21,12 @@ interface DashboardStats {
 }
 
 export default function DashboardStats() {
+  const { selectedProject } = useProject();
   const { data: stats, isLoading, error } = useQuery<DashboardStats>({
-    queryKey: ['/api/dashboard/stats'],
+    queryKey: ['/api/dashboard/stats', selectedProject?.id],
     queryFn: async () => {
-      const response = await fetch('/api/dashboard/stats', {
+      const url = selectedProject ? `/api/dashboard/stats?projectId=${selectedProject.id}` : '/api/dashboard/stats';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
