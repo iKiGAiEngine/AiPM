@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 
 interface TopAppBarProps {
   onMobileMenuToggle?: () => void;
@@ -28,13 +29,16 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [notifications] = useState(true); // Mock notification state
 
   // Get current demo mode status
-  const { data: demoMode = false } = useQuery({
+  const { data: demoModeResponse, isLoading: demoModeLoading } = useQuery({
     queryKey: ['/api/settings/demo-mode'],
     enabled: !!user,
   });
+  
+  const demoMode = demoModeResponse?.enabled === true;
 
   // Toggle demo mode mutation
   const demoModeToggle = useMutation({
@@ -47,13 +51,32 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
         },
         body: JSON.stringify({ enabled }),
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update demo mode');
+      }
+      
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/settings/demo-mode'] });
-      // Force refresh of all data since demo mode affects many components
-      queryClient.invalidateQueries();
-      window.location.reload(); // Refresh to ensure all components update
+    onSuccess: (data, variables) => {
+      // Update the cache immediately for instant UI feedback
+      queryClient.setQueryData(['/api/settings/demo-mode'], { enabled: variables });
+      
+      // Then invalidate other queries that might be affected
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
+      
+      toast({
+        title: 'Demo Mode Updated',
+        description: `Demo mode has been ${variables ? 'enabled' : 'disabled'}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update demo mode setting',
+        variant: 'destructive',
+      });
     },
   });
 
