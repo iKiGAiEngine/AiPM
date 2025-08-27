@@ -17,7 +17,14 @@ import {
   ChevronDown
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useProject } from "@/contexts/ProjectContext";
 import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navigation = [
   {
@@ -102,10 +109,7 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [selectedProject, setSelectedProject] = useState({
-    name: "Metro Plaza Office Tower",
-    phase: "Phase 2 - Interior Build-out"
-  });
+  const { selectedProject, setSelectedProject, projects, isLoadingProjects } = useProject();
 
   const canAccess = (roles: string[]) => {
     return user && roles.includes(user.role);
@@ -140,22 +144,73 @@ export default function Sidebar() {
 
         {/* Project Switcher */}
         <div className="p-4 border-b border-sidebar-border">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-between p-3 h-auto bg-sidebar-accent hover:bg-sidebar-accent/80"
-            data-testid="button-project-switcher"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
-                <FolderOpen className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="text-left">
-                <div className="text-sm font-medium text-sidebar-foreground">{selectedProject.name}</div>
-                <div className="text-xs text-sidebar-foreground/70">{selectedProject.phase}</div>
-              </div>
-            </div>
-            <ChevronDown className="w-4 h-4 text-sidebar-foreground/70" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-between p-3 h-auto bg-sidebar-accent hover:bg-sidebar-accent/80"
+                data-testid="button-project-switcher"
+                disabled={isLoadingProjects}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                    <FolderOpen className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="text-left">
+                    {selectedProject ? (
+                      <>
+                        <div className="text-sm font-medium text-sidebar-foreground">{selectedProject.name}</div>
+                        <div className="text-xs text-sidebar-foreground/70">{selectedProject.status === 'active' ? 'Active Project' : selectedProject.status}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-sm font-medium text-sidebar-foreground">
+                          {isLoadingProjects ? 'Loading...' : 'All Projects'}
+                        </div>
+                        <div className="text-xs text-sidebar-foreground/70">View all documents</div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <ChevronDown className="w-4 h-4 text-sidebar-foreground/70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-64" align="start">
+              <DropdownMenuItem
+                onClick={() => setSelectedProject(null)}
+                className={cn(
+                  "flex items-center space-x-3 p-3",
+                  !selectedProject && "bg-accent"
+                )}
+              >
+                <div className="w-4 h-4 bg-gray-100 rounded flex items-center justify-center">
+                  <FolderOpen className="w-3 h-3 text-gray-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">All Projects</div>
+                  <div className="text-xs text-muted-foreground">View all documents</div>
+                </div>
+              </DropdownMenuItem>
+              {projects.map((project) => (
+                <DropdownMenuItem
+                  key={project.id}
+                  onClick={() => setSelectedProject(project)}
+                  className={cn(
+                    "flex items-center space-x-3 p-3",
+                    selectedProject?.id === project.id && "bg-accent"
+                  )}
+                >
+                  <div className="w-4 h-4 bg-blue-100 rounded flex items-center justify-center">
+                    <FolderOpen className="w-3 h-3 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">{project.name}</div>
+                    <div className="text-xs text-muted-foreground">{project.status}</div>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Navigation */}

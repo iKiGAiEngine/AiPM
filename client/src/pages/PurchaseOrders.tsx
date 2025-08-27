@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Eye, Download, Send, FileText, CheckCircle, Clock } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { useProject } from "@/contexts/ProjectContext";
 import type { PurchaseOrder } from "@shared/schema";
 
 const statusColors = {
@@ -23,10 +24,12 @@ export default function PurchaseOrders() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  const { selectedProject } = useProject();
   const { data: purchaseOrders = [], isLoading, error } = useQuery<PurchaseOrder[]>({
-    queryKey: ['/api/purchase-orders'],
+    queryKey: ['/api/purchase-orders', selectedProject?.id],
     queryFn: async () => {
-      const response = await fetch('/api/purchase-orders', {
+      const url = selectedProject ? `/api/purchase-orders?projectId=${selectedProject.id}` : '/api/purchase-orders';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },

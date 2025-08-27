@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Eye, Send, FileText } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { useProject } from "@/contexts/ProjectContext";
 import type { RFQ } from "@shared/schema";
 
 const statusColors = {
@@ -22,10 +23,12 @@ export default function RFQs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  const { selectedProject } = useProject();
   const { data: rfqs = [], isLoading, error } = useQuery<RFQ[]>({
-    queryKey: ['/api/rfqs'],
+    queryKey: ['/api/rfqs', selectedProject?.id],
     queryFn: async () => {
-      const response = await fetch('/api/rfqs', {
+      const url = selectedProject ? `/api/rfqs?projectId=${selectedProject.id}` : '/api/rfqs';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },

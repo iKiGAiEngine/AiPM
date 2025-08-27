@@ -11,6 +11,7 @@ import { Plus, Search, Filter, Eye, FileText, CheckCircle, Check, X } from "luci
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useProject } from "@/contexts/ProjectContext";
 import type { Requisition } from "@shared/schema";
 
 const statusColors = {
@@ -29,10 +30,12 @@ export default function Requisitions() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const { selectedProject } = useProject();
   const { data: requisitions = [], isLoading, error } = useQuery<Requisition[]>({
-    queryKey: ['/api/requisitions'],
+    queryKey: ['/api/requisitions', selectedProject?.id],
     queryFn: async () => {
-      const response = await fetch('/api/requisitions', {
+      const url = selectedProject ? `/api/requisitions?projectId=${selectedProject.id}` : '/api/requisitions';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
