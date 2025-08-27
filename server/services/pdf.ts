@@ -7,24 +7,43 @@ export class PDFService {
   async generatePurchaseOrderPDF(po: any): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
+        console.log('Starting PDF generation for PO:', po.id);
         const doc = new PDFDocument({ margin: 50 });
         const buffers: Buffer[] = [];
 
         doc.on('data', buffers.push.bind(buffers));
         doc.on('end', () => {
+          console.log('PDF generation completed successfully');
           const pdfBuffer = Buffer.concat(buffers);
           resolve(pdfBuffer);
         });
 
-        // Fetch related data if needed
-        const storageModule = require('../storage');
-        const storageInstance = storageModule.storage || storageModule.default || storageModule;
-        
-        const [vendor, project, lines] = await Promise.all([
-          po.vendorId ? storageInstance.getVendor(po.vendorId).catch(() => null) : null,
-          po.projectId ? storageInstance.getProject(po.projectId).catch(() => null) : null,
-          storageInstance.getPurchaseOrderLines(po.id).catch(() => [])
-        ]);
+        // Use the imported storage instance
+        let vendor = null;
+        let project = null;
+        let lines = [];
+
+        try {
+          if (po.vendorId) {
+            vendor = await storage.getVendor(po.vendorId);
+          }
+        } catch (error) {
+          console.log('Could not fetch vendor:', error);
+        }
+
+        try {
+          if (po.projectId) {
+            project = await storage.getProject(po.projectId);
+          }
+        } catch (error) {
+          console.log('Could not fetch project:', error);
+        }
+
+        try {
+          lines = await storage.getPurchaseOrderLines(po.id);
+        } catch (error) {
+          console.log('Could not fetch lines:', error);
+        }
 
         // Header
         doc.fontSize(20).text('PURCHASE ORDER', 50, 50);
@@ -110,8 +129,14 @@ export class PDFService {
           doc.text(po.deliveryNotes, 50, totalsY + 135, { width: 500 });
         }
 
+        console.log('Finishing PDF document generation');
         doc.end();
       } catch (error) {
+        console.error('PDF generation error details:', error);
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
         reject(error);
       }
     });
