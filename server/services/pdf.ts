@@ -103,21 +103,23 @@ export class PDFService {
         doc.moveTo(350, totalsY - 10).lineTo(550, totalsY - 10).stroke();
 
         doc.text('Subtotal:', 400, totalsY);
-        doc.text(`$${(po.subtotal || subtotal).toFixed(2)}`, 480, totalsY);
+        const subtotalValue = parseFloat(po.subtotal || 0) || subtotal;
+        doc.text(`$${subtotalValue.toFixed(2)}`, 480, totalsY);
 
         if (po.tax) {
           doc.text('Tax:', 400, totalsY + 15);
-          doc.text(`$${parseFloat(po.tax).toFixed(2)}`, 480, totalsY + 15);
+          doc.text(`$${(parseFloat(po.tax) || 0).toFixed(2)}`, 480, totalsY + 15);
         }
 
         if (po.freight) {
           doc.text('Freight:', 400, totalsY + 30);
-          doc.text(`$${parseFloat(po.freight).toFixed(2)}`, 480, totalsY + 30);
+          doc.text(`$${(parseFloat(po.freight) || 0).toFixed(2)}`, 480, totalsY + 30);
         }
 
         doc.moveTo(350, totalsY + 50).lineTo(550, totalsY + 50).stroke();
         doc.fontSize(14).text('Total:', 400, totalsY + 55);
-        doc.text(`$${parseFloat(po.total || 0).toFixed(2)}`, 480, totalsY + 55);
+        const totalValue = parseFloat(po.total || 0) || (subtotalValue + (parseFloat(po.tax) || 0) + (parseFloat(po.freight) || 0));
+        doc.text(`$${totalValue.toFixed(2)}`, 480, totalsY + 55);
 
         // Terms and Conditions
         if (po.paymentTerms) {
