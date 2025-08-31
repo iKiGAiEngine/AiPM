@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bell, Menu, Command, LogOut, User, Settings, TestTube } from "lucide-react";
+import { Search, Bell, Menu, Command, LogOut, User, Settings, TestTube, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useProject } from "@/contexts/ProjectContext";
 
 interface TopAppBarProps {
   onMobileMenuToggle?: () => void;
@@ -31,6 +32,7 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [notifications] = useState(true); // Mock notification state
+  const { selectedProject } = useProject();
 
   // Get current demo mode status
   const { data: demoModeResponse, isLoading: demoModeLoading } = useQuery({
@@ -91,7 +93,7 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
   };
 
   const currentPage = pageTitle || "Dashboard";
-  const currentProject = pageSubtitle || "BuildProcure AI";
+  const currentProject = pageSubtitle || (selectedProject ? selectedProject.name : "All Projects");
 
   return (
     <header className="bg-card border-b border-border px-4 py-3 sm:px-6">
@@ -108,14 +110,31 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
             <Menu className="w-5 h-5" />
           </Button>
 
-          {/* Page Title */}
-          <div>
-            <h1 className="text-xl font-semibold text-foreground" data-testid="text-page-title">
-              {currentPage}
-            </h1>
-            <p className="text-sm text-muted-foreground" data-testid="text-current-project">
+          {/* Page Title and Project Context */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2">
+              <h1 className="text-xl font-semibold text-foreground truncate" data-testid="text-page-title">
+                {currentPage}
+              </h1>
+              {/* Project indicator on mobile */}
+              {selectedProject && (
+                <div className="lg:hidden flex items-center px-2 py-1 bg-blue-50 rounded-md">
+                  <FolderOpen className="w-3 h-3 text-blue-600 mr-1" />
+                  <span className="text-xs font-medium text-blue-700 truncate max-w-20">
+                    {selectedProject.name}
+                  </span>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground hidden sm:block" data-testid="text-current-project">
               {currentProject}
             </p>
+            {/* Mobile project subtitle - only show when no specific project is selected */}
+            {!selectedProject && (
+              <p className="text-xs text-muted-foreground sm:hidden" data-testid="text-current-project-mobile">
+                Tap menu to select project
+              </p>
+            )}
           </div>
         </div>
 
