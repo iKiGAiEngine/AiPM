@@ -1,0 +1,138 @@
+Replit prompt — Reporting → Contract Forecasting (CMiC-style, simplified)
+
+Goal: add a Contract Forecasting report under Reporting that computes CMiC-like columns and pulls data from your existing AiPM schema. Defaults match CMiC standard behavior: forecasting method options (Standard/ETC), pending CO/PCI inclusion, bill/contract values, GC Monitor-style labor ETC (future), etc.
+
+0) Your confirmed mappings (locked in)
+	•	Budget source: Estimate/Precon (use your estimate/budget lines as source of truth).
+	•	Committed: from PO lines only (no requisitions).
+	•	Revenue method default: % Complete.
+	•	% Complete default: spent / budget (if no physical % provided).
+	•	Include Pending COs: ON by default.
+	•	Schema names: assume standard names below; keep thin views if your names differ.
+
+⸻
+
+1) Navigation
+	•	In the left sidebar, under Reporting, add: Contract Forecasting → route:
+/reporting/contract-forecasting/<project_id>
+
+Roles allowed: PM, Exec, Admin.
+
+⸻
+
+2) Data model (read-only) & overrides
+
+Create aipm/reporting/contract_forecasting_service.py with:
+	•	get_cost_codes_for_project(db, project_id) → {id, code, description}
+	•	get_current_cost_budget(db, project_id, cost_code_id)
+	•	Budget = Original Estimate/Precon budget + sum(Approved CO deltas)
+	•	get_spent_and_committed(db, project_id, cost_code_id)
+	•	Spent = sum(approved/posted invoice_lines for the cost code)
+	•	Committed = sum(po_lines.committed_amount or po_lines.total - invoiced_to_date) for open/partially received POs
+	•	get_pending_co_amount(db, project_id, cost_code_id)
+	•	Pending CO/PCI = sum(CO amount where status in {Draft, Submitted} AND include_in_forecast = true)
+	•	get_contract_value_baseline(db, project_id, cost_code_id)
+	•	contract/billing budget if tracked; otherwise None
+	•	calc_projection_line(...)
+	•	ETC (auto) = max(budget - spent - committed, 0)
+	•	Total Projected Cost = spent + committed + etc + (pending if included)
+	•	Revenue Forecast (default % COMPLETE) =
+(completion_pct) × (contract_value or (budget + included_pending)), where completion_pct = spent / max(budget,1)
+	•	Profit / Variance = revenue_forecast − total_projected_cost
+
+Create forecast_overrides table (id, project_id, cost_code_id, include_pending_pcos bool, manual_etc numeric, revenue_method enum[“RATE”, “PERCENT_COMPLETE”, “MANUAL”], rate_pct numeric, manual_revenue numeric, updated_by, updated_at).
+
+Create forecast_snapshots (project_id, period_yyyymm, payload_json, created_by, created_at).
+
+⸻
+
+3) Controller & routes
+
+Create aipm/reporting/contract_forecasting_routes.py:
+	•	GET /reporting/contract-forecasting/<project_id>:
+Query all cost codes, compute each row with defaults:
+	•	include_pending = True (global default)
+	•	revenue_method = PERCENT_COMPLETE (global default)
+	•	POST /reporting/contract-forecasting/override/<project_id>/<cost_code_id>:
+Save row-level overrides (include_pending_pcos, manual_etc, revenue_method, rate_pct, manual_revenue) and return recomputed row (JSON).
+	•	Export endpoints:
+	•	GET …/export.csv and GET …/export.pdf
+	•	Snapshot:
+	•	POST …/snapshot → persists current table to forecast_snapshots
+
+Register blueprint and link the sidebar item.
+
+⸻
+
+4) Template/UI (templates/reporting/contract_forecasting.html)
+
+Top controls:
+	•	Project selector
+	•	Toggle Include Pending COs (default ON)
+	•	Revenue method selector (global): % Complete (default), Rate, Manual
+	•	Buttons: Archive Snapshot, Export CSV, Export PDF
+
+Summary cards:
+	•	Overall Completion % (spent ÷ budget)
+	•	Totals: Budget, Spent, Committed, Pending COs (incl), ETC, Total Projected Cost, Revenue Forecast, Profit/Variance
+
+Table (sortable; sticky header):
+
+| Cost Code / Category | Current Cost Budget | Spent | Committed | Spent + Committed | Pending COs (incl) | Cost to Complete (ETC) | Projected Cost (Incl Pending) | Revenue Forecast | Profit / Variance | Status | ⚙️ Overrides |
+
+Overrides drawer (per row):
+	•	Include Pending COs (row)
+	•	Manual ETC
+	•	Revenue Method: % Complete | Rate | Manual
+	•	If Rate → Rate % field
+	•	If Manual → Manual Revenue field
+	•	Save → recompute row live
+
+Color rules:
+	•	Profit < 0 → red chip
+	•	ETC < 0 → clamp 0 + warning
+	•	Pending exists but excluded → yellow info icon
+
+⸻
+
+5) Exact column mapping (AiPM ↔ CMiC language)
+	•	Cost Code / Category → your cost_codes (code + description)
+	•	Current Cost Budget → Estimate/Precon budget + Approved COs (CMiC “Current Cost Budget”).  ￼
+	•	Spent → posted/approved invoice_lines totals for the cost code (CMiC “Spent/Committed” is split here for clarity).  ￼
+	•	Committed → PO lines commitment (open/partial). (CMiC uses committed as part of Spent/Committed; we keep both + combined).  ￼
+	•	Spent + Committed → transparency column (CMiC often shows combined; we show both + combined).  ￼
+	•	Pending COs (incl) → Draft/Submitted COs/PCIs flagged for forecast (CMiC allows filtering by PCI status/“Forecast” flag).  ￼
+	•	Cost to Complete (ETC) → max(budget − spent − committed, 0) unless overridden (aligns with CMiC ETC concept).  ￼
+	•	Projected Cost (Incl Pending) → spent + committed + etc + pending_included (CMiC “Projected Cost Forecast (Incl. Pending CO)”).  ￼
+	•	Revenue Forecast (default = % Complete) → (spent/budget) × (contract value or (budget + included pending)) (CMiC supports billing/contract value & percentage methodologies).  ￼
+	•	Profit / Variance → revenue − projected_cost (CMiC “variance” columns).  ￼
+	•	Status → derived or from a small forecast_status list (CMiC supports status codes & archiving).  ￼
+
+⸻
+
+6) Tests (quick fixtures)
+
+Seed a project with one cost code:
+	•	Budget 100,000; Approved CO +10,000 → Current Budget 110,000
+	•	Spent 30,000 (invoices)
+	•	Committed 20,000 (PO lines)
+	•	Pending CO 5,000 (included)
+Expect:
+	•	ETC = 110,000 − 30,000 − 20,000 = 60,000
+	•	Projected Cost (Incl Pending) = 30,000 + 20,000 + 60,000 + 5,000 = 115,000
+	•	% Complete = 30,000 / 110,000 = 27.27%
+	•	Revenue Forecast (default % Complete, using budget+pending): 0.2727 × 115,000 ≈ 31,364
+	•	Profit/Variance = 31,364 − 115,000 ≈ −83,636 (red)
+
+⸻
+
+7) Performance & safety
+	•	Use aggregate queries grouped by cost_code_id to avoid N+1.
+	•	Clamp divisions by zero; sanitize manual overrides; audit override changes (user, timestamp).
+
+⸻
+
+8) Definition of Done
+	•	New page visible under Reporting → Contract Forecasting.
+	•	Defaults honored: Include Pending = ON, Revenue = % Complete, Budget = Estimate/Precon, Committed = PO lines.
+	•	Row overrides persist and recalc live; CSV/PDF export works; snapshots archive a JSON payload of the computed table.

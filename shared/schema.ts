@@ -402,6 +402,36 @@ export const notifications = pgTable("notifications", {
   readIdx: index("notifications_read_idx").on(table.isRead)
 }));
 
+// Contract Forecasting - Forecast Overrides
+export const forecastRevenueMethodEnum = pgEnum('forecast_revenue_method', ['RATE', 'PERCENT_COMPLETE', 'MANUAL']);
+
+export const forecastOverrides = pgTable("forecast_overrides", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  costCode: text("cost_code").notNull(),
+  includePendingPcos: boolean("include_pending_pcos").default(true),
+  manualEtc: numeric("manual_etc", { precision: 12, scale: 2 }),
+  revenueMethod: forecastRevenueMethodEnum("revenue_method").default('PERCENT_COMPLETE'),
+  ratePct: numeric("rate_pct", { precision: 5, scale: 2 }),
+  manualRevenue: numeric("manual_revenue", { precision: 12, scale: 2 }),
+  updatedBy: uuid("updated_by").references(() => users.id).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  projectCostCodeIdx: index("forecast_overrides_project_cost_code_idx").on(table.projectId, table.costCode)
+}));
+
+// Contract Forecasting - Forecast Snapshots
+export const forecastSnapshots = pgTable("forecast_snapshots", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  periodYyyymm: text("period_yyyymm").notNull(),
+  payloadJson: jsonb("payload_json").notNull(),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  projectPeriodIdx: index("forecast_snapshots_project_period_idx").on(table.projectId, table.periodYyyymm)
+}));
+
 // Relations
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
@@ -928,6 +958,16 @@ export const insertProjectBudgetRollupSchema = createInsertSchema(projectBudgetR
   updatedAt: true
 });
 
+export const insertForecastOverrideSchema = createInsertSchema(forecastOverrides).omit({
+  id: true,
+  updatedAt: true
+});
+
+export const insertForecastSnapshotSchema = createInsertSchema(forecastSnapshots).omit({
+  id: true,
+  createdAt: true
+});
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -997,3 +1037,9 @@ export type InsertProjectMaterial = z.infer<typeof insertProjectMaterialSchema>;
 
 export type ProjectBudgetRollup = typeof projectBudgetRollups.$inferSelect;
 export type InsertProjectBudgetRollup = z.infer<typeof insertProjectBudgetRollupSchema>;
+
+export type ForecastOverride = typeof forecastOverrides.$inferSelect;
+export type InsertForecastOverride = z.infer<typeof insertForecastOverrideSchema>;
+
+export type ForecastSnapshot = typeof forecastSnapshots.$inferSelect;
+export type InsertForecastSnapshot = z.infer<typeof insertForecastSnapshotSchema>;
