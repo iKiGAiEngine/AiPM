@@ -144,7 +144,7 @@ export default function ContractForecasting() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Contract Forecasting</h1>
           <p className="text-muted-foreground">
-            {currentProject?.name || forecastData.project.name}
+            Project: {currentProject?.name || forecastData.project.name}
           </p>
         </div>
         <div className="flex gap-2">
