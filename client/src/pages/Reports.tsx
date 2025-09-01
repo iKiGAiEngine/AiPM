@@ -25,8 +25,12 @@ import {
   Package, 
   Building, 
   AlertTriangle,
-  Calendar
+  Calendar,
+  FileText,
+  ArrowRight
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useProject } from "@/contexts/ProjectContext";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -63,6 +67,7 @@ const mockProjectMetrics = [
 export default function Reports() {
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [timeRange, setTimeRange] = useState<string>("6months");
+  const { projects } = useProject();
 
   const { data: dashboardStats } = useQuery({
     queryKey: ['/api/dashboard/stats'],
@@ -104,6 +109,66 @@ export default function Reports() {
             Export Report
           </Button>
         </div>
+      </div>
+
+      {/* Quick Access to Specialized Reports */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <FileText className="w-5 h-5 mr-2" />
+              Contract Forecasting
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              CMiC-style contract forecasting with budget tracking, cost overrides, and profit analysis
+            </p>
+            <div className="space-y-2">
+              {projects.slice(0, 3).map((project) => (
+                <Link
+                  key={project.id}
+                  to={`/reports/contract-forecasting/${project.id}`}
+                  className="flex items-center justify-between p-2 rounded hover:bg-muted text-sm"
+                  data-testid={`link-forecasting-${project.id}`}
+                >
+                  <span>{project.name}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="opacity-50">
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <Building className="w-5 h-5 mr-2" />
+              Vendor Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Detailed vendor scoring, delivery performance, and cost analysis
+            </p>
+            <p className="text-xs text-muted-foreground italic">Coming soon...</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="opacity-50">
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <TrendingUp className="w-5 h-5 mr-2" />
+              Cost Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Advanced cost breakdowns, variance analysis, and savings identification
+            </p>
+            <p className="text-xs text-muted-foreground italic">Coming soon...</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}

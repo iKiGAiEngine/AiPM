@@ -37,6 +37,7 @@ import ProjectDetail from "@/pages/ProjectDetail";
 import ProjectMaterials from "@/pages/ProjectMaterials";
 import ProjectMaterialUpload from "@/pages/ProjectMaterialUpload";
 import Reports from "@/pages/Reports";
+import ContractForecasting from "@/pages/ContractForecasting";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/Sidebar";
@@ -274,6 +275,11 @@ export default function App() {
               <Route path="/reports" element={
                 <ProtectedRoute>
                   <Reports />
+                </ProtectedRoute>
+              } />
+              <Route path="/reports/contract-forecasting/:projectId" element={
+                <ProtectedRoute>
+                  <ContractForecasting />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={
