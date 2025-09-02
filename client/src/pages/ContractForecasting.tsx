@@ -79,7 +79,7 @@ export default function ContractForecasting() {
 
   // Get forecasting data
   const { data: forecastData, isLoading } = useQuery<ContractForecastData>({
-    queryKey: ['/api/reporting/contract-forecasting', projectId, { includePending, revenueMethod }],
+    queryKey: [`/api/reporting/contract-forecasting/${projectId}?includePending=${includePending}&revenueMethod=${revenueMethod}`],
     enabled: !!projectId,
   });
 
