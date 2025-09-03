@@ -1237,12 +1237,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         number = `PO-${count.toString().padStart(3, '0')}`;
       }
       
+      // Extract lines from the data before creating PO
+      const { lines, ...poDataWithoutLines } = poData as any;
+      
       const purchaseOrder = await storage.createPurchaseOrder({
-        ...poData,
+        ...poDataWithoutLines,
         number,
         organizationId: req.user!.organizationId,
         createdById: req.user!.id
       });
+      
+      // Create purchase order lines if they exist
+      if (lines && Array.isArray(lines) && lines.length > 0) {
+        console.log('Creating', lines.length, 'PO lines for PO:', purchaseOrder.id);
+        
+        for (const line of lines) {
+          await storage.createPurchaseOrderLine({
+            poId: purchaseOrder.id,
+            materialId: line.materialId || null,
+            projectMaterialId: line.projectMaterialId || null,
+            description: line.description,
+            quantity: line.quantity.toString(),
+            unit: line.unit,
+            unitPrice: line.unitPrice.toString(),
+            lineTotal: (line.quantity * line.unitPrice).toString()
+          });
+        }
+      }
       
       res.status(201).json(purchaseOrder);
     } catch (error) {

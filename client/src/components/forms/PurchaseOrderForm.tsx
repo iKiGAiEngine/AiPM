@@ -270,6 +270,7 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
     }
     
     if (!data.shipToAddress?.trim()) {
+      console.log('Ship-to address validation failed:', data.shipToAddress);
       toast({
         variant: "destructive",
         title: "Validation Error",
@@ -317,6 +318,8 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
     }
     
     const formData = { ...data, lines };
+    console.log('=== CALLING MUTATION ===');
+    console.log('Final form data being sent:', JSON.stringify(formData, null, 2));
     createMutation.mutate(formData);
   };
 
@@ -612,9 +615,15 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
             </Button>
             <Button
               type="submit"
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || !form.formState.isValid}
               data-testid="button-create-po"
-              onClick={() => console.log('=== SUBMIT BUTTON CLICKED ===', form.formState.errors)}
+              onClick={() => {
+                console.log('=== SUBMIT BUTTON CLICKED ===');
+                console.log('Form errors:', form.formState.errors);
+                console.log('Form values:', form.getValues());
+                console.log('Form is valid:', form.formState.isValid);
+                console.log('Form is dirty:', form.formState.isDirty);
+              }}
             >
               {createMutation.isPending ? (
                 "Creating..."
