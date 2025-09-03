@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,6 +111,45 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedProject, setSelectedProject, projects, isLoadingProjects } = useProject();
+
+  // Get project-specific counts for dynamic badges
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['/api/dashboard/stats', selectedProject?.id],
+    queryFn: async () => {
+      const url = selectedProject ? `/api/dashboard/stats?projectId=${selectedProject.id}` : '/api/dashboard/stats';
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  // Create dynamic navigation with project-specific badges
+  const dynamicNavigation = navigation.map(item => {
+    if (item.name === "Requisitions") {
+      return {
+        ...item,
+        badge: dashboardStats?.openRequisitions > 0 ? dashboardStats.openRequisitions.toString() : undefined
+      };
+    }
+    if (item.name === "Invoices") {
+      return {
+        ...item,
+        badge: dashboardStats?.invoicesAwaitingApproval > 0 ? dashboardStats.invoicesAwaitingApproval.toString() : undefined
+      };
+    }
+    if (item.name === "Purchase Orders") {
+      return {
+        ...item,
+        badge: dashboardStats?.pendingPOs > 0 ? dashboardStats.pendingPOs.toString() : undefined
+      };
+    }
+    return item;
+  });
 
   const canAccess = (roles: string[]) => {
     return user && roles.includes(user.role);
@@ -215,7 +255,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0">
-          {navigation.map((item) => {
+          {dynamicNavigation.map((item) => {
             if (!canAccess(item.roles)) return null;
             
             return (

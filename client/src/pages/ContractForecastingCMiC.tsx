@@ -45,13 +45,16 @@ export default function ContractForecastingCMiC() {
     queryKey: ['/api/reporting/contract-forecasting', projectId, includePending],
     queryFn: async () => {
       const url = `/api/reporting/contract-forecasting/${projectId}?include_pending=${includePending}`;
+      console.log('Frontend: Fetching forecasting data from:', url);
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (!response.ok) throw new Error('Failed to fetch forecasting data');
-      return response.json();
+      const data = await response.json();
+      console.log('Frontend: Received forecasting data:', data);
+      return data;
     },
     enabled: !!projectId,
   });
