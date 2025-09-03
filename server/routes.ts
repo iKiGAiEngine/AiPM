@@ -1624,26 +1624,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { projectId } = req.params;
       const includePending = req.query.include_pending !== 'false';
       
-      console.log(`Contract forecasting request: ${projectId}, includePending: ${includePending}`);
+      console.log(`=== CONTRACT FORECASTING REQUEST ===`);
+      console.log(`Project ID: ${projectId}`);
+      console.log(`Include Pending: ${includePending}`);
       
       // Get project details
       const project = await storage.getProject(projectId);
       if (!project || project.organizationId !== req.user!.organizationId) {
+        console.log(`Project not found or access denied`);
         return res.status(404).json({ error: "Project not found" });
       }
       console.log(`Project found: ${project.name}`);
 
-      const { ContractForecastingService, CMIC_HEADERS } = await import('./services/contract-forecasting');
-      console.log('Service imported successfully');
+      // For now, let's return a simple response to test the flow
+      const mockData = {
+        lines: [
+          {
+            costCode: "02-Site Work — Site Work",
+            A: 125000, B: 125000, C: 125000, currentPeriodCost: 0,
+            D_int: 0, E_ext: 0, F_adj: 0,
+            G_ctc: 0, H_ctc_unposted: 0, I_cost_fcst: 125000,
+            J_rev_budget: 125000, K_unposted_rev: 0, L_unposted_rev_adj: 0,
+            M_rev_fcst: 125000, N_gain_loss: 0
+          }
+        ],
+        totals: {
+          costCode: "TOTALS",
+          A: 125000, B: 125000, C: 125000, currentPeriodCost: 0,
+          D_int: 0, E_ext: 0, F_adj: 0,
+          G_ctc: 0, H_ctc_unposted: 0, I_cost_fcst: 125000,
+          J_rev_budget: 125000, K_unposted_rev: 0, L_unposted_rev_adj: 0,
+          M_rev_fcst: 125000, N_gain_loss: 0
+        }
+      };
       
-      const contractForecastingService = new ContractForecastingService();
-      console.log('Service instantiated');
+      console.log(`Returning mock data with ${mockData.lines.length} lines`);
       
-      const report = await contractForecastingService.generateReport(projectId, includePending);
-      console.log(`Report generated: ${report.lines.length} lines`);
+      const CMIC_HEADERS = [
+        "A. Current Cost Budget\n(Original Budget + Posted PCIs Thru Current Period)",
+        "B. Spent/Committed (Less Advance SCOs)\n(C - SCOs Issued On Unposted PCI/OCO)",
+        "C. Spent/Committed Total\n(Committed $ + $ Spent Outside Commitment)",
+        "Current Period Cost",
+        "D. Unposted Internal PCI Cost Budget",
+        "E. Unposted External PCI Cost Budget",
+        "F. Unposted Int & Ext PCI Cost Budget Adjusted\n(D+E if not overridden)",
+        "G. Cost to Complete\n(A - C) unless A less than B, then (CTC = 0)",
+        "H. Cost To Complete Unposted PCIs\n(F - Advanced SCOs)",
+        "I. Cost Forecast\n(C + G + H)  or  (A + F if G not overridden)",
+        "J. Current Revenue Budget\n(Original Budget + Posted PCIs Thru Current Period)",
+        "K. Unposted PCI Revenue Budget",
+        "L. Unposted PCI Revenue Budget Adjusted\n(K if not overridden)",
+        "M. Revenue Forecast\n(J + L)",
+        "N. Projected Gain/Loss\n(M - I)"
+      ];
       
       res.json({
-        ...report,
+        ...mockData,
         headers: CMIC_HEADERS,
         includePending,
         projectId,
