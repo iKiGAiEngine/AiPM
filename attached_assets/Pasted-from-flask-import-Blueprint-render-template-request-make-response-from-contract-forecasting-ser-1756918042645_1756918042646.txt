@@ -1,0 +1,70 @@
+from flask import Blueprint, render_template, request, make_response
+from .contract_forecasting_service import CMIC_HEADERS, cc_list, compute_row, Q
+
+bp = Blueprint("contract_forecasting", __name__, url_prefix="/reporting/contract-forecasting")
+
+def load_lines(db, project_id, include_pending=True):
+    lines = []
+    for cc in cc_list(db, project_id):
+        lines.append(compute_row(db, project_id, cc, include_pending=include_pending))
+    return lines
+
+@bp.get("/<int:project_id>")
+def view_report(project_id):
+    include_pending = request.args.get("include_pending","true").lower()=="true"
+    lines = load_lines(db, project_id, include_pending)
+    # Totals row
+    tot = lambda attr: sum((getattr(ln, attr) for ln in lines), Q(0))
+    totals = dict(
+        A=tot("A"), B=tot("B"), C=tot("C"), cur=tot("cur"),
+        D=tot("D_int"), E=tot("E_ext"), F=tot("F_adj"),
+        G=tot("G_ctc"), H=tot("H_ctc_unposted"), I=tot("I_cost_fcst"),
+        J=tot("J_rev_budget"), K=tot("K_unposted_rev"), L=tot("L_unposted_rev_adj"),
+        M=tot("M_rev_fcst"), N=tot("N_gain_loss")
+    )
+    return render_template("reporting/contract_forecasting.html",
+        headers=CMIC_HEADERS, lines=lines, totals=totals,
+        include_pending=include_pending, project_id=project_id)
+
+@bp.get("/<int:project_id>/verify")
+def verify(project_id):
+    include_pending = request.args.get("include_pending","true").lower()=="true"
+    lines = load_lines(db, project_id, include_pending)
+    checks = []
+    # Formula identities per your screenshots/notes
+    for ln in lines:
+        checks += [
+            {"label": f"{ln.cost_code}: F == D+E", "ok": ln.F_adj == (ln.D_int + ln.E_ext)},
+            {"label": f"{ln.cost_code}: G == max(A - C, 0) and if A < B then 0", "ok": (ln.G_ctc >= Q(0)) and not (ln.G_ctc > Q(0) and (ln.A < ln.C or ln.A < ln.B))},
+            {"label": f"{ln.cost_code}: H == F - Advanced SCOs (≥0)", "ok": ln.H_ctc_unposted >= Q(0) and ln.H_ctc_unposted <= ln.F_adj},
+            {"label": f"{ln.cost_code}: I == C + G + H  (or A+F alt path)", "ok": ln.I_cost_fcst == (ln.C + ln.G_ctc + ln.H_ctc_unposted)},
+            {"label": f"{ln.cost_code}: M == J + L", "ok": ln.M_rev_fcst == (ln.J_rev_budget + ln.L_unposted_rev_adj)},
+            {"label": f"{ln.cost_code}: N == M - I", "ok": ln.N_gain_loss == (ln.M_rev_fcst - ln.I_cost_fcst)},
+        ]
+        if not include_pending:
+            checks.append({"label": f"{ln.cost_code}: Pending cleared when toggle off (D,E,F,K==0)", "ok": all([
+                ln.D_int==Q(0), ln.E_ext==Q(0), ln.F_adj==Q(0), ln.K_unposted_rev==Q(0)
+            ])})
+    return render_template("reporting/contract_forecasting_verify.html",
+        headers=CMIC_HEADERS, lines=lines, checks=checks,
+        include_pending=include_pending, project_id=project_id)
+
+@bp.get("/<int:project_id>/export.csv")
+def export_csv(project_id):
+    include_pending = request.args.get("include_pending","true").lower()=="true"
+    lines = load_lines(db, project_id, include_pending)
+    import csv, io
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Cost Code/Category"] + CMIC_HEADERS)
+    for ln in lines:
+        w.writerow([
+            ln.cost_code,
+            ln.A, ln.B, ln.C, ln.cur,
+            ln.D_int, ln.E_ext, ln.F_adj, ln.G_ctc, ln.H_ctc_unposted, ln.I_cost_fcst,
+            ln.J_rev_budget, ln.K_unposted_rev, ln.L_unposted_rev_adj, ln.M_rev_fcst, ln.N_gain_loss
+        ])
+    resp = make_response(buf.getvalue())
+    resp.headers["Content-Type"] = "text/csv"
+    resp.headers["Content-Disposition"] = f"attachment; filename=contract_forecasting_{project_id}.csv"
+    return resp
