@@ -74,10 +74,10 @@ const navigation = [
     roles: ["Admin", "PM", "Purchaser"]
   },
   {
-    name: "Vendors",
-    href: "/vendors",
-    icon: Building,
-    roles: ["Admin", "PM", "Purchaser"]
+    name: "Reports",
+    href: "/reports",
+    icon: BarChart3,
+    roles: ["Admin", "PM", "Purchaser", "AP"]
   },
   {
     name: "Projects",
@@ -86,10 +86,10 @@ const navigation = [
     roles: ["Admin", "PM"]
   },
   {
-    name: "Reports",
-    href: "/reports",
-    icon: BarChart3,
-    roles: ["Admin", "PM", "Purchaser", "AP"]
+    name: "Vendors",
+    href: "/vendors",
+    icon: Building,
+    roles: ["Admin", "PM", "Purchaser"]
   },
   {
     name: "Settings",
