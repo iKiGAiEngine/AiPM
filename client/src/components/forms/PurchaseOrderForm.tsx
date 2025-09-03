@@ -14,6 +14,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import type { Requisition, RequisitionLine } from "@shared/schema";
+import { useEffect } from "react";
 
 const poLineSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -33,13 +35,24 @@ const purchaseOrderSchema = z.object({
 type PurchaseOrderFormData = z.infer<typeof purchaseOrderSchema>;
 type POLine = z.infer<typeof poLineSchema>;
 
-export default function PurchaseOrderForm() {
+interface PurchaseOrderFormProps {
+  fromRequisition?: (Requisition & { lines: RequisitionLine[] }) | null | undefined;
+}
+
+export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderFormProps = {}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [lines, setLines] = useState<POLine[]>([
-    { description: "", quantity: 1, unitPrice: 0, unit: "EA" }
-  ]);
+  const [lines, setLines] = useState<POLine[]>(
+    fromRequisition?.lines && fromRequisition.lines.length > 0 
+      ? fromRequisition.lines.map(line => ({
+          description: line.description,
+          quantity: parseFloat(line.quantity?.toString() || '1'),
+          unitPrice: parseFloat(line.estimatedCost?.toString() || '0') / parseFloat(line.quantity?.toString() || '1'),
+          unit: line.unit
+        }))
+      : [{ description: "", quantity: 1, unitPrice: 0, unit: "EA" }]
+  );
   const [selectedMaterialType, setSelectedMaterialType] = useState<string>("");
   const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set());
 
@@ -47,12 +60,31 @@ export default function PurchaseOrderForm() {
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: {
       vendorId: "",
-      projectId: "",
+      projectId: fromRequisition?.projectId || "",
       shipToAddress: "",
-      notes: "",
+      notes: fromRequisition ? `Created from requisition: ${fromRequisition.title}` : "",
       lines: [],
     },
   });
+
+  // Update form and lines when requisition data loads
+  useEffect(() => {
+    if (fromRequisition) {
+      form.setValue("projectId", fromRequisition.projectId);
+      form.setValue("notes", `Created from requisition: ${fromRequisition.title}`);
+      
+      // Convert requisition lines to PO lines
+      if (fromRequisition.lines && fromRequisition.lines.length > 0) {
+        const poLines = fromRequisition.lines.map(line => ({
+          description: line.description,
+          quantity: parseFloat(line.quantity?.toString() || '1'),
+          unitPrice: parseFloat(line.estimatedCost?.toString() || '0') / parseFloat(line.quantity?.toString() || '1'),
+          unit: line.unit
+        }));
+        setLines(poLines);
+      }
+    }
+  }, [fromRequisition, form]);
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["/api/vendors"],
