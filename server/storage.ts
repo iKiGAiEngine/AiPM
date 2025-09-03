@@ -17,11 +17,12 @@ import {
   type Invoice, type InsertInvoice,
   type InvoiceLine, type InsertInvoiceLine,
   type Notification, type InsertNotification,
+  type ContractEstimate, type InsertContractEstimate,
   organizations, users, projects, vendors, materials,
   requisitions, requisitionLines, rfqs, rfqLines,
   quotes, quoteLines, purchaseOrders, purchaseOrderLines,
   deliveries, deliveryLines, invoices, invoiceLines,
-  notifications, projectMaterials
+  notifications, projectMaterials, contractEstimates
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, inArray, sql, ne } from "drizzle-orm";
@@ -144,6 +145,9 @@ export interface IStorage {
     costCode?: string; 
     search?: string;
   }): Promise<any[]>;
+  
+  // Contract Estimates
+  getContractEstimatesByProject(projectId: string, organizationId: string): Promise<ContractEstimate[]>;
   
   // Global Search
   globalSearch(organizationId: string, query: string): Promise<any[]>;
@@ -875,6 +879,17 @@ export class DatabaseStorage implements IStorage {
       console.error('Error deleting project material:', error);
       return false;
     }
+  }
+
+  // Contract Estimates
+  async getContractEstimatesByProject(projectId: string, organizationId: string): Promise<ContractEstimate[]> {
+    return await db.select().from(contractEstimates)
+      .where(and(
+        eq(contractEstimates.projectId, projectId),
+        eq(contractEstimates.organizationId, organizationId),
+        eq(contractEstimates.isActive, true)
+      ))
+      .orderBy(contractEstimates.costCode);
   }
 
   // Global Search

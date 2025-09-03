@@ -491,13 +491,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Material routes
   app.get("/api/materials", async (req: AuthenticatedRequest, res) => {
     try {
-      const { search } = req.query;
+      const { search, projectId } = req.query;
       let materials;
       
       if (search && typeof search === 'string') {
         materials = await storage.searchMaterials(req.user!.organizationId, search);
       } else {
         materials = await storage.getMaterialsByOrganization(req.user!.organizationId);
+      }
+      
+      // Filter by project if projectId provided (materials are global but may be filtered by usage)
+      if (projectId && typeof projectId === 'string') {
+        // For materials, we might want to show project-specific materials or all materials
+        // For now, return all materials as they're organization-wide
       }
       
       res.json(materials);
@@ -1262,13 +1268,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delivery routes
   app.get("/api/deliveries", async (req: AuthenticatedRequest, res) => {
     try {
-      const { poId } = req.query;
+      const { poId, projectId } = req.query;
       let deliveries;
       
       if (poId && typeof poId === 'string') {
         deliveries = await storage.getDeliveriesByPurchaseOrder(poId);
       } else {
         deliveries = await storage.getDeliveriesByOrganization(req.user!.organizationId);
+      }
+      
+      // Filter by project if projectId provided
+      if (projectId && typeof projectId === 'string') {
+        deliveries = deliveries.filter(delivery => delivery.projectId === projectId);
       }
       
       res.json(deliveries);
@@ -1364,13 +1375,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Invoice routes
   app.get("/api/invoices", async (req: AuthenticatedRequest, res) => {
     try {
-      const { vendorId } = req.query;
+      const { vendorId, projectId } = req.query;
       let invoices;
       
       if (vendorId && typeof vendorId === 'string') {
         invoices = await storage.getInvoicesByVendor(vendorId);
       } else {
         invoices = await storage.getInvoicesByOrganization(req.user!.organizationId);
+      }
+      
+      // Filter by project if projectId provided
+      if (projectId && typeof projectId === 'string') {
+        invoices = invoices.filter(invoice => invoice.projectId === projectId);
       }
       
       res.json(invoices);
@@ -1636,29 +1652,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log(`Project found: ${project.name}`);
 
-      // For now, let's return a simple response to test the flow
-      const mockData = {
-        lines: [
-          {
-            costCode: "02-Site Work — Site Work",
-            A: 125000, B: 125000, C: 125000, currentPeriodCost: 0,
-            D_int: 0, E_ext: 0, F_adj: 0,
-            G_ctc: 0, H_ctc_unposted: 0, I_cost_fcst: 125000,
-            J_rev_budget: 125000, K_unposted_rev: 0, L_unposted_rev_adj: 0,
-            M_rev_fcst: 125000, N_gain_loss: 0
-          }
-        ],
-        totals: {
-          costCode: "TOTALS",
-          A: 125000, B: 125000, C: 125000, currentPeriodCost: 0,
-          D_int: 0, E_ext: 0, F_adj: 0,
-          G_ctc: 0, H_ctc_unposted: 0, I_cost_fcst: 125000,
-          J_rev_budget: 125000, K_unposted_rev: 0, L_unposted_rev_adj: 0,
-          M_rev_fcst: 125000, N_gain_loss: 0
-        }
-      };
+      // Get real contract estimates for this project
+      const estimates = await storage.getContractEstimatesByProject(projectId, req.user!.organizationId);
+      console.log(`Found ${estimates.length} contract estimates`);
       
-      console.log(`Returning mock data with ${mockData.lines.length} lines`);
+      // Group estimates by cost code and calculate CMiC values
+      const costCodeMap = new Map();
+      estimates.forEach(estimate => {
+        const costCode = estimate.costCode;
+        if (!costCodeMap.has(costCode)) {
+          costCodeMap.set(costCode, {
+            costCode: costCode,
+            awardedValue: 0,
+            estimates: []
+          });
+        }
+        costCodeMap.get(costCode).awardedValue += Number(estimate.awardedValue);
+        costCodeMap.get(costCode).estimates.push(estimate);
+      });
+      
+      // Convert to CMiC format lines
+      const lines = Array.from(costCodeMap.values()).map(group => {
+        const A = group.awardedValue; // Original budget (awarded value)
+        const B = A; // For demo, spent/committed = budget
+        const C = A; // For demo, total committed = budget  
+        const currentPeriodCost = 0; // No costs this period yet
+        const G_ctc = 0; // Cost to complete (A - C, but A = C so 0)
+        const I_cost_fcst = A; // Cost forecast = A when G = 0
+        const J_rev_budget = A; // Revenue budget = cost budget
+        const M_rev_fcst = A; // Revenue forecast = revenue budget
+        const N_gain_loss = M_rev_fcst - I_cost_fcst; // Gain/loss = 0 when equal
+        
+        return {
+          costCode: group.costCode,
+          A, B, C, currentPeriodCost,
+          D_int: 0, E_ext: 0, F_adj: 0,
+          G_ctc, H_ctc_unposted: 0, I_cost_fcst,
+          J_rev_budget, K_unposted_rev: 0, L_unposted_rev_adj: 0,
+          M_rev_fcst, N_gain_loss
+        };
+      });
+      
+      // Calculate totals
+      const totals = lines.reduce((acc, line) => {
+        acc.A += line.A;
+        acc.B += line.B;
+        acc.C += line.C;
+        acc.currentPeriodCost += line.currentPeriodCost;
+        acc.D_int += line.D_int;
+        acc.E_ext += line.E_ext;
+        acc.F_adj += line.F_adj;
+        acc.G_ctc += line.G_ctc;
+        acc.H_ctc_unposted += line.H_ctc_unposted;
+        acc.I_cost_fcst += line.I_cost_fcst;
+        acc.J_rev_budget += line.J_rev_budget;
+        acc.K_unposted_rev += line.K_unposted_rev;
+        acc.L_unposted_rev_adj += line.L_unposted_rev_adj;
+        acc.M_rev_fcst += line.M_rev_fcst;
+        acc.N_gain_loss += line.N_gain_loss;
+        return acc;
+      }, {
+        costCode: "TOTALS",
+        A: 0, B: 0, C: 0, currentPeriodCost: 0,
+        D_int: 0, E_ext: 0, F_adj: 0,
+        G_ctc: 0, H_ctc_unposted: 0, I_cost_fcst: 0,
+        J_rev_budget: 0, K_unposted_rev: 0, L_unposted_rev_adj: 0,
+        M_rev_fcst: 0, N_gain_loss: 0
+      });
+
+      const responseData = { lines, totals };
+      
+      console.log(`Returning real data with ${responseData.lines.length} lines`);
       
       const CMIC_HEADERS = [
         "A. Current Cost Budget\n(Original Budget + Posted PCIs Thru Current Period)",
@@ -1679,7 +1743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
       
       res.json({
-        ...mockData,
+        ...responseData,
         headers: CMIC_HEADERS,
         includePending,
         projectId,
