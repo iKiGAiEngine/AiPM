@@ -169,13 +169,20 @@ export class ContractForecastingService {
   }
 
   async generateReport(projectId: string, includePending = true): Promise<{lines: CMiCLine[], totals: CMiCLine}> {
+    console.log(`Starting report generation for project: ${projectId}`);
+    
     const costCodes = await this.getCostCodes(projectId);
+    console.log(`Found ${costCodes.length} cost codes`);
+    
     const lines: CMiCLine[] = [];
 
     for (const cc of costCodes) {
+      console.log(`Processing cost code: ${cc.code}`);
       const line = await this.computeRow(projectId, cc, includePending);
       lines.push(line);
     }
+    
+    console.log(`Processed ${lines.length} lines`);
 
     // Calculate totals
     const totals: CMiCLine = {
@@ -197,6 +204,7 @@ export class ContractForecastingService {
       N_gain_loss: Q(lines.reduce((sum, line) => sum + line.N_gain_loss, 0))
     };
 
+    console.log(`Totals calculated successfully`);
     return { lines, totals };
   }
 

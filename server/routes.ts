@@ -1624,15 +1624,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { projectId } = req.params;
       const includePending = req.query.include_pending !== 'false';
       
+      console.log(`Contract forecasting request: ${projectId}, includePending: ${includePending}`);
+      
       // Get project details
       const project = await storage.getProject(projectId);
       if (!project || project.organizationId !== req.user!.organizationId) {
         return res.status(404).json({ error: "Project not found" });
       }
+      console.log(`Project found: ${project.name}`);
 
       const { ContractForecastingService, CMIC_HEADERS } = await import('./services/contract-forecasting');
+      console.log('Service imported successfully');
+      
       const contractForecastingService = new ContractForecastingService();
+      console.log('Service instantiated');
+      
       const report = await contractForecastingService.generateReport(projectId, includePending);
+      console.log(`Report generated: ${report.lines.length} lines`);
       
       res.json({
         ...report,
