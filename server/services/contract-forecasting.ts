@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { contractEstimates, purchaseOrders, invoices } from "@shared/schema";
+import { contractEstimates, purchaseOrders, purchaseOrderLines, projectMaterials, invoices, deliveries, deliveryLines } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 export interface CMiCLine {
@@ -29,8 +29,9 @@ export const CMIC_HEADERS = [
   "N. Projected Gain/Loss\n(M - I)"
 ];
 
-const Q = (x: number | null | undefined): number => {
-  return Number((x || 0).toFixed(2));
+const Q = (x: number | string | null | undefined): number => {
+  const num = Number(x) || 0;
+  return Number(num.toFixed(2));
 };
 
 export class ContractForecastingService {
@@ -68,26 +69,25 @@ export class ContractForecastingService {
   }
 
   async getCommittedPOLines(projectId: string, costCode: string): Promise<number> {
-    // Since we don't have direct cost code linking in POs, we'll estimate based on project
+    // Get purchase order line totals that match the specific cost code through project materials
     const result = await db
       .select({ 
-        total: sql<number>`COALESCE(SUM(${purchaseOrders.totalAmount}), 0)` 
+        total: sql<number>`COALESCE(SUM(${purchaseOrderLines.lineTotal}), 0)` 
       })
-      .from(purchaseOrders)
+      .from(purchaseOrderLines)
+      .innerJoin(purchaseOrders, eq(purchaseOrderLines.poId, purchaseOrders.id))
+      .leftJoin(projectMaterials, eq(purchaseOrderLines.projectMaterialId, projectMaterials.id))
       .where(and(
         eq(purchaseOrders.projectId, projectId),
-        sql`${purchaseOrders.status} IN ('sent', 'acknowledged', 'partial')`
+        sql`${purchaseOrders.status} IN ('sent', 'acknowledged', 'partial', 'received')`,
+        eq(projectMaterials.costCode, costCode)
       ));
     
-    // Distribute PO amounts proportionally across cost codes
-    const totalBudget = await this.getTotalProjectBudget(projectId);
-    const costCodeBudget = await this.getBudgetPlusApprovedCO(projectId, costCode);
-    const proportion = totalBudget > 0 ? costCodeBudget / totalBudget : 0;
-    
-    return Q((result[0]?.total || 0) * proportion);
+    return Q(result[0]?.total || 0);
   }
 
   async getSpentInvoices(projectId: string, costCode: string): Promise<number> {
+    // For now, use proportional distribution since invoices aren't directly linked to cost codes
     const result = await db
       .select({ 
         total: sql<number>`COALESCE(SUM(${invoices.totalAmount}), 0)` 
@@ -106,6 +106,26 @@ export class ContractForecastingService {
     return Q((result[0]?.total || 0) * proportion);
   }
 
+  async getReceivedDeliveries(projectId: string, costCode: string): Promise<number> {
+    // Get delivery amounts that match the specific cost code through delivery lines, PO lines and project materials
+    const result = await db
+      .select({ 
+        total: sql<number>`COALESCE(SUM(${purchaseOrderLines.unitPrice} * ${deliveryLines.quantityReceived}), 0)` 
+      })
+      .from(deliveryLines)
+      .innerJoin(deliveries, eq(deliveryLines.deliveryId, deliveries.id))
+      .innerJoin(purchaseOrders, eq(deliveries.poId, purchaseOrders.id))
+      .innerJoin(purchaseOrderLines, eq(deliveryLines.poLineId, purchaseOrderLines.id))
+      .leftJoin(projectMaterials, eq(purchaseOrderLines.projectMaterialId, projectMaterials.id))
+      .where(and(
+        eq(purchaseOrders.projectId, projectId),
+        sql`${deliveries.status} IN ('complete')`,
+        eq(projectMaterials.costCode, costCode)
+      ));
+    
+    return Q(result[0]?.total || 0);
+  }
+
   private async getTotalProjectBudget(projectId: string): Promise<number> {
     const result = await db
       .select({ 
@@ -121,16 +141,19 @@ export class ContractForecastingService {
     // A — Current Cost Budget (cost)
     const A = await this.getBudgetPlusApprovedCO(projectId, costCode.id);
 
-    // C — Spent/Committed Total
+    // Get committed costs (POs) and actual spent costs (deliveries + invoices)
     const committed = await this.getCommittedPOLines(projectId, costCode.id);
-    const spentOutside = 0; // Not tracked yet
-    const C = Q(committed + spentOutside);
+    const receivedDeliveries = await this.getReceivedDeliveries(projectId, costCode.id);
+    const invoiceSpent = await this.getSpentInvoices(projectId, costCode.id);
+    
+    // C — Spent/Committed Total (committed POs + actual spending)
+    const C = Q(committed + receivedDeliveries + invoiceSpent);
 
     // B — Spent/Committed (Less Advance SCOs) = C - SCOs issued on unposted PCI/OCO
     const B = Q(C - 0); // SCOs not tracked yet
 
     // Current Period Cost
-    const currentPeriodCost = 0; // Not tracked yet
+    const currentPeriodCost = Q(receivedDeliveries + invoiceSpent); // Actual spending this period
 
     // D/E/F — Unposted PCI cost buckets
     const D_int = includePending ? 0 : 0; // Not tracked yet
