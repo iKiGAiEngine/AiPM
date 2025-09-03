@@ -126,7 +126,7 @@ export default function Reports() {
             </p>
             {selectedProject ? (
               <Link
-                to={`/reports/contract-forecasting/${selectedProject.id}`}
+                to="/reports/contract-forecasting"
                 className="flex items-center justify-between p-3 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
                 data-testid={`link-forecasting-current-project`}
               >

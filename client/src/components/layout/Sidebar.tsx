@@ -175,7 +175,7 @@ export default function Sidebar() {
                 <ChevronDown className="w-4 h-4 text-sidebar-foreground/70" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64" align="start">
+            <DropdownMenuContent className="w-64 z-50" align="start" sideOffset={8}>
               <DropdownMenuItem
                 onClick={() => setSelectedProject(null)}
                 className={cn(

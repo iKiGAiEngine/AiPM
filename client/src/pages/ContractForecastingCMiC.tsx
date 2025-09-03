@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useProject } from '@/contexts/ProjectContext';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -35,7 +36,8 @@ interface VerificationCheck {
 }
 
 export default function ContractForecastingCMiC() {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { selectedProject } = useProject();
+  const projectId = selectedProject?.id;
   const [includePending, setIncludePending] = useState(true);
   const [showVerification, setShowVerification] = useState(false);
 

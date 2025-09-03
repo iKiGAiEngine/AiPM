@@ -278,7 +278,7 @@ export default function App() {
                   <Reports />
                 </ProtectedRoute>
               } />
-              <Route path="/reports/contract-forecasting/:projectId" element={
+              <Route path="/reports/contract-forecasting" element={
                 <ProtectedRoute>
                   <ContractForecastingCMiC />
                 </ProtectedRoute>
