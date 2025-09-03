@@ -1242,12 +1242,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         number = `PO-${count.toString().padStart(3, '0')}`;
       }
       
-      // Extract lines from the data before creating PO
-      const { lines, ...poDataWithoutLines } = poData as any;
+      // Extract lines from the raw request body before validation
+      const { lines, ...dataWithoutLines } = req.body;
+      console.log('Extracted lines:', JSON.stringify(lines, null, 2));
+      
+      // Calculate totals from lines
+      let subtotal = 0;
+      if (lines && Array.isArray(lines)) {
+        subtotal = lines.reduce((sum: number, line: any) => {
+          return sum + (parseFloat(line.quantity) * parseFloat(line.unitPrice));
+        }, 0);
+      }
       
       const purchaseOrder = await storage.createPurchaseOrder({
-        ...poDataWithoutLines,
+        ...poData,
         number,
+        subtotal: subtotal.toString(),
+        totalAmount: subtotal.toString(), // For now, no tax or freight
         organizationId: req.user!.organizationId,
         createdById: req.user!.id
       });
@@ -1257,6 +1268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Creating', lines.length, 'PO lines for PO:', purchaseOrder.id);
         
         for (const line of lines) {
+          console.log('Creating line:', JSON.stringify(line, null, 2));
           await storage.createPurchaseOrderLine({
             poId: purchaseOrder.id,
             materialId: line.materialId || null,
@@ -1268,6 +1280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lineTotal: (line.quantity * line.unitPrice).toString()
           });
         }
+        console.log('All lines created successfully');
       }
       
       res.status(201).json(purchaseOrder);
