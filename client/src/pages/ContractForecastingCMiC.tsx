@@ -176,18 +176,18 @@ export default function ContractForecastingCMiC() {
       )}
 
       {/* Main Forecasting Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 dark:bg-gray-700">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900 sticky left-0 bg-gray-100 z-10 min-w-[200px]">
+                <th className="px-4 py-3 text-left font-semibold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 min-w-[200px]">
                   Cost Code/Category
                 </th>
                 {forecastData.headers.map((header, index) => (
                   <th
                     key={index}
-                    className="px-2 py-3 text-center font-semibold text-gray-900 text-xs min-w-[100px] border-l border-gray-200"
+                    className="px-2 py-3 text-center font-semibold text-gray-900 dark:text-gray-100 text-xs min-w-[100px] border-l border-gray-200 dark:border-gray-600"
                     style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', minHeight: '150px' }}
                   >
                     <div className="whitespace-pre-line leading-tight">
@@ -201,26 +201,26 @@ export default function ContractForecastingCMiC() {
               {forecastData.lines?.map((line, index) => {
                 console.log(`Rendering line ${index}:`, line);
                 return (
-                  <tr key={index} className="hover:bg-gray-50 border-b border-gray-200">
-                  <td className="px-4 py-3 font-medium text-gray-900 sticky left-0 bg-white z-10 border-r border-gray-200">
+                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-600">
                     {line.costCode}
                   </td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.A)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.B)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.C)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.currentPeriodCost)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.D_int)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.E_ext)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.F_adj)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.G_ctc)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.H_ctc_unposted)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono font-semibold">{formatCurrency(line.I_cost_fcst)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.J_rev_budget)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.K_unposted_rev)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono">{formatCurrency(line.L_unposted_rev_adj)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono font-semibold">{formatCurrency(line.M_rev_fcst)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.A)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.B)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.C)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.currentPeriodCost)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.D_int)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.E_ext)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.F_adj)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.G_ctc)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.H_ctc_unposted)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(line.I_cost_fcst)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.J_rev_budget)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.K_unposted_rev)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.L_unposted_rev_adj)}</td>
+                  <td className="px-2 py-3 text-right text-sm font-mono font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(line.M_rev_fcst)}</td>
                   <td className={`px-2 py-3 text-right text-sm font-mono font-semibold ${
-                    line.N_gain_loss > 0 ? 'text-green-600' : line.N_gain_loss < 0 ? 'text-red-600' : 'text-gray-900'
+                    line.N_gain_loss > 0 ? 'text-green-600 dark:text-green-400' : line.N_gain_loss < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
                   }`}>
                     {formatCurrency(line.N_gain_loss)}
                   </td>
@@ -229,26 +229,26 @@ export default function ContractForecastingCMiC() {
               }) || []}
               
               {/* Totals Row */}
-              <tr className="bg-gray-100 border-t-2 border-gray-300">
-                <td className="px-4 py-3 font-bold text-gray-900 sticky left-0 bg-gray-100 z-10 border-r border-gray-200">
+              <tr className="bg-gray-100 dark:bg-gray-700 border-t-2 border-gray-300 dark:border-gray-500">
+                <td className="px-4 py-3 font-bold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 border-r border-gray-200 dark:border-gray-600">
                   TOTALS
                 </td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.A)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.B)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.C)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.currentPeriodCost)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.D_int)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.E_ext)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.F_adj)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.G_ctc)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.H_ctc_unposted)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-lg">{formatCurrency(forecastData.totals.I_cost_fcst)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.J_rev_budget)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.K_unposted_rev)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold">{formatCurrency(forecastData.totals.L_unposted_rev_adj)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-lg">{formatCurrency(forecastData.totals.M_rev_fcst)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.A)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.B)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.C)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.currentPeriodCost)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.D_int)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.E_ext)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.F_adj)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.G_ctc)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.H_ctc_unposted)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.I_cost_fcst)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.J_rev_budget)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.K_unposted_rev)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.L_unposted_rev_adj)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.M_rev_fcst)}</td>
                 <td className={`px-2 py-3 text-right text-sm font-mono font-bold text-lg ${
-                  forecastData.totals.N_gain_loss > 0 ? 'text-green-600' : forecastData.totals.N_gain_loss < 0 ? 'text-red-600' : 'text-gray-900'
+                  forecastData.totals.N_gain_loss > 0 ? 'text-green-600 dark:text-green-400' : forecastData.totals.N_gain_loss < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
                 }`}>
                   {formatCurrency(forecastData.totals.N_gain_loss)}
                 </td>
