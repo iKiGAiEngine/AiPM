@@ -130,7 +130,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-sidebar lg:border-r lg:border-sidebar-border">
+    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-sidebar lg:border-r lg:border-sidebar-border lg:max-h-screen">
       <div className="flex-1 flex flex-col min-h-0">
         {/* Logo and Brand */}
         <div className="p-4 border-b border-sidebar-border">
@@ -214,7 +214,7 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0">
           {navigation.map((item) => {
             if (!canAccess(item.roles)) return null;
             
@@ -266,7 +266,7 @@ export default function Sidebar() {
         </nav>
 
         {/* Settings at bottom */}
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border flex-shrink-0">
           {settingsNavigation.map((item) => {
             if (!canAccess(item.roles)) return null;
             
@@ -291,7 +291,7 @@ export default function Sidebar() {
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
             <span className="text-sm font-medium text-foreground">

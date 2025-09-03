@@ -27,7 +27,8 @@ import {
   AlertTriangle,
   Calendar,
   FileText,
-  ArrowRight
+  ArrowRight,
+  FolderOpen
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProject } from "@/contexts/ProjectContext";
@@ -65,9 +66,8 @@ const mockProjectMetrics = [
 ];
 
 export default function Reports() {
-  const [selectedProject, setSelectedProject] = useState<string>("all");
   const [timeRange, setTimeRange] = useState<string>("6months");
-  const { projects } = useProject();
+  const { projects, selectedProject } = useProject();
 
   const { data: dashboardStats } = useQuery({
     queryKey: ['/api/dashboard/stats'],
@@ -124,19 +124,23 @@ export default function Reports() {
             <p className="text-sm text-muted-foreground mb-4">
               CMiC-style contract forecasting with budget tracking, cost overrides, and profit analysis
             </p>
-            <div className="space-y-2">
-              {projects.slice(0, 3).map((project) => (
-                <Link
-                  key={project.id}
-                  to={`/reports/contract-forecasting/${project.id}`}
-                  className="flex items-center justify-between p-2 rounded hover:bg-muted text-sm"
-                  data-testid={`link-forecasting-${project.id}`}
-                >
-                  <span>{project.name}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              ))}
-            </div>
+            {selectedProject ? (
+              <Link
+                to={`/reports/contract-forecasting/${selectedProject.id}`}
+                className="flex items-center justify-between p-3 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                data-testid={`link-forecasting-current-project`}
+              >
+                <div>
+                  <div className="font-medium">{selectedProject.name}</div>
+                  <div className="text-xs text-muted-foreground">View forecasting report</div>
+                </div>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <div className="p-3 text-center text-muted-foreground text-sm">
+                Select a project above to view its forecasting report
+              </div>
+            )}
           </CardContent>
         </Card>
         
@@ -171,37 +175,35 @@ export default function Reports() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Report Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger className="w-full sm:w-48" data-testid="select-project-filter">
-                <SelectValue placeholder="Select project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                <SelectItem value="metro-plaza">Metro Plaza Office Tower</SelectItem>
-                <SelectItem value="riverside-medical">Riverside Medical Center</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-full sm:w-48" data-testid="select-time-range">
-                <SelectValue placeholder="Select time range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1month">Last Month</SelectItem>
-                <SelectItem value="3months">Last 3 Months</SelectItem>
-                <SelectItem value="6months">Last 6 Months</SelectItem>
-                <SelectItem value="1year">Last Year</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Current Project Info */}
+      {selectedProject && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center">
+              <FolderOpen className="w-5 h-5 mr-2" />
+              Current Project: {selectedProject.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                All reports below are filtered for this project. Change project selection in the sidebar to view different project reports.
+              </div>
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger className="w-48" data-testid="select-time-range">
+                  <SelectValue placeholder="Select time range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1month">Last Month</SelectItem>
+                  <SelectItem value="3months">Last 3 Months</SelectItem>
+                  <SelectItem value="6months">Last 6 Months</SelectItem>
+                  <SelectItem value="1year">Last Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
