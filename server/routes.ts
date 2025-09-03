@@ -1655,6 +1655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get real contract estimates for this project
       const estimates = await storage.getContractEstimatesByProject(projectId, req.user!.organizationId);
       console.log(`Found ${estimates.length} contract estimates`);
+      console.log('Sample estimate:', estimates[0]);
       
       // Group estimates by cost code and calculate CMiC values
       const costCodeMap = new Map();
@@ -1673,7 +1674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Convert to CMiC format lines
       const lines = Array.from(costCodeMap.values()).map(group => {
-        const A = group.awardedValue; // Original budget (awarded value)
+        const A = Number(group.awardedValue) || 0; // Original budget (awarded value)
         const B = A; // For demo, spent/committed = budget
         const C = A; // For demo, total committed = budget  
         const currentPeriodCost = 0; // No costs this period yet
@@ -1682,6 +1683,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const J_rev_budget = A; // Revenue budget = cost budget
         const M_rev_fcst = A; // Revenue forecast = revenue budget
         const N_gain_loss = M_rev_fcst - I_cost_fcst; // Gain/loss = 0 when equal
+        
+        console.log(`Line data for ${group.costCode}: A=${A}, awardedValue=${group.awardedValue}`);
         
         return {
           costCode: group.costCode,

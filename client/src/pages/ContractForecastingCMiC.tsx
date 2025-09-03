@@ -56,6 +56,7 @@ export default function ContractForecastingCMiC() {
       console.log('Frontend: Received forecasting data:', data);
       console.log('Frontend: Lines:', data.lines);
       console.log('Frontend: Totals:', data.totals);
+      console.log('Frontend: Data type check:', typeof data.lines?.[0]?.A);
       return data;
     },
     enabled: !!projectId,
@@ -104,6 +105,10 @@ export default function ContractForecastingCMiC() {
       </div>
     );
   }
+
+  console.log('Rendering with forecastData:', forecastData);
+  console.log('Lines count:', forecastData.lines?.length);
+  console.log('First line:', forecastData.lines?.[0]);
 
   return (
     <div className="space-y-6">
@@ -193,8 +198,10 @@ export default function ContractForecastingCMiC() {
               </tr>
             </thead>
             <tbody>
-              {forecastData.lines.map((line, index) => (
-                <tr key={index} className="hover:bg-gray-50 border-b border-gray-200">
+              {forecastData.lines?.map((line, index) => {
+                console.log(`Rendering line ${index}:`, line);
+                return (
+                  <tr key={index} className="hover:bg-gray-50 border-b border-gray-200">
                   <td className="px-4 py-3 font-medium text-gray-900 sticky left-0 bg-white z-10 border-r border-gray-200">
                     {line.costCode}
                   </td>
@@ -217,8 +224,9 @@ export default function ContractForecastingCMiC() {
                   }`}>
                     {formatCurrency(line.N_gain_loss)}
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              }) || []}
               
               {/* Totals Row */}
               <tr className="bg-gray-100 border-t-2 border-gray-300">
