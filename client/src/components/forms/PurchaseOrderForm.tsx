@@ -56,14 +56,13 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
   const [selectedMaterialType, setSelectedMaterialType] = useState<string>("");
   const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set());
 
-  const form = useForm<PurchaseOrderFormData>({
-    resolver: zodResolver(purchaseOrderSchema),
+  const form = useForm<Omit<PurchaseOrderFormData, 'lines'>>({
+    resolver: zodResolver(purchaseOrderSchema.omit({ lines: true })),
     defaultValues: {
       vendorId: "",
       projectId: fromRequisition?.projectId || "",
       shipToAddress: "",
       notes: fromRequisition ? `Created from requisition: ${fromRequisition.title}` : "",
-      lines: [],
     },
   });
 
@@ -245,8 +244,11 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
   };
 
   const onSubmit = (data: Omit<PurchaseOrderFormData, 'lines'>) => {
+    console.log('=== PO FORM SUBMISSION ===');
     console.log('Form submission data:', { ...data, lines });
     console.log('Form validation state:', form.formState.errors);
+    console.log('Form is valid:', form.formState.isValid);
+    console.log('Lines state:', lines);
     
     // Basic validation
     if (!data.vendorId) {
@@ -612,6 +614,7 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
               type="submit"
               disabled={createMutation.isPending}
               data-testid="button-create-po"
+              onClick={() => console.log('=== SUBMIT BUTTON CLICKED ===', form.formState.errors)}
             >
               {createMutation.isPending ? (
                 "Creating..."
