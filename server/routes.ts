@@ -1687,16 +1687,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const pendingCos = 0; // Placeholder - would calculate from draft change orders
           const projectedCost = spent + committed + etc + (includePending === 'true' ? pendingCos : 0);
           
-          // Debug: Add logging to verify calculations
-          console.log(`Cost Code: ${costCode}, Budget: ${costCodeInfo.budget}, Spent: ${spent.toFixed(2)}, Committed: ${committed.toFixed(2)}, ETC: ${etc.toFixed(2)}, Projected: ${projectedCost.toFixed(2)}`);
           
           // Calculate revenue forecast based on method
-          // In construction, revenue typically equals the full contract value for that cost code
-          let revenueForcast = costCodeInfo.budget;
+          // In construction, revenue should include profit margin above cost
+          // Typically 8-15% profit margin on construction projects
+          const profitMarginPercent = 0.10; // 10% profit margin
+          let revenueForcast = costCodeInfo.budget * (1 + profitMarginPercent);
+          
           if (revenueMethod === 'PERCENT_COMPLETE') {
-            // Revenue recognition based on completion percentage, but capped at budget
+            // Revenue recognition based on completion percentage
             const completionPct = Math.min(percentComplete / 100, 1);
-            revenueForcast = costCodeInfo.budget; // Full contract value available
+            revenueForcast = costCodeInfo.budget * (1 + profitMarginPercent);
           }
           
           // Calculate profit/variance (revenue minus projected total cost)
