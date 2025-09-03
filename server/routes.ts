@@ -1687,13 +1687,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const projectedCost = spent + committed + etc + (includePending === 'true' ? pendingCos : 0);
           
           // Calculate revenue forecast based on method
-          let revenueForcast = 0;
+          // In construction, revenue typically equals the full contract value for that cost code
+          let revenueForcast = costCodeInfo.budget;
           if (revenueMethod === 'PERCENT_COMPLETE') {
-            const completionPct = percentComplete / 100;
-            revenueForcast = completionPct * (costCodeInfo.budget + (includePending === 'true' ? pendingCos : 0));
+            // Revenue recognition based on completion percentage, but capped at budget
+            const completionPct = Math.min(percentComplete / 100, 1);
+            revenueForcast = costCodeInfo.budget; // Full contract value available
           }
           
-          // Calculate profit/variance
+          // Calculate profit/variance (revenue minus projected total cost)
           const profitVariance = revenueForcast - projectedCost;
 
           return {
