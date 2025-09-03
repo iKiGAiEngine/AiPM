@@ -54,6 +54,8 @@ export default function ContractForecastingCMiC() {
       if (!response.ok) throw new Error('Failed to fetch forecasting data');
       const data = await response.json();
       console.log('Frontend: Received forecasting data:', data);
+      console.log('Frontend: Lines:', data.lines);
+      console.log('Frontend: Totals:', data.totals);
       return data;
     },
     enabled: !!projectId,
@@ -74,12 +76,13 @@ export default function ContractForecastingCMiC() {
     enabled: !!projectId && showVerification,
   });
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | string) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value || 0;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-    }).format(value);
+    }).format(numValue);
   };
 
   const exportCSV = () => {
