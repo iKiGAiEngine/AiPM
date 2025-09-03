@@ -116,7 +116,7 @@ export default function RequisitionForm() {
     const quantities: Record<string, number> = {};
     projectMaterials.forEach((material: any) => {
       // Use the available quantity returned from the server (after deducting used quantities)
-      quantities[material.id] = parseFloat(material.estimatedQuantity || material.qty || '0');
+      quantities[material.id] = parseFloat(material.availableQuantity || material.qty || '0');
     });
     setAvailableQuantities(quantities);
   }, [projectMaterials]);

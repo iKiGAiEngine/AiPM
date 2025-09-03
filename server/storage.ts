@@ -815,9 +815,59 @@ export class DatabaseStorage implements IStorage {
         .where(and(...conditions))
         .orderBy(asc(projectMaterials.description));
 
-      // For now, just return all materials without calculating used quantities
-      // This simplifies the function and should prevent the 500 error
-      return allMaterials;
+      // Calculate used quantities from submitted/ready requisitions
+      const usedQuantities: { [projectMaterialId: string]: number } = {};
+      
+      // Get all requisition lines for this project that are in active status
+      const usedMaterials = await db
+        .select({
+          description: requisitionLines.description,
+          quantity: requisitionLines.quantity
+        })
+        .from(requisitionLines)
+        .leftJoin(requisitions, eq(requisitionLines.requisitionId, requisitions.id))
+        .where(and(
+          eq(requisitions.projectId, projectId),
+          eq(requisitions.organizationId, organizationId),
+          or(
+            eq(requisitions.status, 'submitted'),
+            eq(requisitions.status, 'ready'),
+            eq(requisitions.status, 'approved'),
+            eq(requisitions.status, 'converted')
+          )
+        ));
+
+      // Match requisition lines to project materials by description and sum quantities
+      usedMaterials.forEach(item => {
+        if (item.description) {
+          // Find matching project material by description
+          const matchingMaterial = allMaterials.find(pm => 
+            pm.description.toLowerCase().trim() === item.description.toLowerCase().trim()
+          );
+          
+          if (matchingMaterial) {
+            const currentUsed = usedQuantities[matchingMaterial.id] || 0;
+            usedQuantities[matchingMaterial.id] = currentUsed + parseFloat(item.quantity?.toString() || '0');
+          }
+        }
+      });
+
+      // Calculate available quantities and filter out materials with 0 remaining
+      const availableMaterials = allMaterials
+        .map(material => {
+          const usedQty = usedQuantities[material.id] || 0;
+          const budgetedQty = parseFloat(material.qty?.toString() || '0');
+          const availableQty = budgetedQty - usedQty;
+          
+          return {
+            ...material,
+            availableQuantity: Math.max(0, availableQty),
+            usedQuantity: usedQty
+          };
+        })
+        .filter(material => material.availableQuantity > 0); // Only return materials with available quantity
+
+      return availableMaterials;
 
     } catch (error) {
       console.error('Error in getAvailableProjectMaterialsByProject:', error);
