@@ -172,8 +172,8 @@ export class ContractForecastingService {
     // I — Cost Forecast
     const I = Q(C + G + H);
 
-    // J/K/L/M (revenue)
-    const J = A; // Mirror of cost budget for revenue
+    // J/K/L/M (revenue) - For construction, revenue typically includes profit margin
+    const J = Q(A * 1.15); // Revenue budget with 15% profit margin over costs
     const K = includePending ? 0 : 0; // Unposted revenue not tracked yet
     const L = K; // No overrides yet
     const M = Q(J + L);
