@@ -1203,7 +1203,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('=== PURCHASE ORDER CREATION ===');
       console.log('Raw request body:', JSON.stringify(req.body, null, 2));
-      const poData = insertPurchaseOrderSchema.parse(req.body);
+      // Parse with the fields that come from frontend, excluding backend-generated fields
+    const poData = insertPurchaseOrderSchema.omit({ 
+      organizationId: true, 
+      createdById: true, 
+      number: true 
+    }).parse(req.body);
       console.log('Parsed PO data:', JSON.stringify(poData, null, 2));
       
       // Generate PO number in format: Project Number - Phase Code - Users Initials
