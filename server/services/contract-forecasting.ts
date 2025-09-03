@@ -46,7 +46,11 @@ export class ContractForecastingService {
       .where(eq(contractEstimates.projectId, projectId))
       .groupBy(contractEstimates.costCode, contractEstimates.materialCategory);
     
-    return estimates;
+    return estimates.map(est => ({
+      id: est.id,
+      code: est.code,
+      description: est.description || 'Unknown'
+    }));
   }
 
   async getBudgetPlusApprovedCO(projectId: string, costCode: string): Promise<number> {

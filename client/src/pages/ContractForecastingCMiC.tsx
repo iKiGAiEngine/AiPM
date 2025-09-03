@@ -46,7 +46,6 @@ export default function ContractForecastingCMiC() {
 
   const { data: verificationData } = useQuery<ForecastingData & { checks: VerificationCheck[] }>({
     queryKey: ['/api/reporting/contract-forecasting', projectId, 'verify', includePending],
-    queryFn: () => fetch(`/api/reporting/contract-forecasting/${projectId}/verify?include_pending=${includePending}`).then(res => res.json()),
     enabled: !!projectId && showVerification,
   });
 
