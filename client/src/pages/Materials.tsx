@@ -8,17 +8,20 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Eye, Package, CheckCircle, AlertCircle, Upload } from "lucide-react";
+import { useProject } from "@/contexts/ProjectContext";
 import type { Material } from "@shared/schema";
 
 export default function Materials() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const { selectedProject } = useProject();
 
   const { data: materials = [], isLoading, error } = useQuery<Material[]>({
-    queryKey: ['/api/materials', searchQuery],
+    queryKey: ['/api/materials', selectedProject?.id, searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
+      if (selectedProject) params.set('projectId', selectedProject.id);
       
       const response = await fetch(`/api/materials?${params}`, {
         headers: {

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Eye, Truck, Package, AlertTriangle, CheckCircle } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { useProject } from "@/contexts/ProjectContext";
 import type { Delivery } from "@shared/schema";
 
 const statusColors = {
@@ -21,11 +22,13 @@ const statusColors = {
 export default function Deliveries() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { selectedProject } = useProject();
 
   const { data: deliveries = [], isLoading, error } = useQuery<Delivery[]>({
-    queryKey: ['/api/deliveries'],
+    queryKey: ['/api/deliveries', selectedProject?.id],
     queryFn: async () => {
-      const response = await fetch('/api/deliveries', {
+      const url = selectedProject ? `/api/deliveries?projectId=${selectedProject.id}` : '/api/deliveries';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },

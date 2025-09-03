@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Search, Eye, AlertTriangle, CheckCircle, Clock, FileText } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { useProject } from "@/contexts/ProjectContext";
 import type { Invoice } from "@shared/schema";
 
 const statusColors = {
@@ -31,11 +32,13 @@ export default function Invoices() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { selectedProject } = useProject();
 
   const { data: invoices = [], isLoading, error } = useQuery<Invoice[]>({
-    queryKey: ['/api/invoices'],
+    queryKey: ['/api/invoices', selectedProject?.id],
     queryFn: async () => {
-      const response = await fetch('/api/invoices', {
+      const url = selectedProject ? `/api/invoices?projectId=${selectedProject.id}` : '/api/invoices';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },

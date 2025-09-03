@@ -43,11 +43,31 @@ export default function ContractForecastingCMiC() {
 
   const { data: forecastData, isLoading } = useQuery<ForecastingData>({
     queryKey: ['/api/reporting/contract-forecasting', projectId, includePending],
+    queryFn: async () => {
+      const url = `/api/reporting/contract-forecasting/${projectId}?include_pending=${includePending}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch forecasting data');
+      return response.json();
+    },
     enabled: !!projectId,
   });
 
   const { data: verificationData } = useQuery<ForecastingData & { checks: VerificationCheck[] }>({
     queryKey: ['/api/reporting/contract-forecasting', projectId, 'verify', includePending],
+    queryFn: async () => {
+      const url = `/api/reporting/contract-forecasting/${projectId}/verify?include_pending=${includePending}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch verification data');
+      return response.json();
+    },
     enabled: !!projectId && showVerification,
   });
 
