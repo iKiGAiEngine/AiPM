@@ -77,26 +77,26 @@ const secondaryNavigation = [
     roles: ["Admin", "PM", "Purchaser"]
   },
   {
-    name: "Vendors",
-    href: "/vendors",
-    icon: Building,
-    roles: ["Admin", "PM", "Purchaser"]
+    name: "Reports",
+    href: "/reports",
+    icon: BarChart3,
+    roles: ["Admin", "PM", "Purchaser", "AP"]
   },
   {
     name: "Projects",
     href: "/projects",
     icon: FolderOpen,
     roles: ["Admin", "PM"]
-  },
-  {
-    name: "Reports",
-    href: "/reports",
-    icon: BarChart3,
-    roles: ["Admin", "PM", "Purchaser", "AP"]
   }
 ];
 
 const settingsNavigation = [
+  {
+    name: "Vendors",
+    href: "/vendors", 
+    icon: Building,
+    roles: ["Admin", "PM", "Purchaser"]
+  },
   {
     name: "Settings",
     href: "/settings",
