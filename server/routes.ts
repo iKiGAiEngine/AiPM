@@ -1657,34 +1657,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Found ${estimates.length} contract estimates`);
       console.log('Sample estimate:', estimates[0]);
       
-      // Group estimates by cost code and calculate CMiC values
+      // Import cost code normalization
+      const { normalizeCostCode } = await import('./config/cost-code-map');
+      
+      // Group estimates by normalized cost code and calculate CMiC values
       const costCodeMap = new Map();
       estimates.forEach(estimate => {
-        const costCode = estimate.costCode;
-        if (!costCodeMap.has(costCode)) {
-          costCodeMap.set(costCode, {
-            costCode: costCode,
+        const normalizedCostCode = normalizeCostCode(estimate.costCode);
+        console.log(`Normalizing ${estimate.costCode} -> ${normalizedCostCode}`);
+        
+        if (!costCodeMap.has(normalizedCostCode)) {
+          costCodeMap.set(normalizedCostCode, {
+            costCode: normalizedCostCode,
+            originalCodes: new Set([estimate.costCode]),
             awardedValue: 0,
             estimates: []
           });
         }
-        costCodeMap.get(costCode).awardedValue += Number(estimate.awardedValue);
-        costCodeMap.get(costCode).estimates.push(estimate);
+        costCodeMap.get(normalizedCostCode).originalCodes.add(estimate.costCode);
+        costCodeMap.get(normalizedCostCode).awardedValue += Number(estimate.awardedValue);
+        costCodeMap.get(normalizedCostCode).estimates.push(estimate);
       });
       
+      // Get purchase orders and invoices for this project to calculate actual spending
+      const purchaseOrders = await storage.getPurchaseOrdersByProject(projectId);
+      const allInvoices = await storage.getInvoicesByOrganization(req.user!.organizationId);
+      // Filter invoices for this project
+      const projectInvoices = allInvoices.filter(inv => inv.projectId === projectId);
+      
+      console.log(`Found ${purchaseOrders.length} purchase orders and ${projectInvoices.length} invoices`);
+      
+      // Calculate actual spending by normalized cost code
+      const spendingByCode = new Map();
+      
+      // Process purchase orders through project materials
+      for (const po of purchaseOrders) {
+        const poLines = await storage.getPurchaseOrderLines(po.id);
+        for (const line of poLines) {
+          if (line.projectMaterialId) {
+            // Get project materials to find cost code
+            const projectMaterials = await storage.getProjectMaterialsByProject(projectId, req.user!.organizationId);
+            const projectMaterial = projectMaterials.find(pm => pm.id === line.projectMaterialId);
+            if (projectMaterial && projectMaterial.costCode) {
+              const normalizedCode = normalizeCostCode(projectMaterial.costCode);
+              const current = spendingByCode.get(normalizedCode) || { committed: 0, spent: 0 };
+              current.committed += Number(line.lineTotal) || 0;
+              spendingByCode.set(normalizedCode, current);
+            }
+          }
+        }
+      }
+      
+      // Process invoices for actual spending
+      for (const invoice of projectInvoices) {
+        if (invoice.matchStatus === 'matched' && invoice.totalAmount) {
+          // For now, allocate invoice amounts proportionally across cost codes
+          // In a full implementation, you'd track invoice lines by cost code
+          const invoiceAmount = Number(invoice.totalAmount) || 0;
+          if (invoiceAmount > 0) {
+            const totalBudget = Array.from(costCodeMap.values()).reduce((sum, g) => sum + g.awardedValue, 0);
+            if (totalBudget > 0) {
+              costCodeMap.forEach((group, code) => {
+                const proportion = group.awardedValue / totalBudget;
+                const allocatedAmount = invoiceAmount * proportion;
+                const current = spendingByCode.get(code) || { committed: 0, spent: 0 };
+                current.spent += allocatedAmount;
+                spendingByCode.set(code, current);
+              });
+            }
+          }
+        }
+      }
+
       // Convert to CMiC format lines
       const lines = Array.from(costCodeMap.values()).map(group => {
         const A = Number(group.awardedValue) || 0; // Original budget (awarded value)
-        const B = A; // For demo, spent/committed = budget
-        const C = A; // For demo, total committed = budget  
-        const currentPeriodCost = 0; // No costs this period yet
-        const G_ctc = 0; // Cost to complete (A - C, but A = C so 0)
-        const I_cost_fcst = A; // Cost forecast = A when G = 0
+        const spending = spendingByCode.get(group.costCode) || { committed: 0, spent: 0 };
+        const B = spending.spent || 0; // Actually spent amount
+        const C = spending.committed || 0; // Total committed amount  
+        const currentPeriodCost = 0; // No period tracking yet
+        const G_ctc = Math.max(0, A - C); // Cost to complete (budget - committed)
+        const I_cost_fcst = C + G_ctc; // Cost forecast = committed + cost to complete
         const J_rev_budget = A; // Revenue budget = cost budget
         const M_rev_fcst = A; // Revenue forecast = revenue budget
-        const N_gain_loss = M_rev_fcst - I_cost_fcst; // Gain/loss = 0 when equal
+        const N_gain_loss = M_rev_fcst - I_cost_fcst; // Gain/loss
         
-        console.log(`Line data for ${group.costCode}: A=${A}, awardedValue=${group.awardedValue}`);
+        console.log(`Line data for ${group.costCode}: Budget=${A}, Committed=${C}, Spent=${B}, CTC=${G_ctc}`);
         
         return {
           costCode: group.costCode,

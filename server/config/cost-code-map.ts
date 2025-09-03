@@ -117,3 +117,51 @@ export function isValidCostCode(costCode: string): boolean {
   // CSI MasterFormat cost codes are typically 6 digits
   return /^\d{6}$/.test(costCode);
 }
+
+// Division to CSI code mapping
+export const divisionToCsiMap: Record<string, string> = {
+  "02-Site Work": "020000",
+  "03-Concrete": "033000", 
+  "04-Masonry": "042000",
+  "05-Metals": "051200",
+  "06-Wood": "061000",
+  "07-Thermal": "072100",
+  "08-Openings": "081400",
+  "09-Finishes": "096000",
+  "10-Specialties": "102800",
+  "21-Fire Suppression": "210000",
+  "22-Plumbing": "220000",
+  "23-HVAC": "230000",
+  "26-Electrical": "260000",
+  "27-Communications": "271500"
+};
+
+// Function to normalize cost codes to 6-digit CSI format
+export function normalizeCostCode(costCode: string): string {
+  if (!costCode) return "010000"; // Default
+  
+  // If already 6-digit, return as-is
+  if (isValidCostCode(costCode)) {
+    return costCode;
+  }
+  
+  // Check division mapping
+  if (divisionToCsiMap[costCode]) {
+    return divisionToCsiMap[costCode];
+  }
+  
+  // Handle partial matches like "10-28-Toilet" -> closest match
+  for (const [division, csi] of Object.entries(divisionToCsiMap)) {
+    if (costCode.startsWith(division.split('-')[0] + '-')) {
+      return csi;
+    }
+  }
+  
+  // If 4-5 digit, pad with zeros
+  const numOnly = costCode.replace(/[^0-9]/g, '');
+  if (numOnly.length >= 4) {
+    return numOnly.padEnd(6, '0');
+  }
+  
+  return "010000"; // Default fallback
+}
