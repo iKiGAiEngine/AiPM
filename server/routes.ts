@@ -1688,10 +1688,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const projectedCost = spent + committed + etc + (includePending === 'true' ? pendingCos : 0);
           
           
-          // Calculate revenue forecast
-          // In construction accounting, revenue forecast represents the total contract value
-          // that will be earned when the cost code is complete
-          let revenueForcast = costCodeInfo.budget;
+          // Calculate revenue forecast based on method
+          let revenueForcast = costCodeInfo.budget; // Default: full contract value
+          
+          if (revenueMethod === 'PERCENT_COMPLETE') {
+            // Revenue recognition based on percentage of work completed
+            // Only recognize revenue for work actually completed
+            const completionPct = Math.min(percentComplete / 100, 1);
+            revenueForcast = costCodeInfo.budget * completionPct;
+          } else if (revenueMethod === 'RATE') {
+            // Full contract value method - recognize full revenue potential
+            // This is the traditional forecasting approach showing total contract value
+            revenueForcast = costCodeInfo.budget;
+          } else if (revenueMethod === 'MANUAL') {
+            // Manual method would allow overrides (not implemented yet)
+            // For now, default to full contract value
+            revenueForcast = costCodeInfo.budget;
+          }
           
           // Calculate profit/variance (revenue minus projected total cost)
           const profitVariance = revenueForcast - projectedCost;

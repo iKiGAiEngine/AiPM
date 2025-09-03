@@ -175,7 +175,7 @@ export default function ContractForecasting() {
               />
               <Label htmlFor="include-pending">Include Pending COs</Label>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col space-y-2">
               <Label htmlFor="revenue-method">Revenue Method:</Label>
               <Select value={revenueMethod} onValueChange={setRevenueMethod}>
                 <SelectTrigger className="w-48" data-testid="select-revenue-method">
@@ -183,10 +183,15 @@ export default function ContractForecasting() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PERCENT_COMPLETE">% Complete</SelectItem>
-                  <SelectItem value="RATE">Rate</SelectItem>
-                  <SelectItem value="MANUAL">Manual</SelectItem>
+                  <SelectItem value="RATE">Full Contract Value</SelectItem>
+                  <SelectItem value="MANUAL">Manual Override</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {revenueMethod === 'PERCENT_COMPLETE' && 'Revenue recognized based on work completion percentage'}
+                {revenueMethod === 'RATE' && 'Shows full contract value potential for each cost code'}
+                {revenueMethod === 'MANUAL' && 'Allows manual revenue adjustments (full value for now)'}
+              </p>
             </div>
           </div>
         </CardContent>
