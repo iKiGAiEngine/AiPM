@@ -905,14 +905,11 @@ export default function RequisitionForm() {
           {/* Submit Actions */}
           <div className="flex flex-col space-y-4 pt-6 border-t border-border">
             <div className="text-sm text-muted-foreground text-center">
-              Will be routed to <span className="font-medium">Project Manager</span> for approval
+              Requisition will be ready for direct PO creation or competitive bidding
             </div>
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-              <Button type="button" variant="outline" className="w-full sm:w-auto h-12" data-testid="button-save-draft">
-                Save Draft
-              </Button>
-              <Button type="submit" className="w-full sm:w-auto h-12" data-testid="button-submit-requisition">
-                Submit Requisition
+            <div className="flex justify-center">
+              <Button type="submit" className="w-full sm:w-auto h-12 px-8" data-testid="button-submit-requisition">
+                Create Requisition
               </Button>
             </div>
           </div>

@@ -20,7 +20,7 @@ import { z } from "zod";
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['Admin', 'PM', 'Purchaser', 'Field', 'AP']);
 export const projectStatusEnum = pgEnum('project_status', ['active', 'on_hold', 'completed', 'cancelled']);
-export const requisitionStatusEnum = pgEnum('requisition_status', ['draft', 'submitted', 'approved', 'rejected', 'converted']);
+export const requisitionStatusEnum = pgEnum('requisition_status', ['draft', 'submitted', 'approved', 'rejected', 'converted', 'ready']);
 export const rfqStatusEnum = pgEnum('rfq_status', ['draft', 'sent', 'quoted', 'closed']);
 export const poStatusEnum = pgEnum('po_status', ['draft', 'sent', 'acknowledged', 'received', 'closed']);
 export const deliveryStatusEnum = pgEnum('delivery_status', ['pending', 'partial', 'complete', 'damaged']);
@@ -158,7 +158,7 @@ export const requisitions = pgTable("requisitions", {
   targetDeliveryDate: timestamp("target_delivery_date"),
   deliveryLocation: text("delivery_location"),
   specialInstructions: text("special_instructions"),
-  status: requisitionStatusEnum("status").default('draft'),
+  status: requisitionStatusEnum("status").default('ready'),
   attachments: text("attachments").array(),
   geoLocation: jsonb("geo_location"),
   rfqId: uuid("rfq_id").references(() => rfqs.id),

@@ -16,6 +16,7 @@ import type { Requisition } from "@shared/schema";
 
 const statusColors = {
   draft: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
+  ready: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
   submitted: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
   approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
   rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
@@ -258,45 +259,34 @@ export default function Requisitions() {
                               </Link>
                             </Button>
                             
-                            {/* Approval Actions - only show for submitted requisitions */}
-                            {canApprove && requisition.status === 'submitted' && (
+                            {/* Streamlined Actions - only show for ready requisitions */}
+                            {requisition.status === 'ready' && (
                               <>
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  onClick={() => handleApprove(requisition)}
-                                  disabled={updateStatusMutation.isPending}
-                                  data-testid={`button-approve-requisition-${requisition.id}`}
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  onClick={() => {
+                                    // Direct PO creation from requisition
+                                    navigate(`/purchase-orders/new?requisitionId=${requisition.id}`);
+                                  }}
+                                  data-testid={`button-create-po-${requisition.id}`}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                 >
-                                  <Check className="w-4 h-4" />
+                                  Create PO
                                 </Button>
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  onClick={() => handleReject(requisition)}
-                                  disabled={updateStatusMutation.isPending}
-                                  data-testid={`button-reject-requisition-${requisition.id}`}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => {
+                                    // Competitive bidding - create RFQ
+                                    navigate(`/buyout/new?requisitionId=${requisition.id}`);
+                                  }}
+                                  data-testid={`button-get-quotes-${requisition.id}`}
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
                                 >
-                                  <X className="w-4 h-4" />
+                                  Get Quotes
                                 </Button>
                               </>
-                            )}
-                            
-                            {/* Buyout Creation - only show for approved requisitions */}
-                            {requisition.status === 'approved' && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => {
-                                  console.log('Create Buyout clicked for requisition:', requisition.id);
-                                  navigate(`/buyout/new?requisitionId=${requisition.id}`);
-                                }}
-                                data-testid={`button-create-buyout-${requisition.id}`}
-                              >
-                                Create Buyout
-                              </Button>
                             )}
                           </div>
                         </TableCell>
@@ -351,55 +341,37 @@ export default function Requisitions() {
                             </Link>
                           </Button>
                           
-                          {/* Approval Actions - only show for submitted requisitions */}
-                          {canApprove && requisition.status === 'submitted' && (
+                          {/* Streamlined Actions - only show for ready requisitions */}
+                          {requisition.status === 'ready' && (
                             <>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => handleApprove(requisition)}
-                                disabled={updateStatusMutation.isPending}
-                                data-testid={`button-approve-requisition-${requisition.id}`}
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => {
+                                  // Direct PO creation from requisition
+                                  navigate(`/purchase-orders/new?requisitionId=${requisition.id}`);
+                                }}
+                                data-testid={`button-create-po-${requisition.id}`}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 flex-1"
                               >
-                                <Check className="w-4 h-4 mr-1" />
-                                Approve
+                                Create PO
                               </Button>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => handleReject(requisition)}
-                                disabled={updateStatusMutation.isPending}
-                                data-testid={`button-reject-requisition-${requisition.id}`}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => {
+                                  // Competitive bidding - create RFQ
+                                  navigate(`/buyout/new?requisitionId=${requisition.id}`);
+                                  setTimeout(() => {
+                                    window.scrollTo(0, 0);
+                                  }, 100);
+                                }}
+                                data-testid={`button-get-quotes-${requisition.id}`}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50 flex-1"
                               >
-                                <X className="w-4 h-4 mr-1" />
-                                Reject
+                                Get Quotes
                               </Button>
                             </>
-                          )}
-                          
-                          {/* Buyout Creation - only show for approved requisitions */}
-                          {requisition.status === 'approved' && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => {
-                                console.log('Create Buyout clicked for requisition:', requisition.id);
-                                // Navigate first
-                                navigate(`/buyout/new?requisitionId=${requisition.id}`);
-                                // Force scroll to top after navigation
-                                setTimeout(() => {
-                                  window.scrollTo(0, 0);
-                                  document.documentElement.scrollTop = 0;
-                                  document.body.scrollTop = 0;
-                                }, 100);
-                              }}
-                              className="flex-1"
-                              data-testid={`button-create-buyout-${requisition.id}`}
-                            >
-                              Create Buyout
-                            </Button>
                           )}
                         </div>
                       </div>
