@@ -317,7 +317,11 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
       }
     }
     
-    const formData = { ...data, lines };
+    const formData = { 
+      ...data, 
+      lines,
+      ...(fromRequisition && { requisitionId: fromRequisition.id })
+    };
     console.log('=== CALLING MUTATION ===');
     console.log('Final form data being sent:', JSON.stringify(formData, null, 2));
     createMutation.mutate(formData);

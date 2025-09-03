@@ -1283,6 +1283,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('All lines created successfully');
       }
       
+      // Update requisition status to "converted" if this PO was created from a requisition
+      if (req.body.requisitionId) {
+        console.log('Updating requisition status to converted:', req.body.requisitionId);
+        await storage.updateRequisitionStatus(req.body.requisitionId, 'converted');
+      }
+      
       res.status(201).json(purchaseOrder);
     } catch (error) {
       console.error('=== PO CREATION ERROR ===');
@@ -1330,7 +1336,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Filter by project if projectId provided
       if (projectId && typeof projectId === 'string') {
-        deliveries = deliveries.filter(delivery => delivery.projectId === projectId);
+        // Get all PO IDs for this project first
+        const projectPOs = await storage.getPurchaseOrdersByProject(projectId);
+        const projectPOIds = new Set(projectPOs.map(po => po.id));
+        
+        deliveries = deliveries.filter(delivery => projectPOIds.has(delivery.poId));
       }
       
       res.json(deliveries);

@@ -79,7 +79,7 @@ export class ContractForecastingService {
       .leftJoin(projectMaterials, eq(purchaseOrderLines.projectMaterialId, projectMaterials.id))
       .where(and(
         eq(purchaseOrders.projectId, projectId),
-        sql`${purchaseOrders.status} IN ('sent', 'acknowledged', 'partial', 'received')`,
+        sql`${purchaseOrders.status} IN ('sent', 'acknowledged', 'received')`,
         eq(projectMaterials.costCode, costCode)
       ));
     
