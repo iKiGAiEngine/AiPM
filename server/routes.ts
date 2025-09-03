@@ -1618,11 +1618,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Material Imports routes
   app.use("/api", materialImportsRouter);
 
-  // Contract Forecasting routes
+  // Contract Forecasting routes with CMiC calculations
   app.get("/api/reporting/contract-forecasting/:projectId", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
     try {
       const { projectId } = req.params;
-      const { includePending = 'true', revenueMethod = 'PERCENT_COMPLETE' } = req.query;
+      const includePending = req.query.include_pending !== 'false';
       
       // Get project details
       const project = await storage.getProject(projectId);
@@ -1630,130 +1630,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      // Get cost codes from contract estimates
-      const estimates = await db.select().from(contractEstimates)
-        .where(eq(contractEstimates.projectId, projectId));
+      const { ContractForecastingService, CMIC_HEADERS } = await import('./services/contract-forecasting');
+      const contractForecastingService = new ContractForecastingService();
+      const report = await contractForecastingService.generateReport(projectId, includePending);
       
-      // Group estimates by cost code
-      const costCodeData = estimates.reduce((acc: any, estimate: any) => {
-        if (!acc[estimate.costCode]) {
-          acc[estimate.costCode] = {
-            costCode: estimate.costCode,
-            description: estimate.materialCategory || estimate.title,
-            budget: 0,
-            estimates: []
-          };
-        }
-        acc[estimate.costCode].budget += parseFloat(estimate.awardedValue || '0');
-        acc[estimate.costCode].estimates.push(estimate);
-        return acc;
-      }, {});
-
-      // Get all project purchase orders and invoices once
-      const allPurchaseOrders = await storage.getPurchaseOrdersByProject(projectId);
-      const allProjectInvoices = await db.select().from(invoices)
-        .where(eq(invoices.projectId, projectId));
-
-      // Get financial data for each cost code
-      const forecastData = await Promise.all(
-        Object.keys(costCodeData).map(async (costCode) => {
-          const costCodeInfo = costCodeData[costCode];
-          
-          // For now, we'll distribute spending proportionally across cost codes
-          // In a real system, you'd link POs/invoices to specific cost codes
-          const totalBudget = Object.values(costCodeData).reduce((sum: number, cc: any) => sum + cc.budget, 0);
-          const costCodeProportion = costCodeInfo.budget / totalBudget;
-          
-          // Get spent amounts (approved/paid invoices) - distribute proportionally
-          const totalSpent = allProjectInvoices
-            .filter((invoice: any) => ['approved', 'paid'].includes(invoice.status))
-            .reduce((sum: number, invoice: any) => sum + parseFloat(invoice.totalAmount || '0'), 0);
-          const spent = totalSpent * costCodeProportion;
-
-          // Get committed amounts (active POs) - distribute proportionally  
-          const totalCommitted = allPurchaseOrders
-            .filter((po: any) => !['cancelled', 'draft'].includes(po.status))
-            .reduce((sum: number, po: any) => sum + parseFloat(po.totalAmount || '0'), 0);
-          const committed = totalCommitted * costCodeProportion;
-
-          // Calculate ETC (Estimate to Complete)
-          // ETC should be the remaining work needed to complete the cost code
-          const etc = Math.max(costCodeInfo.budget - spent - committed, 0);
-          
-          // Calculate percentage complete based on spending
-          const percentComplete = costCodeInfo.budget > 0 ? (spent / costCodeInfo.budget) * 100 : 0;
-          
-          // Calculate projected cost (should equal budget if no overruns)
-          const pendingCos = 0; // Placeholder - would calculate from draft change orders
-          const projectedCost = spent + committed + etc + (includePending === 'true' ? pendingCos : 0);
-          
-          
-          // Calculate revenue forecast based on method
-          let revenueForcast = costCodeInfo.budget; // Default: full contract value
-          
-          if (revenueMethod === 'PERCENT_COMPLETE') {
-            // Revenue recognition based on percentage of work completed
-            // Only recognize revenue for work actually completed
-            const completionPct = Math.min(percentComplete / 100, 1);
-            revenueForcast = costCodeInfo.budget * completionPct;
-          } else if (revenueMethod === 'RATE') {
-            // Full contract value method - recognize full revenue potential
-            // This is the traditional forecasting approach showing total contract value
-            revenueForcast = costCodeInfo.budget;
-          } else if (revenueMethod === 'MANUAL') {
-            // Manual method would allow overrides (not implemented yet)
-            // For now, default to full contract value
-            revenueForcast = costCodeInfo.budget;
-          }
-          
-          // Calculate profit/variance (revenue minus projected total cost)
-          const profitVariance = revenueForcast - projectedCost;
-
-          return {
-            costCode,
-            description: costCodeInfo.description,
-            currentBudget: costCodeInfo.budget,
-            spent,
-            committed,
-            spentCommitted: spent + committed,
-            pendingCos: includePending === 'true' ? pendingCos : 0,
-            etc,
-            projectedCost,
-            revenueForcast,
-            profitVariance,
-            percentComplete,
-            status: profitVariance >= 0 ? 'on_track' : 'over_budget'
-          };
-        })
-      );
-
-      // Calculate summary totals
-      const summary = {
-        totalBudget: forecastData.reduce((sum, row) => sum + row.currentBudget, 0),
-        totalSpent: forecastData.reduce((sum, row) => sum + row.spent, 0),
-        totalCommitted: forecastData.reduce((sum, row) => sum + row.committed, 0),
-        totalPendingCos: forecastData.reduce((sum, row) => sum + row.pendingCos, 0),
-        totalEtc: forecastData.reduce((sum, row) => sum + row.etc, 0),
-        totalProjectedCost: forecastData.reduce((sum, row) => sum + row.projectedCost, 0),
-        totalRevenueForcast: forecastData.reduce((sum, row) => sum + row.revenueForcast, 0),
-        totalProfitVariance: forecastData.reduce((sum, row) => sum + row.profitVariance, 0),
-        overallCompletion: forecastData.length > 0 ? 
-          forecastData.reduce((sum, row) => sum + row.percentComplete, 0) / forecastData.length : 0
-      };
-
       res.json({
+        ...report,
+        headers: CMIC_HEADERS,
+        includePending,
+        projectId,
         project: {
           id: project.id,
           name: project.name,
           status: project.status
-        },
-        summary,
-        costCodes: forecastData
+        }
       });
-
     } catch (error) {
       console.error('Contract forecasting error:', error);
-      res.status(500).json({ error: "Failed to fetch contract forecasting data" });
+      res.status(500).json({ error: 'Failed to generate contract forecasting report' });
+    }
+  });
+
+  // Contract Forecasting verification endpoint
+  app.get("/api/reporting/contract-forecasting/:projectId/verify", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { projectId } = req.params;
+      const includePending = req.query.include_pending !== 'false';
+      
+      // Get project details
+      const project = await storage.getProject(projectId);
+      if (!project || project.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const { ContractForecastingService, CMIC_HEADERS } = await import('./services/contract-forecasting');
+      const contractForecastingService = new ContractForecastingService();
+      const report = await contractForecastingService.generateReport(projectId, includePending);
+      const checks = contractForecastingService.generateVerificationChecks(report.lines, includePending);
+      
+      res.json({
+        ...report,
+        checks,
+        headers: CMIC_HEADERS,
+        includePending,
+        projectId,
+        project: {
+          id: project.id,
+          name: project.name,
+          status: project.status
+        }
+      });
+    } catch (error) {
+      console.error('Contract forecasting verification error:', error);
+      res.status(500).json({ error: 'Failed to verify contract forecasting' });
     }
   });
 
@@ -1941,17 +1870,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reporting/contract-forecasting/:projectId/export.csv", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
     try {
       const { projectId } = req.params;
+      const includePending = req.query.include_pending !== 'false';
       
-      // Get forecasting data (reuse logic from main endpoint)
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="contract-forecast.csv"');
-      
-      const csvData = "Cost Code,Description,Budget,Spent,Committed,ETC,Projected Cost,Revenue Forecast,Profit/Variance\n";
-      res.send(csvData);
+      // Get project details
+      const project = await storage.getProject(projectId);
+      if (!project || project.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Project not found" });
+      }
 
+      const { ContractForecastingService, CMIC_HEADERS } = await import('./services/contract-forecasting');
+      const contractForecastingService = new ContractForecastingService();
+      const report = await contractForecastingService.generateReport(projectId, includePending);
+      
+      // Generate CSV with CMiC headers
+      const csvRows = [];
+      csvRows.push(['Cost Code/Category', ...CMIC_HEADERS]);
+      
+      for (const line of report.lines) {
+        csvRows.push([
+          line.costCode,
+          line.A, line.B, line.C, line.currentPeriodCost,
+          line.D_int, line.E_ext, line.F_adj, line.G_ctc, line.H_ctc_unposted, line.I_cost_fcst,
+          line.J_rev_budget, line.K_unposted_rev, line.L_unposted_rev_adj, line.M_rev_fcst, line.N_gain_loss
+        ]);
+      }
+      
+      const csvContent = csvRows.map(row => 
+        row.map(cell => typeof cell === 'string' && cell.includes(',') ? `"${cell}"` : cell).join(',')
+      ).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=contract_forecasting_${projectId}.csv`);
+      res.send(csvContent);
     } catch (error) {
-      console.error('CSV export error:', error);
-      res.status(500).json({ error: "Failed to export CSV" });
+      console.error('Contract forecasting CSV export error:', error);
+      res.status(500).json({ error: 'Failed to export contract forecasting CSV' });
     }
   });
 

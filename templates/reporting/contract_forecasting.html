@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Forecasting - BuildProcure AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .header-cell {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            min-height: 200px;
+            padding: 8px 4px;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+        .data-cell {
+            text-align: right;
+            padding: 4px 8px;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        .cost-code-cell {
+            text-align: left;
+            padding: 4px 8px;
+            font-weight: 500;
+        }
+        .totals-row {
+            background-color: #f3f4f6;
+            font-weight: bold;
+            border-top: 2px solid #374151;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-2xl font-bold text-gray-900">Contract Forecasting</h1>
+                <div class="flex space-x-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" 
+                               id="includePendingToggle" 
+                               {{ 'checked' if include_pending else '' }}
+                               onchange="togglePending()"
+                               class="mr-2">
+                        Include Pending COs
+                    </label>
+                    <a href="/reporting/contract-forecasting/{{ project_id }}/verify{{ '?include_pending=' + ('true' if include_pending else 'false') }}" 
+                       class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Verify Mapping
+                    </a>
+                    <a href="/reporting/contract-forecasting/{{ project_id }}/export.csv{{ '?include_pending=' + ('true' if include_pending else 'false') }}" 
+                       class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Export CSV
+                    </a>
+                </div>
+            </div>
+            <p class="text-gray-600">CMiC-style contract forecasting with A…N calculations and Current Period Cost tracking</p>
+        </div>
+
+        <!-- Forecasting Table -->
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-semibold text-gray-900 sticky left-0 bg-gray-100 z-10">
+                                Cost Code/Category
+                            </th>
+                            {% for header in headers %}
+                            <th class="header-cell bg-gray-100 border-l border-gray-200 text-xs">
+                                {{ header|safe }}
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in lines %}
+                        <tr class="hover:bg-gray-50 border-b border-gray-200">
+                            <td class="cost-code-cell sticky left-0 bg-white z-10 border-r border-gray-200">
+                                {{ line.cost_code }}
+                            </td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.A) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.B) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.C) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.cur) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.D_int) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.E_ext) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.F_adj) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.G_ctc) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.H_ctc_unposted) }}</td>
+                            <td class="data-cell font-semibold">${{ "{:,.2f}".format(line.I_cost_fcst) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.J_rev_budget) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.K_unposted_rev) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(line.L_unposted_rev_adj) }}</td>
+                            <td class="data-cell font-semibold">${{ "{:,.2f}".format(line.M_rev_fcst) }}</td>
+                            <td class="data-cell font-semibold {{ 'text-green-600' if line.N_gain_loss > 0 else 'text-red-600' if line.N_gain_loss < 0 else 'text-gray-900' }}">
+                                ${{ "{:,.2f}".format(line.N_gain_loss) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <!-- Totals Row -->
+                        <tr class="totals-row">
+                            <td class="cost-code-cell sticky left-0 bg-gray-100 z-10 border-r border-gray-200">
+                                TOTALS
+                            </td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.A) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.B) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.C) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.cur) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.D) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.E) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.F) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.G) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.H) }}</td>
+                            <td class="data-cell font-bold text-lg">${{ "{:,.2f}".format(totals.I) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.J) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.K) }}</td>
+                            <td class="data-cell">${{ "{:,.2f}".format(totals.L) }}</td>
+                            <td class="data-cell font-bold text-lg">${{ "{:,.2f}".format(totals.M) }}</td>
+                            <td class="data-cell font-bold text-lg {{ 'text-green-600' if totals.N > 0 else 'text-red-600' if totals.N < 0 else 'text-gray-900' }}">
+                                ${{ "{:,.2f}".format(totals.N) }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
+            <h3 class="text-lg font-semibold mb-4">CMiC Formula Legend</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div>
+                    <strong>A:</strong> Original Budget + Posted PCIs<br>
+                    <strong>B:</strong> C - SCOs Issued On Unposted PCI/OCO<br>
+                    <strong>C:</strong> Committed $ + $ Spent Outside Commitment<br>
+                    <strong>G:</strong> max(A - C, 0), if A < B then 0<br>
+                    <strong>I:</strong> C + G + H (Cost Forecast)
+                </div>
+                <div>
+                    <strong>D:</strong> Unposted Internal PCI Cost Budget<br>
+                    <strong>E:</strong> Unposted External PCI Cost Budget<br>
+                    <strong>F:</strong> D + E (unless overridden)<br>
+                    <strong>H:</strong> F - Advanced SCOs (≥0)<br>
+                    <strong>M:</strong> J + L (Revenue Forecast)
+                </div>
+                <div>
+                    <strong>J:</strong> Original Revenue Budget + Posted PCIs<br>
+                    <strong>K:</strong> Unposted PCI Revenue Budget<br>
+                    <strong>L:</strong> K (unless overridden)<br>
+                    <strong>N:</strong> M - I (Projected Gain/Loss)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function togglePending() {
+            const checkbox = document.getElementById('includePendingToggle');
+            const newValue = checkbox.checked ? 'true' : 'false';
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('include_pending', newValue);
+            window.location.href = currentUrl.toString();
+        }
+    </script>
+</body>
+</html>

@@ -38,6 +38,7 @@ import ProjectMaterials from "@/pages/ProjectMaterials";
 import ProjectMaterialUpload from "@/pages/ProjectMaterialUpload";
 import Reports from "@/pages/Reports";
 import ContractForecasting from "@/pages/ContractForecasting";
+import ContractForecastingCMiC from "@/pages/ContractForecastingCMiC";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/Sidebar";
@@ -279,7 +280,7 @@ export default function App() {
               } />
               <Route path="/reports/contract-forecasting/:projectId" element={
                 <ProtectedRoute>
-                  <ContractForecasting />
+                  <ContractForecastingCMiC />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={
