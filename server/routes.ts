@@ -1676,15 +1676,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .reduce((sum: number, po: any) => sum + parseFloat(po.totalAmount || '0'), 0);
           const committed = totalCommitted * costCodeProportion;
 
-          // Calculate ETC
+          // Calculate ETC (Estimate to Complete)
+          // ETC should be the remaining work needed to complete the cost code
           const etc = Math.max(costCodeInfo.budget - spent - committed, 0);
           
-          // Calculate percentage complete
+          // Calculate percentage complete based on spending
           const percentComplete = costCodeInfo.budget > 0 ? (spent / costCodeInfo.budget) * 100 : 0;
           
-          // Calculate projected cost
-          const pendingCos = 0; // Placeholder - would calculate from draft COs
+          // Calculate projected cost (should equal budget if no overruns)
+          const pendingCos = 0; // Placeholder - would calculate from draft change orders
           const projectedCost = spent + committed + etc + (includePending === 'true' ? pendingCos : 0);
+          
+          // Debug: Add logging to verify calculations
+          console.log(`Cost Code: ${costCode}, Budget: ${costCodeInfo.budget}, Spent: ${spent.toFixed(2)}, Committed: ${committed.toFixed(2)}, ETC: ${etc.toFixed(2)}, Projected: ${projectedCost.toFixed(2)}`);
           
           // Calculate revenue forecast based on method
           // In construction, revenue typically equals the full contract value for that cost code
