@@ -1,0 +1,61 @@
+submission data: {vendorId: 'c889dece-8e4c-4c68-add2-7d2dd1c98498', projectId: '9d78579e-5d55-466a-8232-2c45c041dd66', shipToAddress: '123 Fake St. Riverside, CA 92505', notes: 'Created from requisition: Toilet Partitions RELEASE', lines: Array(1)}
+PurchaseOrderForm.tsx:249 Form validation state: {}
+PurchaseOrderForm.tsx:250 Form is valid: false
+PurchaseOrderForm.tsx:251 Lines state: [{…}]
+PurchaseOrderForm.tsx:134  POST https://8a3848a7-162d-414c-b34e-813596e4af8a-00-3ut4cipsf7wck.picard.replit.dev/api/purchase-orders 400 (Bad Request)
+mutationFn @ PurchaseOrderForm.tsx:134
+fn @ @tanstack_react-query.js?v=1f5bdced:1189
+run @ @tanstack_react-query.js?v=1f5bdced:494
+start @ @tanstack_react-query.js?v=1f5bdced:536
+execute @ @tanstack_react-query.js?v=1f5bdced:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=1f5bdced:2630
+(anonymous) @ @tanstack_react-query.js?v=1f5bdced:3295
+onSubmit @ PurchaseOrderForm.tsx:320
+(anonymous) @ chunk-4BFJKWC4.js?v=1f5bdced:1465
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=1f5bdced:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=1f5bdced:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=1f5bdced:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=1f5bdced:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=1f5bdced:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=1f5bdced:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=1f5bdced:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=1f5bdced:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=1f5bdced:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=1f5bdced:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=1f5bdced:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=1f5bdced:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=1f5bdced:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=1f5bdced:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=1f5bdced:5449Understand this error
+PurchaseOrderForm.tsx:144 PO Creation Error: {error: 'Invalid purchase order data'}
+mutationFn @ PurchaseOrderForm.tsx:144
+await in mutationFn
+fn @ @tanstack_react-query.js?v=1f5bdced:1189
+run @ @tanstack_react-query.js?v=1f5bdced:494
+start @ @tanstack_react-query.js?v=1f5bdced:536
+execute @ @tanstack_react-query.js?v=1f5bdced:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=1f5bdced:2630
+(anonymous) @ @tanstack_react-query.js?v=1f5bdced:3295
+onSubmit @ PurchaseOrderForm.tsx:320
+(anonymous) @ chunk-4BFJKWC4.js?v=1f5bdced:1465
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=1f5bdced:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=1f5bdced:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=1f5bdced:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=1f5bdced:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=1f5bdced:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=1f5bdced:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=1f5bdced:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=1f5bdced:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=1f5bdced:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=1f5bdced:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=1f5bdced:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=1f5bdced:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=1f5bdced:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=1f5bdced:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=1f5bdced:5449Understand this error
+PurchaseOrderForm.tsx:158 PO Creation Failed: Error: Invalid purchase order data
+    at Object.mutationFn (PurchaseOrderForm.tsx:145:15)

@@ -1201,7 +1201,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/purchase-orders", requireRole(['Admin', 'PM', 'Purchaser']), async (req: AuthenticatedRequest, res) => {
     try {
+      console.log('=== PURCHASE ORDER CREATION ===');
+      console.log('Raw request body:', JSON.stringify(req.body, null, 2));
       const poData = insertPurchaseOrderSchema.parse(req.body);
+      console.log('Parsed PO data:', JSON.stringify(poData, null, 2));
       
       // Generate PO number in format: Project Number - Phase Code - Users Initials
       let number = '';
@@ -1243,7 +1246,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(purchaseOrder);
     } catch (error) {
-      res.status(400).json({ error: "Invalid purchase order data" });
+      console.error('=== PO CREATION ERROR ===');
+      console.error('Error details:', error);
+      if (error && typeof error === 'object' && 'issues' in error) {
+        console.log('Validation issues:', JSON.stringify((error as any).issues, null, 2));
+      }
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: "Invalid purchase order data" });
+      }
     }
   });
 
