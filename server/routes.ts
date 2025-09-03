@@ -1649,23 +1649,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return acc;
       }, {});
 
+      // Get all project purchase orders and invoices once
+      const allPurchaseOrders = await storage.getPurchaseOrdersByProject(projectId);
+      const allProjectInvoices = await db.select().from(invoices)
+        .where(eq(invoices.projectId, projectId));
+
       // Get financial data for each cost code
       const forecastData = await Promise.all(
         Object.keys(costCodeData).map(async (costCode) => {
           const costCodeInfo = costCodeData[costCode];
           
-          // Get spent amounts (approved invoices)
-          const projectInvoices = await db.select().from(invoices)
-            .where(eq(invoices.projectId, projectId));
-          const spent = projectInvoices
-            .filter((invoice: any) => invoice.status === 'approved')
+          // For now, we'll distribute spending proportionally across cost codes
+          // In a real system, you'd link POs/invoices to specific cost codes
+          const totalBudget = Object.values(costCodeData).reduce((sum: number, cc: any) => sum + cc.budget, 0);
+          const costCodeProportion = costCodeInfo.budget / totalBudget;
+          
+          // Get spent amounts (approved/paid invoices) - distribute proportionally
+          const totalSpent = allProjectInvoices
+            .filter((invoice: any) => ['approved', 'paid'].includes(invoice.status))
             .reduce((sum: number, invoice: any) => sum + parseFloat(invoice.totalAmount || '0'), 0);
+          const spent = totalSpent * costCodeProportion;
 
-          // Get committed amounts (PO lines)
-          const purchaseOrders = await storage.getPurchaseOrdersByProject(projectId);
-          const committed = purchaseOrders
-            .filter((po: any) => po.status !== 'cancelled')
+          // Get committed amounts (active POs) - distribute proportionally  
+          const totalCommitted = allPurchaseOrders
+            .filter((po: any) => !['cancelled', 'draft'].includes(po.status))
             .reduce((sum: number, po: any) => sum + parseFloat(po.totalAmount || '0'), 0);
+          const committed = totalCommitted * costCodeProportion;
 
           // Calculate ETC
           const etc = Math.max(costCodeInfo.budget - spent - committed, 0);
