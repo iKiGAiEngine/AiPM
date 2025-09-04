@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project } from '@shared/schema';
 
@@ -27,6 +27,18 @@ interface ProjectProviderProps {
 export function ProjectProvider({ children }: ProjectProviderProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const { isAuthenticated, user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Debug logging for projects state
+  console.log('ProjectContext - Auth state:', { isAuthenticated, hasUser: !!user, authTime: Date.now() });
+  
+  // Force refetch when authentication state changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('ProjectContext - Authentication completed, invalidating projects query');
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+    }
+  }, [isAuthenticated, user, queryClient]);
 
   // Fetch all projects for the user's organization - only when authenticated
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
@@ -54,9 +66,13 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       }
       
       const data = await response.json();
+      console.log('ProjectContext - Projects fetched:', data.length, 'projects');
       return data;
     },
     enabled: isAuthenticated && !!user, // Only fetch when authenticated and user is loaded
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 0, // Override global staleTime for this query
     retry: 1, // Reduce retries to avoid spam
   });
   

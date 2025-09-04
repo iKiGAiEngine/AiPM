@@ -105,6 +105,9 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
   const { user } = useAuth();
   const { selectedProject, setSelectedProject, projects, isLoadingProjects } = useProject();
   
+  // Debug logging for mobile nav projects
+  console.log('MobileNav - Projects:', projects.length, 'Loading:', isLoadingProjects, 'Open:', isOpen);
+  
 
   const canAccess = (roles: string[]) => {
     return user && roles.includes(user.role);
