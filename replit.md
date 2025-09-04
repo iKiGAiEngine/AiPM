@@ -2,6 +2,12 @@
 
 This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract estimates, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
+## Recent Updates (September 4, 2025)
+- **CONTRACT FORECASTING DATA LINKAGE FIXED**: Fixed missing purchase order data in forecasting reports by ensuring PO lines properly link to project materials
+- **MATERIAL LINKAGE PREVENTION**: Enhanced PurchaseOrderForm to automatically include projectMaterialId for all future POs, preventing orphaned purchase order lines
+- **PROFIT MARGIN CALCULATIONS**: Updated revenue forecasting to use 15% profit margin over costs for realistic profit/loss projections
+- **PO-MATERIAL TRACEABILITY**: Fixed fire extinguisher PO linkage and verified all cost codes now show committed amounts correctly in Contract Forecasting
+
 ## Recent Updates (September 3, 2025)
 - **PROCUREMENT WORKFLOW STREAMLINED**: Simplified requisition workflow for single-person operations by eliminating approval redundancy
 - **AUTOMATIC STATUS MANAGEMENT**: Requisitions automatically update to 'converted' status when purchase orders are created, hiding duplicate action buttons

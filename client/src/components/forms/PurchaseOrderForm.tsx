@@ -22,6 +22,7 @@ const poLineSchema = z.object({
   quantity: z.number().min(0.01, "Quantity must be greater than 0"),
   unitPrice: z.number().min(0, "Unit price must be non-negative"),
   unit: z.string().min(1, "Unit is required"),
+  projectMaterialId: z.string().optional(),
 });
 
 const purchaseOrderSchema = z.object({
@@ -49,7 +50,8 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
           description: line.description,
           quantity: parseFloat(line.quantity?.toString() || '1'),
           unitPrice: parseFloat(line.estimatedCost?.toString() || '0') / parseFloat(line.quantity?.toString() || '1'),
-          unit: line.unit
+          unit: line.unit,
+          projectMaterialId: line.materialId || undefined
         }))
       : [{ description: "", quantity: 1, unitPrice: 0, unit: "EA" }]
   );
@@ -179,7 +181,8 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
       description: `${material.model ? material.model + ' - ' : ''}${material.description}`,
       quantity: parseFloat(material.qty) || 1,
       unitPrice: parseFloat(material.unitPrice) || 0,
-      unit: material.unit || "EA"
+      unit: material.unit || "EA",
+      projectMaterialId: material.id
     };
     setLines([...lines, newLine]);
   };
@@ -230,7 +233,8 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
       description: `${material.model ? material.model + ' - ' : ''}${material.description}`,
       quantity: parseFloat(material.qty) || 1,
       unitPrice: parseFloat(material.unitPrice) || 0,
-      unit: material.unit || "EA"
+      unit: material.unit || "EA",
+      projectMaterialId: material.id
     }));
     
     setLines([...lines, ...newLines]);
