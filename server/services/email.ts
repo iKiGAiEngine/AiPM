@@ -253,6 +253,68 @@ Thank you for your business.
 
     return await this.sendEmail(userEmail, template);
   }
+
+  async sendDamageReportNotification(po: any, damageReportDeadline: Date): Promise<boolean> {
+    const template: EmailTemplate = {
+      subject: `Damage Report Window Open - PO ${po.number}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+            <h2 style="color: #92400e; margin-top: 0;">⚠️ Damage Report Window Now Open</h2>
+          </div>
+          
+          <h3>Purchase Order ${po.number} Has Been Delivered</h3>
+          
+          <p>Materials from PO ${po.number} have been successfully delivered to the project site.</p>
+          
+          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <h4 style="margin-top: 0; color: #374151;">48-Hour Damage Report Period</h4>
+            <p style="margin-bottom: 8px;"><strong>Report Deadline:</strong> ${damageReportDeadline.toLocaleString()}</p>
+            <p style="margin-bottom: 0;">You have <strong>48 hours</strong> from delivery to report any damaged or missing materials.</p>
+          </div>
+          
+          <div style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <h4 style="margin-top: 0; color: #dc2626;">Important Notice</h4>
+            <p style="margin-bottom: 0;">If no damage report is filed within 48 hours, materials will be considered accepted in good condition. After this period, damage claims cannot be processed.</p>
+          </div>
+          
+          <p>If you notice any damaged or missing materials, please contact our procurement team immediately.</p>
+          
+          <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 0;">
+              This is an automated notification from BuildProcure AI.<br>
+              <a href="${process.env.APP_URL || 'http://localhost:5000'}">Login to view purchase order details</a>
+            </p>
+          </div>
+        </div>
+      `,
+      text: `
+DAMAGE REPORT WINDOW NOW OPEN
+
+Purchase Order ${po.number} Has Been Delivered
+
+Materials from PO ${po.number} have been successfully delivered to the project site.
+
+48-HOUR DAMAGE REPORT PERIOD
+Report Deadline: ${damageReportDeadline.toLocaleString()}
+
+You have 48 hours from delivery to report any damaged or missing materials.
+
+IMPORTANT NOTICE: If no damage report is filed within 48 hours, materials will be considered accepted in good condition. After this period, damage claims cannot be processed.
+
+If you notice any damaged or missing materials, please contact our procurement team immediately.
+
+BuildProcure AI
+${process.env.APP_URL || 'http://localhost:5000'}
+      `
+    };
+
+    // Send to project manager and organization admin
+    // For now, we'll send to a default email - this should be configurable per organization
+    const recipientEmail = process.env.DAMAGE_REPORT_EMAIL || 'procurement@example.com';
+    
+    return await this.sendEmail(recipientEmail, template);
+  }
 }
 
 export const emailService = new EmailService();

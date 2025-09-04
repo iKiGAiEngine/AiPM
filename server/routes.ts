@@ -1322,6 +1322,277 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced PO Workflow API Routes
+  
+  // Vendor Acknowledgment
+  app.post("/api/purchase-orders/:id/acknowledge", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { estimatedShipmentDate, notes } = req.body;
+      const user = req.user!;
+
+      // Verify PO exists and belongs to organization
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== user.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      // Validate status transition
+      if (po.status !== 'sent') {
+        return res.status(400).json({ error: "Purchase order must be in 'sent' status to acknowledge" });
+      }
+
+      // Update PO with acknowledgment data
+      const updateData: any = {
+        status: 'pending_shipment',
+        acknowledgedAt: new Date(),
+      };
+
+      if (estimatedShipmentDate) {
+        updateData.estimatedShipmentDate = new Date(estimatedShipmentDate);
+      }
+
+      // Add to status history
+      const statusHistory = po.statusHistory || [];
+      statusHistory.push({
+        timestamp: new Date().toISOString(),
+        fromStatus: 'sent',
+        toStatus: 'pending_shipment',
+        userId: user.id,
+        reason: 'Vendor acknowledgment',
+        metadata: { estimatedShipmentDate, notes }
+      });
+      updateData.statusHistory = statusHistory;
+
+      await storage.updatePurchaseOrder(req.params.id, updateData);
+
+      res.json({ success: true, message: "Purchase order acknowledged successfully" });
+    } catch (error) {
+      console.error("PO acknowledgment error:", error);
+      res.status(500).json({ error: "Failed to acknowledge purchase order" });
+    }
+  });
+
+  // Add Tracking Information
+  app.post("/api/purchase-orders/:id/tracking", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { trackingNumber, carrierName } = req.body;
+      const user = req.user!;
+
+      // Validate required fields
+      if (!trackingNumber || !carrierName) {
+        return res.status(400).json({ error: "Tracking number and carrier name are required" });
+      }
+
+      // Verify PO exists and belongs to organization
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== user.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      // Validate status transition
+      if (po.status !== 'pending_shipment') {
+        return res.status(400).json({ error: "Purchase order must be in 'pending_shipment' status to add tracking" });
+      }
+
+      // Update PO with tracking data
+      const updateData: any = {
+        status: 'pending_delivery',
+        trackingNumber,
+        carrierName,
+      };
+
+      // Add to status history
+      const statusHistory = po.statusHistory || [];
+      statusHistory.push({
+        timestamp: new Date().toISOString(),
+        fromStatus: 'pending_shipment',
+        toStatus: 'pending_delivery',
+        userId: user.id,
+        reason: 'Tracking information added',
+        metadata: { trackingNumber, carrierName }
+      });
+      updateData.statusHistory = statusHistory;
+
+      await storage.updatePurchaseOrder(req.params.id, updateData);
+
+      res.json({ success: true, message: "Tracking information added successfully" });
+    } catch (error) {
+      console.error("Add tracking error:", error);
+      res.status(500).json({ error: "Failed to add tracking information" });
+    }
+  });
+
+  // Mark as Delivered
+  app.post("/api/purchase-orders/:id/delivered", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { deliveryNotes } = req.body;
+      const user = req.user!;
+
+      // Verify PO exists and belongs to organization
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== user.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      // Validate status transition
+      if (po.status !== 'pending_delivery') {
+        return res.status(400).json({ error: "Purchase order must be in 'pending_delivery' status to mark as delivered" });
+      }
+
+      const now = new Date();
+      const damageReportDeadline = new Date(now.getTime() + (48 * 60 * 60 * 1000)); // 48 hours
+
+      // Update PO with delivery data
+      const updateData: any = {
+        status: 'delivered',
+        deliveredAt: now,
+        damageReportDeadline,
+        damageReportSent: false,
+      };
+
+      if (deliveryNotes) {
+        updateData.deliveryNotes = deliveryNotes;
+      }
+
+      // Add to status history
+      const statusHistory = po.statusHistory || [];
+      statusHistory.push({
+        timestamp: now.toISOString(),
+        fromStatus: 'pending_delivery',
+        toStatus: 'delivered',
+        userId: user.id,
+        reason: 'Delivery confirmed',
+        metadata: { deliveryNotes, damageReportDeadline: damageReportDeadline.toISOString() }
+      });
+      updateData.statusHistory = statusHistory;
+
+      await storage.updatePurchaseOrder(req.params.id, updateData);
+
+      // Send damage report email notification (48-hour deadline)
+      if (emailService) {
+        try {
+          await emailService.sendDamageReportNotification(po, damageReportDeadline);
+        } catch (emailError) {
+          console.error("Failed to send damage report email:", emailError);
+          // Don't fail the delivery update if email fails
+        }
+      }
+
+      res.json({ success: true, message: "Purchase order marked as delivered" });
+    } catch (error) {
+      console.error("Mark delivered error:", error);
+      res.status(500).json({ error: "Failed to mark purchase order as delivered" });
+    }
+  });
+
+  // Match Invoice
+  app.post("/api/purchase-orders/:id/match-invoice", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { invoiceId } = req.body;
+      const user = req.user!;
+
+      // Verify PO exists and belongs to organization
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== user.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      // Validate status transition
+      if (po.status !== 'delivered') {
+        return res.status(400).json({ error: "Purchase order must be delivered to match invoice" });
+      }
+
+      const now = new Date();
+
+      // Update PO with invoice match data
+      const updateData: any = {
+        status: 'matched_pending_payment',
+        invoiceId,
+        invoiceMatchedAt: now,
+      };
+
+      // Add to status history
+      const statusHistory = po.statusHistory || [];
+      statusHistory.push({
+        timestamp: now.toISOString(),
+        fromStatus: 'delivered',
+        toStatus: 'matched_pending_payment',
+        userId: user.id,
+        reason: 'Invoice matched',
+        metadata: { invoiceId }
+      });
+      updateData.statusHistory = statusHistory;
+
+      await storage.updatePurchaseOrder(req.params.id, updateData);
+
+      res.json({ success: true, message: "Invoice matched successfully" });
+    } catch (error) {
+      console.error("Invoice match error:", error);
+      res.status(500).json({ error: "Failed to match invoice" });
+    }
+  });
+
+  // Move to NBS Warehouse
+  app.post("/api/purchase-orders/:id/warehouse", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { warehouseNotes } = req.body;
+      const user = req.user!;
+
+      // Verify PO exists and belongs to organization
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== user.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      // Validate status transition (can be from delivered or matched_pending_payment)
+      if (!['delivered', 'matched_pending_payment'].includes(po.status)) {
+        return res.status(400).json({ error: "Purchase order must be delivered or invoice-matched to move to warehouse" });
+      }
+
+      const now = new Date();
+
+      // Update PO with warehouse data
+      const updateData: any = {
+        status: 'received_nbs_wh',
+        nbsWarehouseReceivedAt: now,
+      };
+
+      // Add to status history
+      const statusHistory = po.statusHistory || [];
+      statusHistory.push({
+        timestamp: now.toISOString(),
+        fromStatus: po.status,
+        toStatus: 'received_nbs_wh',
+        userId: user.id,
+        reason: 'Moved to NBS warehouse',
+        metadata: { warehouseNotes }
+      });
+      updateData.statusHistory = statusHistory;
+
+      await storage.updatePurchaseOrder(req.params.id, updateData);
+
+      res.json({ success: true, message: "Materials moved to NBS warehouse successfully" });
+    } catch (error) {
+      console.error("Warehouse move error:", error);
+      res.status(500).json({ error: "Failed to move materials to warehouse" });
+    }
+  });
+
+  // Get PO Status History
+  app.get("/api/purchase-orders/:id/history", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      res.json({ statusHistory: po.statusHistory || [] });
+    } catch (error) {
+      console.error("Get PO history error:", error);
+      res.status(500).json({ error: "Failed to fetch purchase order history" });
+    }
+  });
+
   // Delivery routes
   app.get("/api/deliveries", async (req: AuthenticatedRequest, res) => {
     try {

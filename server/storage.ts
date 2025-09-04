@@ -99,6 +99,7 @@ export interface IStorage {
   getPurchaseOrdersByOrganization(organizationId: string): Promise<PurchaseOrder[]>;
   getPurchaseOrdersByProject(projectId: string): Promise<PurchaseOrder[]>;
   getPurchaseOrdersByVendor(vendorId: string): Promise<PurchaseOrder[]>;
+  updatePurchaseOrder(id: string, updates: Partial<PurchaseOrder>): Promise<void>;
   updatePurchaseOrderStatus(id: string, status: string): Promise<void>;
   
   // Purchase Order Lines
@@ -521,6 +522,10 @@ export class DatabaseStorage implements IStorage {
     .orderBy(desc(purchaseOrders.createdAt));
   }
 
+  async updatePurchaseOrder(id: string, updates: Partial<PurchaseOrder>): Promise<void> {
+    await db.update(purchaseOrders).set(updates).where(eq(purchaseOrders.id, id));
+  }
+
   async updatePurchaseOrderStatus(id: string, status: string): Promise<void> {
     await db.update(purchaseOrders).set({ status: status as any }).where(eq(purchaseOrders.id, id));
   }
@@ -632,8 +637,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(purchaseOrders.organizationId, organizationId),
-          ne(purchaseOrders.status, 'received'), // Exclude fully received POs
-          ne(purchaseOrders.status, 'closed')    // Exclude closed POs
+          ne(purchaseOrders.status, 'delivered' as any), // Exclude delivered POs
+          ne(purchaseOrders.status, 'closed' as any)    // Exclude closed POs
         )
       )
       .orderBy(desc(purchaseOrders.createdAt));
