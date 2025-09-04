@@ -173,15 +173,39 @@ Thank you for your business.
 
   async sendEmail(to: string, template: EmailTemplate, attachments?: Array<{ filename: string; path: string }>): Promise<boolean> {
     try {
-      // TODO: Implement actual email sending with nodemailer or similar
-      console.log(`Sending email to: ${to}`);
-      console.log(`Subject: ${template.subject}`);
-      console.log(`Attachments: ${attachments?.length || 0}`);
-      
-      // Simulate email sending delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return true;
+      // Use SendGrid if available, otherwise simulate
+      if (process.env.SENDGRID_API_KEY) {
+        const sgMail = require('@sendgrid/mail');
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        
+        const msg = {
+          to: to,
+          from: 'noreply@fieldmaterials.com',
+          subject: template.subject,
+          text: template.text,
+          html: template.html,
+          attachments: attachments?.map(att => ({
+            filename: att.filename,
+            content: require('fs').readFileSync(att.path).toString('base64'),
+            type: 'application/pdf',
+            disposition: 'attachment'
+          }))
+        };
+
+        await sgMail.send(msg);
+        console.log(`Email sent successfully to ${to} via SendGrid`);
+        return true;
+      } else {
+        // Fallback simulation
+        console.log(`Sending email to: ${to}`);
+        console.log(`Subject: ${template.subject}`);
+        console.log(`Attachments: ${attachments?.length || 0}`);
+        
+        // Simulate email sending delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return true;
+      }
     } catch (error) {
       console.error("Email sending error:", error);
       return false;

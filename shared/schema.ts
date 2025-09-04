@@ -22,7 +22,18 @@ export const userRoleEnum = pgEnum('user_role', ['Admin', 'PM', 'Purchaser', 'Fi
 export const projectStatusEnum = pgEnum('project_status', ['active', 'on_hold', 'completed', 'cancelled']);
 export const requisitionStatusEnum = pgEnum('requisition_status', ['draft', 'submitted', 'approved', 'rejected', 'converted', 'ready']);
 export const rfqStatusEnum = pgEnum('rfq_status', ['draft', 'sent', 'quoted', 'closed']);
-export const poStatusEnum = pgEnum('po_status', ['draft', 'sent', 'acknowledged', 'received', 'closed']);
+export const poStatusEnum = pgEnum('po_status', [
+  'draft', 
+  'sent', 
+  'acknowledged', 
+  'pending_shipment', 
+  'pending_delivery', 
+  'delivered', 
+  'pending_invoice_match', 
+  'matched_pending_payment', 
+  'received_nbs_wh', 
+  'closed'
+]);
 export const deliveryStatusEnum = pgEnum('delivery_status', ['pending', 'partial', 'complete', 'damaged']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['pending', 'approved', 'exception', 'paid']);
 export const matchStatusEnum = pgEnum('match_status', ['matched', 'price_variance', 'qty_variance', 'missing_po', 'tax_variance', 'freight_variance']);
@@ -274,6 +285,18 @@ export const purchaseOrders = pgTable("purchase_orders", {
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }),
   sentAt: timestamp("sent_at"),
   acknowledgedAt: timestamp("acknowledged_at"),
+  // Enhanced tracking fields
+  estimatedShipmentDate: timestamp("estimated_shipment_date"),
+  trackingNumber: text("tracking_number"),
+  carrierName: text("carrier_name"),
+  deliveredAt: timestamp("delivered_at"),
+  damageReportDeadline: timestamp("damage_report_deadline"),
+  damageReportSent: boolean("damage_report_sent").default(false),
+  invoiceId: uuid("invoice_id"),
+  invoiceMatchedAt: timestamp("invoice_matched_at"),
+  nbsWarehouseReceivedAt: timestamp("nbs_warehouse_received_at"),
+  packingSlipId: uuid("packing_slip_id"),
+  statusHistory: jsonb("status_history"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 }, (table) => ({
