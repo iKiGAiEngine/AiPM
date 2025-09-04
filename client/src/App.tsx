@@ -125,6 +125,11 @@ export default function App() {
                   <NewRequisition />
                 </ProtectedRoute>
               } />
+              <Route path="/requisitions/:id/edit" element={
+                <ProtectedRoute>
+                  <NewRequisition isEdit={true} />
+                </ProtectedRoute>
+              } />
               <Route path="/requisitions/:id" element={
                 <ProtectedRoute>
                   <RequisitionView />

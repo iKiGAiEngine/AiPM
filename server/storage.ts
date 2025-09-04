@@ -65,7 +65,9 @@ export interface IStorage {
   getRequisition(id: string): Promise<Requisition | undefined>;
   getRequisitionsByOrganization(organizationId: string): Promise<Requisition[]>;
   getRequisitionsByProject(projectId: string): Promise<Requisition[]>;
+  updateRequisition(id: string, updates: Partial<InsertRequisition>, organizationId: string): Promise<Requisition | undefined>;
   updateRequisitionStatus(id: string, status: string): Promise<void>;
+  deleteRequisition(id: string, organizationId: string): Promise<boolean>;
   
   // Requisition Lines
   createRequisitionLine(line: InsertRequisitionLine): Promise<RequisitionLine>;
@@ -309,8 +311,60 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(requisitions.createdAt));
   }
 
+  async updateRequisition(id: string, updates: Partial<InsertRequisition>, organizationId: string): Promise<Requisition | undefined> {
+    try {
+      // Verify the requisition belongs to this organization
+      const [existing] = await db
+        .select({ organizationId: requisitions.organizationId })
+        .from(requisitions)
+        .where(and(
+          eq(requisitions.id, id),
+          eq(requisitions.organizationId, organizationId)
+        ));
+      
+      if (!existing) return undefined;
+      
+      const [updated] = await db
+        .update(requisitions)
+        .set({ ...updates, updatedAt: sql`now()` })
+        .where(eq(requisitions.id, id))
+        .returning();
+      
+      return updated;
+    } catch (error) {
+      console.error('Error updating requisition:', error);
+      return undefined;
+    }
+  }
+
   async updateRequisitionStatus(id: string, status: string): Promise<void> {
     await db.update(requisitions).set({ status: status as any }).where(eq(requisitions.id, id));
+  }
+
+  async deleteRequisition(id: string, organizationId: string): Promise<boolean> {
+    try {
+      // Verify the requisition belongs to this organization
+      const [existing] = await db
+        .select({ id: requisitions.id })
+        .from(requisitions)
+        .where(and(
+          eq(requisitions.id, id),
+          eq(requisitions.organizationId, organizationId)
+        ));
+      
+      if (!existing) return false;
+      
+      // Delete requisition lines first (foreign key constraint)
+      await db.delete(requisitionLines).where(eq(requisitionLines.requisitionId, id));
+      
+      // Delete the requisition
+      await db.delete(requisitions).where(eq(requisitions.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting requisition:', error);
+      return false;
+    }
   }
 
   // Requisition Lines

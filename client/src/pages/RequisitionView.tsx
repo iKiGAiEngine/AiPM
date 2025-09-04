@@ -1,9 +1,20 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Calendar, User, MapPin, FileText, Package, Send } from "lucide-react";
+import { ArrowLeft, Calendar, User, MapPin, FileText, Package, Send, Edit3, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -87,6 +98,42 @@ export default function RequisitionView() {
     },
   });
 
+  const navigate = useNavigate();
+
+  // Mutation to delete requisition
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/requisitions/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete requisition');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/requisitions'] });
+      toast({
+        title: 'Success',
+        description: 'Requisition deleted successfully',
+      });
+      navigate('/requisitions');
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete requisition',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleSubmit = () => {
     if (requisitionLines.length === 0) {
       toast({
@@ -97,6 +144,14 @@ export default function RequisitionView() {
       return;
     }
     submitMutation.mutate();
+  };
+
+  const handleDelete = () => {
+    deleteMutation.mutate();
+  };
+
+  const handleEdit = () => {
+    navigate(`/requisitions/${id}/edit`);
   };
 
   if (isLoading) {
@@ -151,16 +206,61 @@ export default function RequisitionView() {
             </Badge>
           </div>
           
-          {/* Submit button for draft requisitions */}
+          {/* Action buttons for draft requisitions */}
           {requisition.status === 'draft' && (
-            <Button 
-              onClick={handleSubmit}
-              disabled={submitMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              {submitMutation.isPending ? 'Submitting...' : 'Submit Requisition'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={handleEdit}
+                variant="outline"
+                size="sm"
+                data-testid="button-edit-requisition"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Edit</span>
+              </Button>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    data-testid="button-delete-requisition"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Delete</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Requisition</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this requisition? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDelete}
+                      disabled={deleteMutation.isPending}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
+              <Button 
+                onClick={handleSubmit}
+                disabled={submitMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+                data-testid="button-submit-requisition"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {submitMutation.isPending ? 'Submitting...' : 'Submit'}
+              </Button>
+            </div>
           )}
         </div>
         <div>

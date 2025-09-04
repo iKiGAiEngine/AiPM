@@ -11,7 +11,7 @@ import {
   type AuthenticatedRequest 
 } from "./middleware/auth";
 import { z } from "zod";
-import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, type InsertProject, invoices, contractEstimates } from "@shared/schema";
+import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, type InsertProject, invoices, contractEstimates, requisitionLines } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { threeWayMatchService } from "./services/three-way-match";
@@ -734,6 +734,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Status updated successfully" });
     } catch (error) {
       res.status(400).json({ error: "Failed to update status" });
+    }
+  });
+
+  // Update requisition
+  app.put("/api/requisitions/:id", requireRole(['Admin', 'PM', 'Purchaser', 'Field']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { RequisitionCreateSchema } = await import('./schemas/requisition.js');
+      
+      // Validate the request body
+      const validatedData = RequisitionCreateSchema.parse(req.body);
+      const { lines, ...reqData } = validatedData;
+      
+      // Prepare update data (exclude organizationId, requesterId, number which shouldn't be changed)
+      const updateData = {
+        ...reqData,
+        targetDeliveryDate: reqData.targetDeliveryDate ? new Date(reqData.targetDeliveryDate) : null,
+        contractEstimateId: reqData.contractEstimateId || null,
+        zone: reqData.zone || null,
+        attachments: reqData.attachments || [],
+        geoLocation: reqData.geoLocation || null
+      };
+      
+      // Update the requisition
+      const updatedRequisition = await storage.updateRequisition(
+        req.params.id, 
+        updateData, 
+        req.user!.organizationId
+      );
+      
+      if (!updatedRequisition) {
+        return res.status(404).json({ error: "Requisition not found" });
+      }
+      
+      // Update requisition lines - delete existing and recreate
+      if (lines) {
+        // Delete existing lines
+        const existingLines = await storage.getRequisitionLines(req.params.id);
+        for (const line of existingLines) {
+          await db.delete(requisitionLines).where(eq(requisitionLines.id, line.id));
+        }
+        
+        // Create new lines
+        for (const line of lines) {
+          await storage.createRequisitionLine({
+            requisitionId: req.params.id,
+            materialId: null,
+            description: line.description,
+            quantity: line.quantity.toString(),
+            unit: line.unit,
+            estimatedCost: line.estimatedCost ? line.estimatedCost.toString() : null,
+            notes: line.notes || null
+          });
+        }
+      }
+      
+      res.json(updatedRequisition);
+    } catch (error) {
+      console.error('Requisition update error:', error);
+      
+      if (error instanceof z.ZodError) {
+        const validationErrors = error.issues.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }));
+        
+        return res.status(400).json({
+          error: "Validation Error",
+          validationErrors
+        });
+      }
+      
+      res.status(500).json({ error: "Failed to update requisition" });
+    }
+  });
+
+  // Delete requisition
+  app.delete("/api/requisitions/:id", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const success = await storage.deleteRequisition(req.params.id, req.user!.organizationId);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Requisition not found" });
+      }
+      
+      res.json({ message: "Requisition deleted successfully" });
+    } catch (error) {
+      console.error('Requisition deletion error:', error);
+      res.status(500).json({ error: "Failed to delete requisition" });
     }
   });
 

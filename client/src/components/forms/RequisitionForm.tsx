@@ -45,8 +45,14 @@ const mockUnits = [
   'Cubic Feet',
 ];
 
-export default function RequisitionForm() {
+interface RequisitionFormProps {
+  isEdit?: boolean;
+  requisitionId?: string;
+}
+
+export default function RequisitionForm({ isEdit = false, requisitionId }: RequisitionFormProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [attachments, setAttachments] = useState<File[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [materialSearch, setMaterialSearch] = useState("");
@@ -55,6 +61,38 @@ export default function RequisitionForm() {
   const [materialQuantities, setMaterialQuantities] = useState<Record<string, number>>({});
   const [availableQuantities, setAvailableQuantities] = useState<Record<string, number>>({});
   const [showPhotoSection, setShowPhotoSection] = useState(false);
+
+  // Fetch existing requisition data if in edit mode
+  const { data: existingRequisition } = useQuery({
+    queryKey: ['/api/requisitions', requisitionId],
+    queryFn: async () => {
+      if (!isEdit || !requisitionId) return null;
+      const response = await fetch(`/api/requisitions/${requisitionId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch requisition');
+      return response.json();
+    },
+    enabled: isEdit && !!requisitionId,
+  });
+
+  // Fetch existing requisition lines if in edit mode
+  const { data: existingLines = [] } = useQuery({
+    queryKey: ['/api/requisitions', requisitionId, 'lines'],
+    queryFn: async () => {
+      if (!isEdit || !requisitionId) return [];
+      const response = await fetch(`/api/requisitions/${requisitionId}/lines`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: isEdit && !!requisitionId,
+  });
 
   // Fetch real projects from API
   const { data: projects = [] } = useQuery<Project[]>({
@@ -142,12 +180,46 @@ export default function RequisitionForm() {
     return filtered;
   }, [projectMaterials, materialSearch, selectedScopeType, availableQuantities]);
 
+  // Set up form with default values or existing data
   const form = useForm<RequisitionFormData>({
     resolver: zodResolver(requisitionSchema),
     defaultValues: {
+      projectId: "",
+      title: "",
+      targetDeliveryDate: "",
+      deliveryLocation: "",
+      specialInstructions: "",
       lines: []
     }
   });
+
+  // Update form values when existing requisition data is loaded
+  useEffect(() => {
+    if (existingRequisition && existingLines) {
+      const formattedLines = existingLines.map((line: any) => ({
+        materialId: line.materialId || "",
+        description: line.description || "",
+        quantity: parseFloat(line.quantity) || 0,
+        unit: line.unit || "",
+        estimatedCost: parseFloat(line.estimatedCost) || 0,
+        notes: line.notes || "",
+        model: line.model || ""
+      }));
+      
+      form.reset({
+        projectId: existingRequisition.projectId || "",
+        title: existingRequisition.title || "",
+        targetDeliveryDate: existingRequisition.targetDeliveryDate ? 
+          new Date(existingRequisition.targetDeliveryDate).toISOString().split('T')[0] : "",
+        deliveryLocation: existingRequisition.deliveryLocation || "",
+        specialInstructions: existingRequisition.specialInstructions || "",
+        lines: formattedLines
+      });
+      
+      // Set the selected project for materials loading
+      setSelectedProject(existingRequisition.projectId || "");
+    }
+  }, [existingRequisition, existingLines, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -189,8 +261,11 @@ export default function RequisitionForm() {
       console.log('Submitting requisition data:', processedData);
       console.log('Lines data:', lines);
       
-      const response = await fetch('/api/requisitions', {
-        method: 'POST',
+      const url = isEdit ? `/api/requisitions/${requisitionId}` : '/api/requisitions';
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -219,11 +294,15 @@ export default function RequisitionForm() {
       
       toast({
         title: "Success",
-        description: "Requisition submitted successfully",
+        description: isEdit ? "Requisition updated successfully" : "Requisition created successfully",
       });
       
-      // Navigate back to requisitions list
-      window.location.href = '/requisitions';
+      // Navigate back to requisitions list or the requisition view
+      if (isEdit) {
+        navigate(`/requisitions/${requisitionId}`);
+      } else {
+        navigate('/requisitions');
+      }
     } catch (error) {
       console.error('Error submitting requisition:', error);
       toast({
