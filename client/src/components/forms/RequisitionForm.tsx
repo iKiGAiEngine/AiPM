@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import type { Project, ProjectMaterial } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +54,7 @@ interface RequisitionFormProps {
 export default function RequisitionForm({ isEdit = false, requisitionId }: RequisitionFormProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [attachments, setAttachments] = useState<File[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [materialSearch, setMaterialSearch] = useState("");

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Eye, FileText, CheckCircle, Check, X, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Filter, Eye, FileText, CheckCircle, Check, X, Edit, Trash2, HelpCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +23,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Requisition } from "@shared/schema";
 
 const statusColors = {
@@ -32,6 +38,15 @@ const statusColors = {
   approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
   rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
   converted: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+};
+
+const statusDescriptions: { [key: string]: string } = {
+  draft: "Draft - Still being created",
+  ready: "Ready - Approved and ready for PO or quotes", 
+  submitted: "Submitted - Waiting for approval",
+  approved: "Approved - Can proceed with procurement",
+  rejected: "Rejected - Needs revisions",
+  converted: "Converted - Already turned into PO/RFQ",
 };
 
 export default function Requisitions() {
@@ -293,9 +308,21 @@ export default function Requisitions() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge className={statusColors[requisition.status as keyof typeof statusColors]} data-testid={`requisition-status-${requisition.id}`}>
-                            {requisition.status}
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1">
+                                  <Badge className={statusColors[requisition.status as keyof typeof statusColors]} data-testid={`requisition-status-${requisition.id}`}>
+                                    {requisition.status}
+                                  </Badge>
+                                  <HelpCircle className="w-3 h-3 text-muted-foreground" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{statusDescriptions[requisition.status || ''] || 'Unknown status'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           <span data-testid={`requisition-created-${requisition.id}`}>
@@ -310,8 +337,8 @@ export default function Requisitions() {
                               </Link>
                             </Button>
                             
-                            {/* Edit and Delete buttons for draft/submitted requisitions */}
-                            {canEdit && ['draft', 'submitted'].includes(requisition.status || '') && (
+                            {/* Edit and Delete buttons for editable requisitions */}
+                            {canEdit && ['draft', 'submitted', 'ready', 'rejected'].includes(requisition.status || '') && (
                               <>
                                 <Button variant="ghost" size="sm" asChild data-testid={`button-edit-requisition-${requisition.id}`}>
                                   <Link to={`/requisitions/${requisition.id}/edit`}>
@@ -402,9 +429,21 @@ export default function Requisitions() {
                               {requisition.number}
                             </span>
                           </div>
-                          <Badge className={statusColors[requisition.status as keyof typeof statusColors]} data-testid={`requisition-status-${requisition.id}`}>
-                            {requisition.status}
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1">
+                                  <Badge className={statusColors[requisition.status as keyof typeof statusColors]} data-testid={`requisition-status-${requisition.id}`}>
+                                    {requisition.status}
+                                  </Badge>
+                                  <HelpCircle className="w-3 h-3 text-muted-foreground" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{statusDescriptions[requisition.status || ''] || 'Unknown status'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
 
                         {/* Title */}
@@ -433,8 +472,8 @@ export default function Requisitions() {
                             </Link>
                           </Button>
                           
-                          {/* Edit and Delete buttons for draft/submitted requisitions */}
-                          {canEdit && ['draft', 'submitted'].includes(requisition.status || '') && (
+                          {/* Edit and Delete buttons for editable requisitions */}
+                          {canEdit && ['draft', 'submitted', 'ready', 'rejected'].includes(requisition.status || '') && (
                             <>
                               <Button variant="outline" size="sm" asChild className="flex-1" data-testid={`button-edit-requisition-${requisition.id}`}>
                                 <Link to={`/requisitions/${requisition.id}/edit`}>
