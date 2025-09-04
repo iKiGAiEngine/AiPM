@@ -7,11 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Eye, FileText, CheckCircle, Check, X } from "lucide-react";
+import { Plus, Search, Filter, Eye, FileText, CheckCircle, Check, X, Edit, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { Requisition } from "@shared/schema";
 
 const statusColors = {
@@ -55,6 +66,9 @@ export default function Requisitions() {
 
   // Check if user can approve requisitions (PM, Admin roles)
   const canApprove = user && ['PM', 'Admin'].includes(user.role);
+  
+  // Check if user can edit/delete requisitions (all authenticated users can edit their own)
+  const canEdit = user && ['Admin', 'PM', 'Purchaser', 'Field'].includes(user.role);
 
   // Mutation for updating requisition status
   const updateStatusMutation = useMutation({
@@ -97,6 +111,43 @@ export default function Requisitions() {
 
   const handleReject = (requisition: Requisition) => {
     updateStatusMutation.mutate({ id: requisition.id, status: 'rejected' });
+  };
+
+  // Mutation for deleting requisitions
+  const deleteRequisitionMutation = useMutation({
+    mutationFn: async (requisitionId: string) => {
+      const response = await fetch(`/api/requisitions/${requisitionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete requisition');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/requisitions'] });
+      toast({
+        title: 'Success',
+        description: 'Requisition deleted successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete requisition',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleDelete = (requisitionId: string) => {
+    deleteRequisitionMutation.mutate(requisitionId);
   };
 
   const getStatusIcon = (status: string) => {
@@ -259,6 +310,47 @@ export default function Requisitions() {
                               </Link>
                             </Button>
                             
+                            {/* Edit and Delete buttons for draft/submitted requisitions */}
+                            {canEdit && ['draft', 'submitted'].includes(requisition.status || '') && (
+                              <>
+                                <Button variant="ghost" size="sm" asChild data-testid={`button-edit-requisition-${requisition.id}`}>
+                                  <Link to={`/requisitions/${requisition.id}/edit`}>
+                                    <Edit className="w-4 h-4" />
+                                  </Link>
+                                </Button>
+                                
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      data-testid={`button-delete-requisition-${requisition.id}`}
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Requisition</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete requisition "{requisition.number}"? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDelete(requisition.id)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </>
+                            )}
+                            
                             {/* Streamlined Actions - only show for ready requisitions */}
                             {requisition.status === 'ready' && (
                               <>
@@ -340,6 +432,49 @@ export default function Requisitions() {
                               View
                             </Link>
                           </Button>
+                          
+                          {/* Edit and Delete buttons for draft/submitted requisitions */}
+                          {canEdit && ['draft', 'submitted'].includes(requisition.status || '') && (
+                            <>
+                              <Button variant="outline" size="sm" asChild className="flex-1" data-testid={`button-edit-requisition-${requisition.id}`}>
+                                <Link to={`/requisitions/${requisition.id}/edit`}>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit
+                                </Link>
+                              </Button>
+                              
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    data-testid={`button-delete-requisition-${requisition.id}`}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-1"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Requisition</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete requisition "{requisition.number}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDelete(requisition.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
                           
                           {/* Streamlined Actions - only show for ready requisitions */}
                           {requisition.status === 'ready' && (
