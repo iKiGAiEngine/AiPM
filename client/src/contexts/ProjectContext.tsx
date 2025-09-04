@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import type { Project } from '@shared/schema';
 
 interface ProjectContextType {
@@ -25,8 +26,9 @@ interface ProjectProviderProps {
 
 export function ProjectProvider({ children }: ProjectProviderProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const { isAuthenticated, user } = useAuth();
 
-  // Fetch all projects for the user's organization
+  // Fetch all projects for the user's organization - only when authenticated
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
     queryFn: async () => {
@@ -38,14 +40,16 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       if (!response.ok) throw new Error('Failed to fetch projects');
       return response.json();
     },
+    enabled: isAuthenticated && !!user, // Only fetch when authenticated and user is loaded
+    retry: 1, // Reduce retries to avoid spam
   });
 
-  // Auto-select first project if none selected and projects are loaded
+  // Default to "All Projects" (null) and allow user to restore saved selection
   useEffect(() => {
     if (!selectedProject && projects.length > 0) {
       // Try to restore from localStorage first
       const savedProjectId = localStorage.getItem('selectedProjectId');
-      if (savedProjectId) {
+      if (savedProjectId && savedProjectId !== 'all') {
         const savedProject = projects.find(p => p.id === savedProjectId);
         if (savedProject) {
           setSelectedProject(savedProject);
@@ -53,8 +57,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         }
       }
       
-      // Default to first project
-      setSelectedProject(projects[0]);
+      // Default to "All Projects" (null) for quick overview access
+      setSelectedProject(null);
     }
   }, [projects, selectedProject]);
 
@@ -62,6 +66,9 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   useEffect(() => {
     if (selectedProject) {
       localStorage.setItem('selectedProjectId', selectedProject.id);
+    } else {
+      // Store 'all' when no specific project is selected
+      localStorage.setItem('selectedProjectId', 'all');
     }
   }, [selectedProject]);
 
