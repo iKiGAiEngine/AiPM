@@ -118,7 +118,24 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return !!this.getAccessToken();
+    const token = this.getAccessToken();
+    if (!token) return false;
+    
+    // Basic token validation to prevent malformed tokens
+    try {
+      // JWT tokens have 3 parts separated by dots
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.log('Invalid token format, clearing...');
+        this.logout();
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.log('Token validation failed, clearing...');
+      this.logout();
+      return false;
+    }
   }
 
   hasRole(requiredRoles: string[], userRole: string): boolean {

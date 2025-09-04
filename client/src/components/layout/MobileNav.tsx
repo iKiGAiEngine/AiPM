@@ -104,6 +104,7 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedProject, setSelectedProject, projects, isLoadingProjects } = useProject();
+  
 
   const canAccess = (roles: string[]) => {
     return user && roles.includes(user.role);

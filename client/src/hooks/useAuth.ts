@@ -3,12 +3,38 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { authService, type AuthUser } from "@/lib/auth";
 
 export function useAuth() {
-  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Validate token on initial load
+    const token = localStorage.getItem('accessToken');
+    if (!token) return false;
+    
+    // Check token format
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.log('useAuth - Invalid token format detected, clearing...');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      return false;
+    }
+    
+    return authService.isAuthenticated();
+  });
   const queryClient = useQueryClient();
 
   const { data: user, isLoading, error } = useQuery<AuthUser | null>({
     queryKey: ['/api/users/me'],
-    queryFn: () => authService.getCurrentUser(),
+    queryFn: async () => {
+      try {
+        return await authService.getCurrentUser();
+      } catch (error) {
+        console.log('useAuth - getCurrentUser failed, clearing auth state');
+        // Clear auth state if user fetch fails
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        setIsAuthenticated(false);
+        throw error;
+      }
+    },
     enabled: isAuthenticated,
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes

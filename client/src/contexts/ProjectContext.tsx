@@ -32,17 +32,34 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
     queryFn: async () => {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('No authentication token');
+      }
+      
       const response = await fetch('/api/projects', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
-      if (!response.ok) throw new Error('Failed to fetch projects');
-      return response.json();
+      
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        throw new Error('Authentication failed');
+      }
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch projects');
+      }
+      
+      const data = await response.json();
+      return data;
     },
     enabled: isAuthenticated && !!user, // Only fetch when authenticated and user is loaded
     retry: 1, // Reduce retries to avoid spam
   });
+  
 
   // Default to "All Projects" (null) and allow user to restore saved selection
   useEffect(() => {
