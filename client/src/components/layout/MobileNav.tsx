@@ -128,8 +128,15 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" data-testid="mobile-nav-overlay">
-      <div className="fixed inset-y-0 left-0 w-64 bg-sidebar shadow-xl z-50 transform transition-transform duration-300 custom-scrollbar overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" 
+      data-testid="mobile-nav-overlay"
+      onClick={onClose}
+    >
+      <div 
+        className="fixed inset-y-0 left-0 w-64 bg-sidebar shadow-xl z-50 transform transition-transform duration-300 custom-scrollbar overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
