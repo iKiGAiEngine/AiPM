@@ -15,9 +15,32 @@ import type { PurchaseOrder } from "@shared/schema";
 const statusColors = {
   draft: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
   sent: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+  pending_shipment: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+  pending_delivery: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+  delivered: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+  matched_pending_payment: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+  received_nbs_wh: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300",
+  // Legacy statuses for backward compatibility
   acknowledged: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
   received: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
   closed: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+};
+
+const getStatusLabel = (status: string): string => {
+  const statusLabels: Record<string, string> = {
+    draft: 'Draft',
+    sent: 'Sent to Vendor',
+    pending_shipment: 'Pending Shipment',
+    pending_delivery: 'In Transit',
+    delivered: 'Delivered',
+    matched_pending_payment: 'Invoice Matched',
+    received_nbs_wh: 'In NBS Warehouse',
+    // Legacy statuses
+    acknowledged: 'Acknowledged',
+    received: 'Received',
+    closed: 'Closed'
+  };
+  return statusLabels[status] || status;
 };
 
 export default function PurchaseOrders() {
@@ -56,8 +79,21 @@ export default function PurchaseOrders() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'draft':
+        return <Clock className="w-4 h-4" />;
       case 'sent':
         return <Send className="w-4 h-4" />;
+      case 'pending_shipment':
+        return <CheckCircle className="w-4 h-4" />;
+      case 'pending_delivery':
+        return <FileText className="w-4 h-4" />;
+      case 'delivered':
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case 'matched_pending_payment':
+        return <FileText className="w-4 h-4 text-purple-600" />;
+      case 'received_nbs_wh':
+        return <CheckCircle className="w-4 h-4 text-indigo-600" />;
+      // Legacy statuses
       case 'acknowledged':
         return <CheckCircle className="w-4 h-4" />;
       case 'received':
@@ -159,10 +195,12 @@ export default function PurchaseOrders() {
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="sent">Sent</SelectItem>
-                <SelectItem value="acknowledged">Acknowledged</SelectItem>
-                <SelectItem value="received">Received</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
+                <SelectItem value="sent">Sent to Vendor</SelectItem>
+                <SelectItem value="pending_shipment">Pending Shipment</SelectItem>
+                <SelectItem value="pending_delivery">In Transit</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="matched_pending_payment">Invoice Matched</SelectItem>
+                <SelectItem value="received_nbs_wh">In NBS Warehouse</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -221,7 +259,7 @@ export default function PurchaseOrders() {
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColors[po.status as keyof typeof statusColors]} data-testid={`po-status-${po.id}`}>
-                        {po.status}
+                        {getStatusLabel(po.status || 'draft')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
