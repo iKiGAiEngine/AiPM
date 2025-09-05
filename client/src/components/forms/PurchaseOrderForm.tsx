@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import type { Requisition, RequisitionLine } from "@shared/schema";
+import type { Requisition, RequisitionLine, PurchaseOrder, PurchaseOrderLine } from "@shared/schema";
 import { useEffect } from "react";
 
 const poLineSchema = z.object({
@@ -38,22 +38,32 @@ type POLine = z.infer<typeof poLineSchema>;
 
 interface PurchaseOrderFormProps {
   fromRequisition?: (Requisition & { lines: RequisitionLine[] }) | null | undefined;
+  isEdit?: boolean;
+  existingPO?: (PurchaseOrder & { lines: PurchaseOrderLine[] }) | null | undefined;
 }
 
-export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderFormProps = {}) {
+export default function PurchaseOrderForm({ fromRequisition, isEdit = false, existingPO }: PurchaseOrderFormProps = {}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [lines, setLines] = useState<POLine[]>(
-    fromRequisition?.lines && fromRequisition.lines.length > 0 
-      ? fromRequisition.lines.map(line => ({
+    existingPO?.lines && existingPO.lines.length > 0
+      ? existingPO.lines.map(line => ({
           description: line.description,
           quantity: parseFloat(line.quantity?.toString() || '1'),
-          unitPrice: parseFloat(line.estimatedCost?.toString() || '0') / parseFloat(line.quantity?.toString() || '1'),
+          unitPrice: parseFloat(line.unitPrice?.toString() || '0'),
           unit: line.unit,
-          projectMaterialId: line.materialId || undefined
+          projectMaterialId: line.projectMaterialId || undefined
         }))
-      : [{ description: "", quantity: 1, unitPrice: 0, unit: "EA" }]
+      : fromRequisition?.lines && fromRequisition.lines.length > 0 
+        ? fromRequisition.lines.map(line => ({
+            description: line.description,
+            quantity: parseFloat(line.quantity?.toString() || '1'),
+            unitPrice: parseFloat(line.estimatedCost?.toString() || '0') / parseFloat(line.quantity?.toString() || '1'),
+            unit: line.unit,
+            projectMaterialId: line.materialId || undefined
+          }))
+        : [{ description: "", quantity: 1, unitPrice: 0, unit: "EA" }]
   );
   const [selectedMaterialType, setSelectedMaterialType] = useState<string>("");
   const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set());
@@ -61,16 +71,33 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
   const form = useForm<Omit<PurchaseOrderFormData, 'lines'>>({
     resolver: zodResolver(purchaseOrderSchema.omit({ lines: true })),
     defaultValues: {
-      vendorId: "",
-      projectId: fromRequisition?.projectId || "",
-      shipToAddress: "",
-      notes: fromRequisition ? `Created from requisition: ${fromRequisition.title}` : "",
+      vendorId: existingPO?.vendorId || "",
+      projectId: existingPO?.projectId || fromRequisition?.projectId || "",
+      shipToAddress: existingPO?.shipToAddress || "",
+      notes: existingPO?.notes || (fromRequisition ? `Created from requisition: ${fromRequisition.title}` : ""),
     },
   });
 
-  // Update form and lines when requisition data loads
+  // Update form and lines when data loads
   useEffect(() => {
-    if (fromRequisition) {
+    if (existingPO) {
+      form.setValue("vendorId", existingPO.vendorId);
+      form.setValue("projectId", existingPO.projectId);
+      form.setValue("shipToAddress", existingPO.shipToAddress);
+      form.setValue("notes", existingPO.notes || "");
+      
+      // Update lines from existing PO
+      if (existingPO.lines && existingPO.lines.length > 0) {
+        const poLines = existingPO.lines.map(line => ({
+          description: line.description,
+          quantity: parseFloat(line.quantity?.toString() || '1'),
+          unitPrice: parseFloat(line.unitPrice?.toString() || '0'),
+          unit: line.unit,
+          projectMaterialId: line.projectMaterialId || undefined
+        }));
+        setLines(poLines);
+      }
+    } else if (fromRequisition) {
       form.setValue("projectId", fromRequisition.projectId);
       form.setValue("notes", `Created from requisition: ${fromRequisition.title}`);
       
@@ -80,12 +107,13 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
           description: line.description,
           quantity: parseFloat(line.quantity?.toString() || '1'),
           unitPrice: parseFloat(line.estimatedCost?.toString() || '0') / parseFloat(line.quantity?.toString() || '1'),
-          unit: line.unit
+          unit: line.unit,
+          projectMaterialId: line.materialId || undefined
         }));
         setLines(poLines);
       }
     }
-  }, [fromRequisition, form]);
+  }, [existingPO, fromRequisition, form]);
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["/api/vendors"],
@@ -131,10 +159,13 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
     enabled: !!selectedProjectId,
   });
 
-  const createMutation = useMutation({
+  const saveMutation = useMutation({
     mutationFn: async (data: PurchaseOrderFormData) => {
-      const response = await fetch("/api/purchase-orders", {
-        method: "POST",
+      const method = isEdit ? "PUT" : "POST";
+      const url = isEdit ? `/api/purchase-orders/${existingPO?.id}` : "/api/purchase-orders";
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -143,24 +174,24 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
       });
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('PO Creation Error:', errorData);
-        throw new Error(errorData.error || "Failed to create purchase order");
+        console.error(`PO ${isEdit ? 'Update' : 'Creation'} Error:`, errorData);
+        throw new Error(errorData.error || `Failed to ${isEdit ? 'update' : 'create'} purchase order`);
       }
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Purchase Order created successfully",
-        description: "The purchase order has been created and is ready for processing.",
+        title: `Purchase Order ${isEdit ? 'updated' : 'created'} successfully`,
+        description: `The purchase order has been ${isEdit ? 'updated' : 'created'} and is ready for processing.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
       navigate("/purchase-orders");
     },
     onError: (error) => {
-      console.error('PO Creation Failed:', error);
+      console.error(`PO ${isEdit ? 'Update' : 'Creation'} Failed:`, error);
       toast({
         variant: "destructive",
-        title: "Failed to create purchase order",
+        title: `Failed to ${isEdit ? 'update' : 'create'} purchase order`,
         description: error instanceof Error ? error.message : "Please check your form data and try again.",
       });
     },
@@ -328,7 +359,7 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
     };
     console.log('=== CALLING MUTATION ===');
     console.log('Final form data being sent:', JSON.stringify(formData, null, 2));
-    createMutation.mutate(formData);
+    saveMutation.mutate(formData);
   };
 
   const calculateTotal = () => {
@@ -638,7 +669,7 @@ export default function PurchaseOrderForm({ fromRequisition }: PurchaseOrderForm
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Create Purchase Order
+                  {isEdit ? 'Update Purchase Order' : 'Create Purchase Order'}
                 </>
               )}
             </Button>

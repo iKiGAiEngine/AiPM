@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Eye, Download, Send, FileText, CheckCircle, Clock, Edit, Trash2 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useProject } from "@/contexts/ProjectContext";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,11 +59,44 @@ const getStatusLabel = (status: string): string => {
 export default function PurchaseOrders() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   // Check if user can edit/delete POs
   const canEdit = true; // For now, allow all authenticated users to edit POs
 
   const { selectedProject } = useProject();
+
+  // Delete PO mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (poId: string) => {
+      const response = await fetch(`/api/purchase-orders/${poId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete purchase order');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Purchase Order Deleted',
+        description: 'The purchase order has been successfully deleted.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete purchase order',
+      });
+    },
+  });
+
   const { data: purchaseOrders = [], isLoading, error } = useQuery<PurchaseOrder[]>({
     queryKey: ['/api/purchase-orders', selectedProject?.id],
     queryFn: async () => {
@@ -328,6 +363,7 @@ export default function PurchaseOrders() {
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     className="bg-red-600 hover:bg-red-700"
+                                    onClick={() => deleteMutation.mutate(po.id)}
                                   >
                                     Delete
                                   </AlertDialogAction>

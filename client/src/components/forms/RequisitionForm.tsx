@@ -492,10 +492,12 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="projectId">Project *</Label>
-              <Select onValueChange={(value) => {
-                form.setValue('projectId', value);
-                setSelectedProject(value);
-              }}>
+              <Select 
+                value={form.watch('projectId') || ''} 
+                onValueChange={(value) => {
+                  form.setValue('projectId', value);
+                  setSelectedProject(value);
+                }}>
                 <SelectTrigger data-testid="select-project" className="h-12 text-base">
                   <SelectValue placeholder="Select project..." />
                 </SelectTrigger>
@@ -790,7 +792,9 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
                               className="text-sm h-8 text-center"
                               data-testid={`input-line-quantity-${index}`}
                             />
-                            <Select onValueChange={(value) => form.setValue(`lines.${index}.unit`, value)}>
+                            <Select 
+                              value={form.watch(`lines.${index}.unit`) || ''} 
+                              onValueChange={(value) => form.setValue(`lines.${index}.unit`, value)}>
                               <SelectTrigger className="h-8 text-sm" data-testid={`select-line-unit-${index}`}>
                                 <SelectValue placeholder="Unit" />
                               </SelectTrigger>
@@ -863,7 +867,9 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
                         </div>
                         
                         <div className="col-span-1">
-                          <Select onValueChange={(value) => form.setValue(`lines.${index}.unit`, value)}>
+                          <Select 
+                            value={form.watch(`lines.${index}.unit`) || ''} 
+                            onValueChange={(value) => form.setValue(`lines.${index}.unit`, value)}>
                             <SelectTrigger className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0" data-testid={`select-line-unit-${index}`}>
                               <SelectValue placeholder="Unit" />
                             </SelectTrigger>
