@@ -52,6 +52,9 @@ export default function NewPurchaseOrder({ isEdit = false }: NewPurchaseOrderPro
     queryFn: async () => {
       if (!requisitionId) return null;
       
+      console.log('=== FETCHING REQUISITION DATA ===');
+      console.log('Requisition ID:', requisitionId);
+      
       // Fetch both requisition and its lines
       const [reqResponse, linesResponse] = await Promise.all([
         fetch(`/api/requisitions/${requisitionId}`, {
@@ -66,6 +69,9 @@ export default function NewPurchaseOrder({ isEdit = false }: NewPurchaseOrderPro
         })
       ]);
       
+      console.log('Req response ok:', reqResponse.ok);
+      console.log('Lines response ok:', linesResponse.ok);
+      
       if (!reqResponse.ok || !linesResponse.ok) {
         throw new Error('Failed to fetch requisition data');
       }
@@ -73,7 +79,14 @@ export default function NewPurchaseOrder({ isEdit = false }: NewPurchaseOrderPro
       const requisitionData = await reqResponse.json();
       const linesData = await linesResponse.json();
       
-      return { ...requisitionData, lines: linesData };
+      console.log('Raw requisition data:', requisitionData);
+      console.log('Raw lines data:', linesData);
+      console.log('Lines array length:', linesData?.length || 0);
+      
+      const combinedData = { ...requisitionData, lines: linesData };
+      console.log('Combined requisition data:', combinedData);
+      
+      return combinedData;
     },
     enabled: !!requisitionId,
   });
