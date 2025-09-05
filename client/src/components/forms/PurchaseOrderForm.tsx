@@ -16,6 +16,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import type { Requisition, RequisitionLine, PurchaseOrder, PurchaseOrderLine } from "@shared/schema";
 import { useEffect } from "react";
+import { formatNumber, formatCurrency, parseFormattedNumber } from "@/lib/number-utils";
 
 const poLineSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -591,11 +592,13 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
                     </TableCell>
                     <TableCell>
                       <Input
-                        type="number"
-                        value={line.quantity}
-                        onChange={(e) => updateLine(index, "quantity", parseFloat(e.target.value) || 0)}
-                        min="0.01"
-                        step="0.01"
+                        value={formatNumber(line.quantity)}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numValue = parseFloat(rawValue) || 0;
+                          updateLine(index, "quantity", numValue);
+                        }}
+                        inputMode="decimal"
                         data-testid={`input-quantity-${index}`}
                       />
                     </TableCell>
@@ -609,16 +612,18 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
                     </TableCell>
                     <TableCell>
                       <Input
-                        type="number"
-                        value={line.unitPrice}
-                        onChange={(e) => updateLine(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
+                        value={formatNumber(line.unitPrice, 2)}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numValue = parseFloat(rawValue) || 0;
+                          updateLine(index, "unitPrice", numValue);
+                        }}
+                        inputMode="decimal"
                         data-testid={`input-unit-price-${index}`}
                       />
                     </TableCell>
                     <TableCell>
-                      ${(line.quantity * line.unitPrice).toFixed(2)}
+                      {formatCurrency(line.quantity * line.unitPrice)}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -639,7 +644,7 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
 
             <div className="flex justify-end">
               <div className="text-lg font-medium">
-                Total: ${calculateTotal().toFixed(2)}
+                Total: {formatCurrency(calculateTotal())}
               </div>
             </div>
           </div>

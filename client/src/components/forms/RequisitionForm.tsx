@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, MapPin, Camera, Plus, Trash2, Package, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatNumber, parseFormattedNumber } from "@/lib/number-utils";
 
 const requisitionSchema = z.object({
   projectId: z.string().min(1, "Project is required"),
@@ -784,10 +785,13 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
                           
                           <div className="grid grid-cols-3 gap-1.5">
                             <Input
-                              {...form.register(`lines.${index}.quantity`, { valueAsNumber: true })}
-                              type="number"
-                              min="0.01"
-                              step="0.01"
+                              value={formatNumber(form.watch(`lines.${index}.quantity`) || 0)}
+                              onChange={(e) => {
+                                const rawValue = e.target.value.replace(/,/g, '');
+                                const numValue = parseFloat(rawValue) || 0;
+                                form.setValue(`lines.${index}.quantity`, numValue);
+                              }}
+                              inputMode="decimal"
                               placeholder="Qty"
                               className="text-sm h-8 text-center"
                               data-testid={`input-line-quantity-${index}`}
@@ -807,10 +811,13 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
                               </SelectContent>
                             </Select>
                             <Input
-                              {...form.register(`lines.${index}.estimatedCost`, { valueAsNumber: true })}
-                              type="number"
-                              min="0"
-                              step="0.01"
+                              value={formatNumber(form.watch(`lines.${index}.estimatedCost`) || 0, 2)}
+                              onChange={(e) => {
+                                const rawValue = e.target.value.replace(/,/g, '');
+                                const numValue = parseFloat(rawValue) || 0;
+                                form.setValue(`lines.${index}.estimatedCost`, numValue);
+                              }}
+                              inputMode="decimal"
                               placeholder="$"
                               className="text-sm h-8"
                               data-testid={`input-line-cost-${index}`}
@@ -857,10 +864,13 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
                         
                         <div className="col-span-1">
                           <Input
-                            {...form.register(`lines.${index}.quantity`, { valueAsNumber: true })}
-                            type="number"
-                            min="0.01"
-                            step="0.01"
+                            value={formatNumber(form.watch(`lines.${index}.quantity`) || 0)}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(/,/g, '');
+                              const numValue = parseFloat(rawValue) || 0;
+                              form.setValue(`lines.${index}.quantity`, numValue);
+                            }}
+                            inputMode="decimal"
                             className="text-center border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
                             data-testid={`input-line-quantity-${index}`}
                           />
@@ -885,10 +895,13 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
                         
                         <div className="col-span-2">
                           <Input
-                            {...form.register(`lines.${index}.estimatedCost`, { valueAsNumber: true })}
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            value={formatNumber(form.watch(`lines.${index}.estimatedCost`) || 0, 2)}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(/,/g, '');
+                              const numValue = parseFloat(rawValue) || 0;
+                              form.setValue(`lines.${index}.estimatedCost`, numValue);
+                            }}
+                            inputMode="decimal"
                             placeholder="0.00"
                             className="border-0 bg-transparent p-0 focus:ring-0 focus:border-0"
                             data-testid={`input-line-cost-${index}`}
