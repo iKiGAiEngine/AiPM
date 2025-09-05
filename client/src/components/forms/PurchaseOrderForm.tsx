@@ -47,25 +47,10 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [lines, setLines] = useState<POLine[]>(
-    existingPO?.lines && existingPO.lines.length > 0
-      ? existingPO.lines.map(line => ({
-          description: line.description,
-          quantity: parseFloat(line.quantity?.toString() || '1'),
-          unitPrice: parseFloat(line.unitPrice?.toString() || '0'),
-          unit: line.unit,
-          projectMaterialId: line.projectMaterialId || undefined
-        }))
-      : fromRequisition?.lines && fromRequisition.lines.length > 0 
-        ? fromRequisition.lines.map(line => ({
-            description: line.description,
-            quantity: parseFloat(line.quantity?.toString() || '1'),
-            unitPrice: parseFloat(line.estimatedCost?.toString() || '0') / parseFloat(line.quantity?.toString() || '1'),
-            unit: line.unit,
-            projectMaterialId: line.materialId || undefined
-          }))
-        : [{ description: "", quantity: 1, unitPrice: 0, unit: "EA" }]
-  );
+  
+  // Initialize lines state with a simple default - useEffect will handle the real data loading
+  const [lines, setLines] = useState<POLine[]>([{ description: "", quantity: 1, unitPrice: 0, unit: "EA" }]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [selectedMaterialType, setSelectedMaterialType] = useState<string>("");
   const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set());
 
@@ -79,9 +64,10 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
     },
   });
 
-  // Update form and lines when data loads
+  // Update form and lines when data loads - this handles both existing PO and requisition data
   useEffect(() => {
-    if (existingPO) {
+    // Handle existing PO editing
+    if (existingPO && !isInitialized) {
       form.setValue("vendorId", existingPO.vendorId);
       form.setValue("projectId", existingPO.projectId);
       form.setValue("shipToAddress", existingPO.shipToAddress);
@@ -98,7 +84,10 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
         }));
         setLines(poLines);
       }
-    } else if (fromRequisition) {
+      setIsInitialized(true);
+    }
+    // Handle requisition-to-PO creation
+    else if (fromRequisition && !isInitialized) {
       form.setValue("projectId", fromRequisition.projectId);
       form.setValue("shipToAddress", fromRequisition.deliveryLocation || "");
       form.setValue("notes", `Created from requisition: ${fromRequisition.title}`);
@@ -114,8 +103,13 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
         }));
         setLines(poLines);
       }
+      setIsInitialized(true);
     }
-  }, [existingPO, fromRequisition, form]);
+    // Handle new PO creation (no existing data)
+    else if (!existingPO && !fromRequisition && !isInitialized) {
+      setIsInitialized(true);
+    }
+  }, [existingPO, fromRequisition, form, isInitialized]);
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["/api/vendors"],
