@@ -654,7 +654,7 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
             </Button>
             <Button
               type="submit"
-              disabled={createMutation.isPending || !form.formState.isValid}
+              disabled={saveMutation.isPending || !form.formState.isValid}
               data-testid="button-create-po"
               onClick={() => {
                 console.log('=== SUBMIT BUTTON CLICKED ===');
@@ -664,7 +664,7 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
                 console.log('Form is dirty:', form.formState.isDirty);
               }}
             >
-              {createMutation.isPending ? (
+              {saveMutation.isPending ? (
                 "Creating..."
               ) : (
                 <>
