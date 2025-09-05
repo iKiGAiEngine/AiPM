@@ -7,9 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Eye, Download, Send, FileText, CheckCircle, Clock } from "lucide-react";
+import { Plus, Search, Eye, Download, Send, FileText, CheckCircle, Clock, Edit, Trash2 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useProject } from "@/contexts/ProjectContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { PurchaseOrder } from "@shared/schema";
 
 const statusColors = {
@@ -46,6 +57,9 @@ const getStatusLabel = (status: string): string => {
 export default function PurchaseOrders() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  
+  // Check if user can edit/delete POs
+  const canEdit = true; // For now, allow all authenticated users to edit POs
 
   const { selectedProject } = useProject();
   const { data: purchaseOrders = [], isLoading, error } = useQuery<PurchaseOrder[]>({
@@ -282,6 +296,46 @@ export default function PurchaseOrders() {
                             <Eye className="w-4 h-4" />
                           </Link>
                         </Button>
+                        
+                        {/* Edit and Delete buttons for draft/sent POs */}
+                        {canEdit && ['draft', 'sent'].includes(po.status || '') && (
+                          <>
+                            <Button variant="ghost" size="sm" asChild data-testid={`button-edit-po-${po.id}`}>
+                              <Link to={`/purchase-orders/${po.id}/edit`}>
+                                <Edit className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  data-testid={`button-delete-po-${po.id}`}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Purchase Order</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete purchase order "{po.number}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

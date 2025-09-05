@@ -65,33 +65,39 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
   const [showPhotoSection, setShowPhotoSection] = useState(false);
 
   // Fetch existing requisition data if in edit mode
-  const { data: existingRequisition } = useQuery({
+  const { data: existingRequisition, isLoading: requisitionLoading } = useQuery({
     queryKey: ['/api/requisitions', requisitionId],
     queryFn: async () => {
       if (!isEdit || !requisitionId) return null;
+      console.log('Fetching existing requisition:', requisitionId);
       const response = await fetch(`/api/requisitions/${requisitionId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (!response.ok) throw new Error('Failed to fetch requisition');
-      return response.json();
+      const data = await response.json();
+      console.log('Existing requisition data:', data);
+      return data;
     },
     enabled: isEdit && !!requisitionId,
   });
 
   // Fetch existing requisition lines if in edit mode
-  const { data: existingLines = [] } = useQuery({
+  const { data: existingLines = [], isLoading: linesLoading } = useQuery({
     queryKey: ['/api/requisitions', requisitionId, 'lines'],
     queryFn: async () => {
       if (!isEdit || !requisitionId) return [];
+      console.log('Fetching existing lines for requisition:', requisitionId);
       const response = await fetch(`/api/requisitions/${requisitionId}/lines`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (!response.ok) return [];
-      return response.json();
+      const data = await response.json();
+      console.log('Existing lines data:', data);
+      return data;
     },
     enabled: isEdit && !!requisitionId,
   });
@@ -197,7 +203,16 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
 
   // Update form values when existing requisition data is loaded
   useEffect(() => {
-    if (existingRequisition && existingLines) {
+    console.log('Form update effect triggered:', { 
+      isEdit, 
+      hasRequisition: !!existingRequisition, 
+      hasLines: !!existingLines,
+      linesLength: existingLines?.length 
+    });
+    
+    if (isEdit && existingRequisition && existingLines !== undefined) {
+      console.log('Updating form with existing data');
+      
       const formattedLines = existingLines.map((line: any) => ({
         materialId: line.materialId || "",
         description: line.description || "",
@@ -208,7 +223,9 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
         model: line.model || ""
       }));
       
-      form.reset({
+      console.log('Formatted lines for form:', formattedLines);
+      
+      const formData = {
         projectId: existingRequisition.projectId || "",
         title: existingRequisition.title || "",
         targetDeliveryDate: existingRequisition.targetDeliveryDate ? 
@@ -216,17 +233,33 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
         deliveryLocation: existingRequisition.deliveryLocation || "",
         specialInstructions: existingRequisition.specialInstructions || "",
         lines: formattedLines
-      });
+      };
+      
+      console.log('Form data to reset:', formData);
+      form.reset(formData);
       
       // Set the selected project for materials loading
       setSelectedProject(existingRequisition.projectId || "");
+      console.log('Set selected project to:', existingRequisition.projectId);
     }
-  }, [existingRequisition, existingLines, form]);
+  }, [existingRequisition, existingLines, form, isEdit]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'lines'
   });
+  
+  // Show loading state while fetching existing data in edit mode
+  if (isEdit && (requisitionLoading || linesLoading)) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center space-x-3">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          <span>Loading existing requisition...</span>
+        </div>
+      </div>
+    );
+  }
 
   const onSubmit = async (data: RequisitionFormData) => {
     try {

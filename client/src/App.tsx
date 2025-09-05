@@ -176,6 +176,11 @@ export default function App() {
                   <NewPurchaseOrder />
                 </ProtectedRoute>
               } />
+              <Route path="/purchase-orders/:id/edit" element={
+                <ProtectedRoute>
+                  <NewPurchaseOrder isEdit={true} />
+                </ProtectedRoute>
+              } />
               <Route path="/purchase-orders/:id" element={
                 <ProtectedRoute>
                   <PurchaseOrderDetail />
