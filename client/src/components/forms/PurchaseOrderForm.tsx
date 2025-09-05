@@ -48,6 +48,12 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
+  console.log('=== PO FORM DEBUG ===');
+  console.log('fromRequisition:', fromRequisition);
+  console.log('fromRequisition?.lines?.length:', fromRequisition?.lines?.length);
+  console.log('isEdit:', isEdit);
+  console.log('existingPO:', existingPO);
+  
   // Initialize lines state with a simple default - useEffect will handle the real data loading
   const [lines, setLines] = useState<POLine[]>([{ description: "", quantity: 1, unitPrice: 0, unit: "EA" }]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -66,6 +72,12 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
 
   // Update form and lines when data loads - this handles both existing PO and requisition data
   useEffect(() => {
+    console.log('=== useEffect DEBUG ===');
+    console.log('existingPO:', !!existingPO);
+    console.log('fromRequisition:', !!fromRequisition);
+    console.log('isInitialized:', isInitialized);
+    console.log('fromRequisition lines:', fromRequisition?.lines);
+    
     // Handle existing PO editing
     if (existingPO && !isInitialized) {
       form.setValue("vendorId", existingPO.vendorId);

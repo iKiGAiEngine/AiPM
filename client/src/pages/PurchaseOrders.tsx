@@ -98,10 +98,10 @@ export default function PurchaseOrders() {
   });
 
   const { data: purchaseOrders = [], isLoading, error } = useQuery<PurchaseOrder[]>({
-    queryKey: ['/api/purchase-orders', selectedProject?.id],
+    queryKey: ['/api/purchase-orders'],
     queryFn: async () => {
-      const url = selectedProject ? `/api/purchase-orders?projectId=${selectedProject.id}` : '/api/purchase-orders';
-      const response = await fetch(url, {
+      // Always fetch all POs for organization - don't filter by selected project
+      const response = await fetch('/api/purchase-orders', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
