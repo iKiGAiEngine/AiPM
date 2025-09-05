@@ -779,7 +779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const line of lines) {
           await storage.createRequisitionLine({
             requisitionId: req.params.id,
-            materialId: null,
+            materialId: line.materialId || null,
             description: line.description,
             quantity: line.quantity.toString(),
             unit: line.unit,
