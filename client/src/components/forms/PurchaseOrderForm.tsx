@@ -78,6 +78,10 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
     console.log('isInitialized:', isInitialized);
     console.log('fromRequisition lines:', fromRequisition?.lines);
     
+    if (fromRequisition) {
+      console.log('FULL fromRequisition object:', JSON.stringify(fromRequisition, null, 2));
+    }
+    
     // Handle existing PO editing
     if (existingPO && !isInitialized) {
       form.setValue("vendorId", existingPO.vendorId);
@@ -106,14 +110,31 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
       
       // Convert requisition lines to PO lines
       if (fromRequisition.lines && fromRequisition.lines.length > 0) {
-        const poLines = fromRequisition.lines.map(line => ({
-          description: line.description,
-          quantity: parseFloat(line.quantity?.toString() || '1'),
-          unitPrice: parseFloat(line.estimatedCost?.toString() || '0') / parseFloat(line.quantity?.toString() || '1'),
-          unit: line.unit,
-          projectMaterialId: line.materialId || undefined
-        }));
+        console.log('Converting requisition lines to PO lines...');
+        console.log('Number of requisition lines:', fromRequisition.lines.length);
+        
+        const poLines = fromRequisition.lines.map((line, index) => {
+          console.log(`Converting line ${index + 1}:`, line);
+          const quantity = parseFloat(line.quantity?.toString() || '1');
+          const estimatedCost = parseFloat(line.estimatedCost?.toString() || '0');
+          const unitPrice = quantity > 0 ? estimatedCost / quantity : 0;
+          
+          const poLine = {
+            description: line.description,
+            quantity: quantity,
+            unitPrice: unitPrice,
+            unit: line.unit,
+            projectMaterialId: line.materialId || undefined
+          };
+          console.log(`Converted PO line ${index + 1}:`, poLine);
+          return poLine;
+        });
+        
+        console.log('Final PO lines array:', poLines);
         setLines(poLines);
+        console.log('setLines called with:', poLines.length, 'lines');
+      } else {
+        console.log('No requisition lines found or empty array');
       }
       setIsInitialized(true);
     }
