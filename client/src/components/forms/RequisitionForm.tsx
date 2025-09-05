@@ -251,6 +251,8 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
       // Clean up the lines data
       const processedLines = lines.map(line => ({
         ...line,
+        // Fix materialId - convert empty string to null for validation
+        materialId: line.materialId?.trim() || null,
         // Ensure quantities are integers and descriptions are trimmed
         quantity: Math.floor(line.quantity),
         description: line.description.trim(),

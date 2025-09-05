@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const RequisitionLineSchema = z.object({
-  materialId: z.string().uuid().optional(), // either materialId or description is required
+  materialId: z.string().uuid().optional().nullable().transform(val => val && val.trim() || null), // either materialId or description is required
   description: z.string().trim().min(1, "Line description is required"),
-  model: z.string().trim().optional(),
+  model: z.string().trim().optional().nullable().transform(val => val && val.trim() || null),
   unit: z.string().trim().min(1, "Unit is required"),
   quantity: z.coerce.number().positive("Quantity must be greater than 0"),
   estimatedCost: z.coerce.number().min(0).optional(),
