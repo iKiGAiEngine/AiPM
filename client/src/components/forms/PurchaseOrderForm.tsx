@@ -73,7 +73,7 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
     defaultValues: {
       vendorId: existingPO?.vendorId || "",
       projectId: existingPO?.projectId || fromRequisition?.projectId || "",
-      shipToAddress: existingPO?.shipToAddress || "",
+      shipToAddress: existingPO?.shipToAddress || fromRequisition?.deliveryLocation || "",
       notes: existingPO?.notes || (fromRequisition ? `Created from requisition: ${fromRequisition.title}` : ""),
     },
   });
@@ -99,6 +99,7 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
       }
     } else if (fromRequisition) {
       form.setValue("projectId", fromRequisition.projectId);
+      form.setValue("shipToAddress", fromRequisition.deliveryLocation || "");
       form.setValue("notes", `Created from requisition: ${fromRequisition.title}`);
       
       // Convert requisition lines to PO lines
