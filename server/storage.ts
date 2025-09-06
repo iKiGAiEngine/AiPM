@@ -151,7 +151,7 @@ export interface IStorage {
     search?: string;
   }): Promise<any[]>;
   
-  // Contract Estimates
+  // Cost Code Budgets (from Contract Estimates table)
   getContractEstimatesByProject(projectId: string, organizationId: string): Promise<ContractEstimate[]>;
   
   // Global Search
@@ -1087,7 +1087,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Contract Estimates
+  // Cost Code Budgets (from Contract Estimates table)
   async getContractEstimatesByProject(projectId: string, organizationId: string): Promise<ContractEstimate[]> {
     return await db.select().from(contractEstimates)
       .where(and(

@@ -333,12 +333,12 @@ export default function RequisitionView() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Contract Estimate</label>
+              <label className="text-sm font-medium text-muted-foreground">Cost Code Budget</label>
               <p>{requisition.contractEstimateId || 'Not specified'}</p>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Total Estimated Cost</label>
+              <label className="text-sm font-medium text-muted-foreground">Total Budget Cost</label>
               <p className="text-lg font-bold text-green-600">
                 ${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>

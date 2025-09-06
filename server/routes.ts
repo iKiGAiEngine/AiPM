@@ -2114,31 +2114,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log(`Project found: ${project.name}`);
 
-      // Get real contract estimates for this project
-      const estimates = await storage.getContractEstimatesByProject(projectId, req.user!.organizationId);
-      console.log(`Found ${estimates.length} contract estimates`);
-      console.log('Sample estimate:', estimates[0]);
+      // Get real cost code budgets for this project
+      const budgets = await storage.getContractEstimatesByProject(projectId, req.user!.organizationId);
+      console.log(`Found ${budgets.length} cost code budgets`);
+      console.log('Sample budget:', budgets[0]);
       
       // Import cost code normalization
       const { normalizeCostCode } = await import('./config/cost-code-map');
       
-      // Group estimates by normalized cost code and calculate CMiC values
+      // Group budgets by normalized cost code and calculate CMiC values
       const costCodeMap = new Map();
-      estimates.forEach(estimate => {
-        const normalizedCostCode = normalizeCostCode(estimate.costCode);
-        console.log(`Normalizing ${estimate.costCode} -> ${normalizedCostCode}`);
+      budgets.forEach(budget => {
+        const normalizedCostCode = normalizeCostCode(budget.costCode);
+        console.log(`Normalizing ${budget.costCode} -> ${normalizedCostCode}`);
         
         if (!costCodeMap.has(normalizedCostCode)) {
           costCodeMap.set(normalizedCostCode, {
             costCode: normalizedCostCode,
-            originalCodes: new Set([estimate.costCode]),
+            originalCodes: new Set([budget.costCode]),
             awardedValue: 0,
-            estimates: []
+            budgets: []
           });
         }
-        costCodeMap.get(normalizedCostCode).originalCodes.add(estimate.costCode);
-        costCodeMap.get(normalizedCostCode).awardedValue += Number(estimate.awardedValue);
-        costCodeMap.get(normalizedCostCode).estimates.push(estimate);
+        costCodeMap.get(normalizedCostCode).originalCodes.add(budget.costCode);
+        costCodeMap.get(normalizedCostCode).awardedValue += Number(budget.awardedValue);
+        costCodeMap.get(normalizedCostCode).budgets.push(budget);
       });
       
       // Get purchase orders and invoices for this project to calculate actual spending

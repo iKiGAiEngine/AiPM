@@ -37,7 +37,7 @@ const Q = (x: number | string | null | undefined): number => {
 export class ContractForecastingService {
   
   async getCostCodes(projectId: string): Promise<Array<{id: string, code: string, description: string}>> {
-    const estimates = await db
+    const budgets = await db
       .select({
         id: contractEstimates.costCode,
         code: contractEstimates.costCode,
@@ -47,10 +47,10 @@ export class ContractForecastingService {
       .where(eq(contractEstimates.projectId, projectId))
       .groupBy(contractEstimates.costCode, contractEstimates.materialCategory);
     
-    return estimates.map(est => ({
-      id: est.id,
-      code: est.code,
-      description: est.description || 'Unknown'
+    return budgets.map(budget => ({
+      id: budget.id,
+      code: budget.code,
+      description: budget.description || 'Unknown'
     }));
   }
 
