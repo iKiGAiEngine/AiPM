@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import type { Project } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
+import { ContractBudgetsList } from "@/components/ContractBudgetsList";
 
 const statusColors = {
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
@@ -390,10 +391,11 @@ export default function ProjectDetail() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="procurement">Procurement</TabsTrigger>
           <TabsTrigger value="financial">Financial</TabsTrigger>
+          <TabsTrigger value="budgets">Contract Budgets</TabsTrigger>
           <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="materials">Materials</TabsTrigger>
         </TabsList>
@@ -652,6 +654,10 @@ export default function ProjectDetail() {
               </Link>
             </Button>
           </div>
+        </TabsContent>
+
+        <TabsContent value="budgets" className="space-y-6">
+          <ContractBudgetsList projectId={project.id} />
         </TabsContent>
 
         <TabsContent value="operations" className="space-y-4">
