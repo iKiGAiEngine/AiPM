@@ -14,6 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { useProject } from "@/contexts/ProjectContext";
 import type { Requisition, RequisitionLine, PurchaseOrder, PurchaseOrderLine } from "@shared/schema";
 import { useEffect } from "react";
 import { formatNumber, formatCurrency, parseFormattedNumber } from "@/lib/number-utils";
@@ -47,6 +48,7 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { selectedProject: contextProject } = useProject();
   
   
   // Initialize lines state with a simple default - useEffect will handle the real data loading
@@ -59,11 +61,18 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
     resolver: zodResolver(purchaseOrderSchema.omit({ lines: true })),
     defaultValues: {
       vendorId: existingPO?.vendorId || "",
-      projectId: existingPO?.projectId || fromRequisition?.projectId || "",
+      projectId: existingPO?.projectId || fromRequisition?.projectId || contextProject?.id || "",
       shipToAddress: existingPO?.shipToAddress || fromRequisition?.deliveryLocation || "",
       notes: existingPO?.notes || (fromRequisition ? `Created from requisition: ${fromRequisition.title}` : ""),
     },
   });
+
+  // Auto-select context project when available (for new POs not from requisition)
+  useEffect(() => {
+    if (!isEdit && !fromRequisition && contextProject && !form.getValues("projectId")) {
+      form.setValue("projectId", contextProject.id);
+    }
+  }, [contextProject, isEdit, fromRequisition, form]);
 
   // Update form and lines when data loads - this handles both existing PO and requisition data
   useEffect(() => {

@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, MapPin, Camera, Plus, Trash2, Package, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useProject } from "@/contexts/ProjectContext";
 import { formatNumber, parseFormattedNumber } from "@/lib/number-utils";
 
 const requisitionSchema = z.object({
@@ -56,6 +57,7 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { selectedProject: contextProject } = useProject();
   const [attachments, setAttachments] = useState<File[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [materialSearch, setMaterialSearch] = useState("");
@@ -193,7 +195,7 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
   const form = useForm<RequisitionFormData>({
     resolver: zodResolver(requisitionSchema),
     defaultValues: {
-      projectId: "",
+      projectId: contextProject?.id || "",
       title: "",
       targetDeliveryDate: "",
       deliveryLocation: "",
@@ -201,6 +203,14 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
       lines: []
     }
   });
+
+  // Auto-select context project when available (for new requisitions)
+  useEffect(() => {
+    if (!isEdit && contextProject && !form.getValues("projectId")) {
+      form.setValue("projectId", contextProject.id);
+      setSelectedProject(contextProject.id);
+    }
+  }, [contextProject, isEdit, form]);
 
   // Update form values when existing requisition data is loaded
   useEffect(() => {
