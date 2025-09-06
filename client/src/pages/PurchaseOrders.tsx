@@ -98,10 +98,11 @@ export default function PurchaseOrders() {
   });
 
   const { data: purchaseOrders = [], isLoading, error } = useQuery<PurchaseOrder[]>({
-    queryKey: ['/api/purchase-orders'],
+    queryKey: ['/api/purchase-orders', selectedProject?.id],
     queryFn: async () => {
-      // Always fetch all POs for organization - don't filter by selected project
-      const response = await fetch('/api/purchase-orders', {
+      // Filter by selected project if one is selected
+      const url = selectedProject ? `/api/purchase-orders?projectId=${selectedProject.id}` : '/api/purchase-orders';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -208,7 +209,13 @@ export default function PurchaseOrders() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Purchase Orders</h1>
-          <p className="text-muted-foreground">Manage purchase orders and vendor communications</p>
+          {selectedProject ? (
+            <p className="text-muted-foreground">
+              Project: <span className="font-medium">{selectedProject.projectNumber} - {selectedProject.name}</span>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">All Projects - Manage purchase orders and vendor communications</p>
+          )}
         </div>
         <Button asChild data-testid="button-new-po">
           <Link to="/purchase-orders/new">
