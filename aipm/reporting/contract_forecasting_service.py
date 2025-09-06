@@ -59,17 +59,22 @@ def get_db_connection():
     )
 
 def cc_list(db, project_id):
-    """Get cost codes from contract estimates for the project"""
+    """Get cost codes for the project (show even if no budget yet)"""
     cursor = db.cursor()
     cursor.execute("""
-        SELECT DISTINCT cost_code as id, cost_code as code, material_category as description
-        FROM contract_estimates 
-        WHERE project_id = %s
-        ORDER BY cost_code
-    """, (project_id,))
+        SELECT DISTINCT ce.cost_code as id, ce.cost_code as code, ce.material_category as description
+        FROM contract_estimates ce
+        WHERE ce.project_id = %s
+        UNION
+        SELECT DISTINCT po.cost_code as id, po.cost_code as code, '' as description
+        FROM purchase_orders po
+        WHERE po.project_id = %s
+        ORDER BY code
+    """, (project_id, project_id))
     
     rows = cursor.fetchall()
     return [{"id": row[0], "code": row[1], "description": row[2]} for row in rows]
+
 
 def q_budget_plus_approvedCO(db, project_id, ccid):
     """A & J: Original budget + approved change orders"""
