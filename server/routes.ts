@@ -2389,6 +2389,273 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Contract Budgets Management routes
+  app.post("/api/projects/:projectId/contract-estimates/populate", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { projectId } = req.params;
+      
+      // Verify project exists and user has access
+      const project = await storage.getProject(projectId);
+      if (!project || project.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check if project already has contract budgets
+      const existingBudgets = await storage.getContractEstimatesByProject(projectId, req.user!.organizationId);
+      if (existingBudgets.length > 0) {
+        return res.status(400).json({ 
+          error: "Project already has contract budgets", 
+          count: existingBudgets.length 
+        });
+      }
+
+      // Create sample contract budgets based on common cost codes
+      const sampleBudgets = [
+        {
+          organizationId: req.user!.organizationId,
+          projectId: projectId,
+          estimateNumber: "EST-001",
+          title: "Site Preparation & Excavation",
+          description: "Site clearing, earthwork, and foundation excavation",
+          costCode: "02-Site Work",
+          awardedValue: "125000.00",
+          estimatedQuantity: "1500.00",
+          unit: "CY",
+          materialCategory: "Site Work",
+          awardDate: new Date(),
+          isActive: true
+        },
+        {
+          organizationId: req.user!.organizationId,
+          projectId: projectId,
+          estimateNumber: "EST-002",
+          title: "Concrete Foundation & Slabs",
+          description: "Foundation walls, footings, and concrete slabs",
+          costCode: "03-Concrete",
+          awardedValue: "485000.00",
+          estimatedQuantity: "2800.00",
+          unit: "CY",
+          materialCategory: "Concrete",
+          awardDate: new Date(),
+          isActive: true
+        },
+        {
+          organizationId: req.user!.organizationId,
+          projectId: projectId,
+          estimateNumber: "EST-003",
+          title: "Structural Steel Framework",
+          description: "Structural steel beams, columns, and connections",
+          costCode: "05-Metals",
+          awardedValue: "320000.00",
+          estimatedQuantity: "85.00",
+          unit: "TON",
+          materialCategory: "Structural Steel",
+          awardDate: new Date(),
+          isActive: true
+        },
+        {
+          organizationId: req.user!.organizationId,
+          projectId: projectId,
+          estimateNumber: "EST-004",
+          title: "Wood Framing & Carpentry",
+          description: "Wood framing, sheathing, and rough carpentry",
+          costCode: "06-Wood & Plastics",
+          awardedValue: "185000.00",
+          estimatedQuantity: "12500.00",
+          unit: "SF",
+          materialCategory: "Wood & Plastics",
+          awardDate: new Date(),
+          isActive: true
+        },
+        {
+          organizationId: req.user!.organizationId,
+          projectId: projectId,
+          estimateNumber: "EST-005",
+          title: "HVAC Systems",
+          description: "Heating, ventilation, and air conditioning systems",
+          costCode: "23-HVAC",
+          awardedValue: "245000.00",
+          estimatedQuantity: "1.00",
+          unit: "LS",
+          materialCategory: "HVAC",
+          awardDate: new Date(),
+          isActive: true
+        },
+        {
+          organizationId: req.user!.organizationId,
+          projectId: projectId,
+          estimateNumber: "EST-006",
+          title: "Electrical Systems",
+          description: "Electrical rough-in, panels, and fixtures",
+          costCode: "26-Electrical",
+          awardedValue: "195000.00",
+          estimatedQuantity: "1.00",
+          unit: "LS",
+          materialCategory: "Electrical",
+          awardDate: new Date(),
+          isActive: true
+        }
+      ];
+
+      // Insert the sample budgets
+      const createdBudgets = [];
+      for (const budget of sampleBudgets) {
+        const created = await db.insert(contractEstimates).values(budget).returning();
+        createdBudgets.push(created[0]);
+      }
+
+      console.log(`Created ${createdBudgets.length} sample contract budgets for project: ${project.name}`);
+      
+      res.status(201).json({
+        success: true,
+        message: `Created ${createdBudgets.length} sample contract budgets`,
+        budgets: createdBudgets
+      });
+
+    } catch (error) {
+      console.error('Failed to populate contract budgets:', error);
+      res.status(500).json({ error: "Failed to populate contract budgets" });
+    }
+  });
+
+  // Bulk populate contract budgets for all projects missing them
+  app.post("/api/admin/populate-all-contract-budgets", requireRole(['Admin']), async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get all projects for this organization
+      const allProjects = await storage.getProjectsByOrganization(req.user!.organizationId);
+      
+      const results = {
+        total: allProjects.length,
+        populated: 0,
+        skipped: 0,
+        errors: []
+      };
+
+      for (const project of allProjects) {
+        try {
+          // Check if project already has contract budgets
+          const existingBudgets = await storage.getContractEstimatesByProject(project.id, req.user!.organizationId);
+          
+          if (existingBudgets.length > 0) {
+            console.log(`Skipping ${project.name} - already has ${existingBudgets.length} contract budgets`);
+            results.skipped++;
+            continue;
+          }
+
+          // Create sample contract budgets for this project
+          const sampleBudgets = [
+            {
+              organizationId: req.user!.organizationId,
+              projectId: project.id,
+              estimateNumber: "EST-001",
+              title: "Site Preparation & Excavation",
+              description: "Site clearing, earthwork, and foundation excavation",
+              costCode: "02-Site Work",
+              awardedValue: "125000.00",
+              estimatedQuantity: "1500.00",
+              unit: "CY",
+              materialCategory: "Site Work",
+              awardDate: new Date(),
+              isActive: true
+            },
+            {
+              organizationId: req.user!.organizationId,
+              projectId: project.id,
+              estimateNumber: "EST-002",
+              title: "Concrete Foundation & Slabs",
+              description: "Foundation walls, footings, and concrete slabs",
+              costCode: "03-Concrete",
+              awardedValue: "485000.00",
+              estimatedQuantity: "2800.00",
+              unit: "CY",
+              materialCategory: "Concrete",
+              awardDate: new Date(),
+              isActive: true
+            },
+            {
+              organizationId: req.user!.organizationId,
+              projectId: project.id,
+              estimateNumber: "EST-003",
+              title: "Structural Steel Framework",
+              description: "Structural steel beams, columns, and connections",
+              costCode: "05-Metals",
+              awardedValue: "320000.00",
+              estimatedQuantity: "85.00",
+              unit: "TON",
+              materialCategory: "Structural Steel",
+              awardDate: new Date(),
+              isActive: true
+            },
+            {
+              organizationId: req.user!.organizationId,
+              projectId: project.id,
+              estimateNumber: "EST-004",
+              title: "Wood Framing & Carpentry",
+              description: "Wood framing, sheathing, and rough carpentry",
+              costCode: "06-Wood & Plastics",
+              awardedValue: "185000.00",
+              estimatedQuantity: "12500.00",
+              unit: "SF",
+              materialCategory: "Wood & Plastics",
+              awardDate: new Date(),
+              isActive: true
+            },
+            {
+              organizationId: req.user!.organizationId,
+              projectId: project.id,
+              estimateNumber: "EST-005",
+              title: "HVAC Systems",
+              description: "Heating, ventilation, and air conditioning systems",
+              costCode: "23-HVAC",
+              awardedValue: "245000.00",
+              estimatedQuantity: "1.00",
+              unit: "LS",
+              materialCategory: "HVAC",
+              awardDate: new Date(),
+              isActive: true
+            },
+            {
+              organizationId: req.user!.organizationId,
+              projectId: project.id,
+              estimateNumber: "EST-006",
+              title: "Electrical Systems",
+              description: "Electrical rough-in, panels, and fixtures",
+              costCode: "26-Electrical",
+              awardedValue: "195000.00",
+              estimatedQuantity: "1.00",
+              unit: "LS",
+              materialCategory: "Electrical",
+              awardDate: new Date(),
+              isActive: true
+            }
+          ];
+
+          // Insert the sample budgets
+          for (const budget of sampleBudgets) {
+            await db.insert(contractEstimates).values(budget);
+          }
+
+          console.log(`Created ${sampleBudgets.length} contract budgets for project: ${project.name}`);
+          results.populated++;
+
+        } catch (error) {
+          console.error(`Failed to populate budgets for project ${project.name}:`, error);
+          results.errors.push(`${project.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Processed ${results.total} projects. Populated ${results.populated}, skipped ${results.skipped}`,
+        results
+      });
+
+    } catch (error) {
+      console.error('Failed to bulk populate contract budgets:', error);
+      res.status(500).json({ error: "Failed to bulk populate contract budgets" });
+    }
+  });
+
   // User Management routes
   app.get("/api/users/me", async (req: AuthenticatedRequest, res) => {
     try {
