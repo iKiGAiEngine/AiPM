@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useProject } from "@/contexts/ProjectContext";
 import { formatCurrency, formatNumber, parseFormattedNumber } from "@/lib/number-utils";
 import type { PurchaseOrder } from "@shared/schema";
 
@@ -39,14 +40,18 @@ interface TrackingData {
 export default function POTracking() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { selectedProject } = useProject();
   const [selectedPO, setSelectedPO] = useState<(PurchaseOrder & TrackingData) | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  // Fetch only sent POs for tracking
+  // Fetch only sent POs for tracking, filtered by project
   const { data: trackingPOs = [], isLoading } = useQuery<(PurchaseOrder & TrackingData)[]>({
-    queryKey: ['/api/purchase-orders/tracking'],
+    queryKey: ['/api/purchase-orders/tracking', selectedProject?.id],
     queryFn: async () => {
-      const response = await fetch('/api/purchase-orders/tracking', {
+      const url = selectedProject 
+        ? `/api/purchase-orders/tracking?projectId=${selectedProject.id}` 
+        : '/api/purchase-orders/tracking';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -172,9 +177,13 @@ export default function POTracking() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">PO Tracking</h1>
-          <p className="text-muted-foreground">
-            Track purchase orders that have been sent to vendors
-          </p>
+          {selectedProject ? (
+            <p className="text-muted-foreground">
+              Project: <span className="font-medium">{selectedProject.projectNumber} - {selectedProject.name}</span>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">All Projects - Track purchase orders sent to vendors</p>
+          )}
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
@@ -217,8 +226,8 @@ export default function POTracking() {
                 {trackingPOs.map((po) => (
                   <TableRow key={po.id}>
                     <TableCell className="font-medium">{po.number}</TableCell>
-                    <TableCell>{po.vendor?.name || 'Unknown'}</TableCell>
-                    <TableCell>{po.project?.name || 'Unknown'}</TableCell>
+                    <TableCell>{po.vendorName || 'Unknown'}</TableCell>
+                    <TableCell>{po.projectName || 'Unknown'}</TableCell>
                     <TableCell>{formatCurrency(po.totalAmount || 0)}</TableCell>
                     <TableCell className="max-w-32 truncate">
                       <div className="flex items-center gap-1">
@@ -277,7 +286,11 @@ export default function POTracking() {
           </DialogHeader>
           
           {selectedPO && (
-            <form action={handleSaveTracking} className="space-y-6">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              handleSaveTracking(formData);
+            }} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="estimatedLeadTimeDays">Lead Time (Days)</Label>
