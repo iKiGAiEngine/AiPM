@@ -103,6 +103,8 @@ export interface IStorage {
   getPurchaseOrdersByVendor(vendorId: string): Promise<PurchaseOrder[]>;
   updatePurchaseOrder(id: string, updates: Partial<PurchaseOrder>): Promise<void>;
   updatePurchaseOrderStatus(id: string, status: string): Promise<void>;
+  getSentPurchaseOrdersForTracking(organizationId: string): Promise<any[]>;
+  getSentPurchaseOrdersForTrackingByProject(projectId: string): Promise<any[]>;
   
   // Purchase Order Lines
   createPurchaseOrderLine(line: InsertPurchaseOrderLine): Promise<PurchaseOrderLine>;
@@ -766,6 +768,47 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(purchaseOrders.organizationId, organizationId),
+          ne(purchaseOrders.status, 'draft' as any), // Exclude draft POs
+          ne(purchaseOrders.status, 'closed' as any)    // Exclude closed POs
+        )
+      )
+      .orderBy(desc(purchaseOrders.createdAt));
+  }
+
+  async getSentPurchaseOrdersForTrackingByProject(projectId: string): Promise<any[]> {
+    // Get only POs that have been sent to vendors for a specific project
+    return await db
+      .select({
+        id: purchaseOrders.id,
+        organizationId: purchaseOrders.organizationId,
+        projectId: purchaseOrders.projectId,
+        vendorId: purchaseOrders.vendorId,
+        number: purchaseOrders.number,
+        status: purchaseOrders.status,
+        shipToAddress: purchaseOrders.shipToAddress,
+        requestedDeliveryDate: purchaseOrders.requestedDeliveryDate,
+        totalAmount: purchaseOrders.totalAmount,
+        sentAt: purchaseOrders.sentAt,
+        acknowledgedAt: purchaseOrders.acknowledgedAt,
+        estimatedLeadTimeDays: purchaseOrders.estimatedLeadTimeDays,
+        estimatedShipmentDate: purchaseOrders.estimatedShipmentDate,
+        estimatedDeliveryDate: purchaseOrders.estimatedDeliveryDate,
+        trackingNumber: purchaseOrders.trackingNumber,
+        carrierName: purchaseOrders.carrierName,
+        trackingStatus: purchaseOrders.trackingStatus,
+        actualShipDate: purchaseOrders.actualShipDate,
+        deliveredAt: purchaseOrders.deliveredAt,
+        createdAt: purchaseOrders.createdAt,
+        vendorName: vendors.name,
+        projectName: projects.name,
+        projectNumber: projects.projectNumber
+      })
+      .from(purchaseOrders)
+      .leftJoin(vendors, eq(purchaseOrders.vendorId, vendors.id))
+      .leftJoin(projects, eq(purchaseOrders.projectId, projects.id))
+      .where(
+        and(
+          eq(purchaseOrders.projectId, projectId),
           ne(purchaseOrders.status, 'draft' as any), // Exclude draft POs
           ne(purchaseOrders.status, 'closed' as any)    // Exclude closed POs
         )

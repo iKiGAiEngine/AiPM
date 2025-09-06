@@ -208,13 +208,23 @@ export default function Requisitions() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Requisitions</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Manage material requests and approvals
-            {canApprove && (() => {
-              const pendingApproval = requisitions.filter(r => r.status === 'submitted').length;
-              return pendingApproval > 0 ? ` • ${pendingApproval} pending approval` : '';
-            })()}
-          </p>
+          {selectedProject ? (
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Project: <span className="font-medium">{selectedProject.projectNumber} - {selectedProject.name}</span>
+              {canApprove && (() => {
+                const pendingApproval = requisitions.filter(r => r.status === 'submitted').length;
+                return pendingApproval > 0 ? ` • ${pendingApproval} pending approval` : '';
+              })()}
+            </p>
+          ) : (
+            <p className="text-sm sm:text-base text-muted-foreground">
+              All Projects - Manage material requests and approvals
+              {canApprove && (() => {
+                const pendingApproval = requisitions.filter(r => r.status === 'submitted').length;
+                return pendingApproval > 0 ? ` • ${pendingApproval} pending approval` : '';
+              })()}
+            </p>
+          )}
         </div>
         <Button asChild data-testid="button-new-requisition" className="w-full sm:w-auto">
           <Link to="/requisitions/new">

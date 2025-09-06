@@ -90,7 +90,13 @@ export default function Deliveries() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Deliveries</h1>
-          <p className="text-muted-foreground">Track and manage material deliveries</p>
+          {selectedProject ? (
+            <p className="text-muted-foreground">
+              Project: <span className="font-medium">{selectedProject.projectNumber} - {selectedProject.name}</span>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">All Projects - Track and manage material deliveries</p>
+          )}
         </div>
         <Button asChild data-testid="button-new-delivery">
           <Link to="/deliveries/new">

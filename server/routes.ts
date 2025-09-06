@@ -1413,8 +1413,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PO Tracking API Routes
   app.get("/api/purchase-orders/tracking", async (req: AuthenticatedRequest, res) => {
     try {
-      // Get only sent POs for tracking (excludes draft/pending)
-      const sentPOs = await storage.getSentPurchaseOrdersForTracking(req.user!.organizationId);
+      const { projectId } = req.query;
+      let sentPOs;
+      
+      if (projectId && typeof projectId === 'string') {
+        // Get sent POs for tracking filtered by project
+        sentPOs = await storage.getSentPurchaseOrdersForTrackingByProject(projectId);
+      } else {
+        // Get only sent POs for tracking (excludes draft/pending)
+        sentPOs = await storage.getSentPurchaseOrdersForTracking(req.user!.organizationId);
+      }
+      
       res.json(sentPOs);
     } catch (error) {
       console.error("Tracking fetch error:", error);

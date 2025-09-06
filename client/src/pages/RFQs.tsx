@@ -88,7 +88,13 @@ export default function RFQs() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Buyouts (RFQs)</h1>
-          <p className="text-muted-foreground">Competitive bidding and vendor quote management</p>
+          {selectedProject ? (
+            <p className="text-muted-foreground">
+              Project: <span className="font-medium">{selectedProject.projectNumber} - {selectedProject.name}</span>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">All Projects - Competitive bidding and vendor quote management</p>
+          )}
         </div>
         <Button asChild data-testid="button-new-rfq">
           <Link to="/rfqs/new">
