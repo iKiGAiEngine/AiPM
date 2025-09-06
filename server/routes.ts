@@ -2389,8 +2389,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Contract Budget Management - API endpoints for managing project budgets
-  // Note: UI for creating/editing contract budgets needs to be implemented
+  // Contract Budget Management - Complete CRUD API endpoints
+  
+  // Get contract budgets for a project
+  app.get("/api/projects/:projectId/contract-budgets", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { projectId } = req.params;
+      
+      // Verify project access
+      const project = await storage.getProject(projectId);
+      if (!project || project.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const budgets = await storage.getContractEstimatesByProject(projectId, req.user!.organizationId);
+      res.json(budgets);
+    } catch (error) {
+      console.error('Failed to fetch contract budgets:', error);
+      res.status(500).json({ error: "Failed to fetch contract budgets" });
+    }
+  });
+
+  // Create a new contract budget
+  app.post("/api/projects/:projectId/contract-budgets", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { projectId } = req.params;
+      
+      // Verify project access
+      const project = await storage.getProject(projectId);
+      if (!project || project.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Validate request body
+      const budgetData = insertContractEstimateSchema.parse({
+        ...req.body,
+        organizationId: req.user!.organizationId,
+        projectId: projectId
+      });
+
+      const newBudget = await db.insert(contractEstimates).values(budgetData).returning();
+      console.log(`Created contract budget: ${budgetData.title} for project: ${project.name}`);
+      
+      res.status(201).json(newBudget[0]);
+    } catch (error) {
+      console.error('Failed to create contract budget:', error);
+      res.status(400).json({ error: "Failed to create contract budget" });
+    }
+  });
+
+  // Update a contract budget
+  app.put("/api/contract-budgets/:budgetId", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { budgetId } = req.params;
+      
+      // Get existing budget to verify access
+      const existingBudget = await db.select().from(contractEstimates)
+        .where(and(
+          eq(contractEstimates.id, budgetId),
+          eq(contractEstimates.organizationId, req.user!.organizationId)
+        ));
+
+      if (existingBudget.length === 0) {
+        return res.status(404).json({ error: "Contract budget not found" });
+      }
+
+      // Validate and update
+      const updateData = insertContractEstimateSchema.partial().parse(req.body);
+      delete updateData.organizationId; // Don't allow changing organization
+      delete updateData.projectId; // Don't allow changing project
+
+      const updatedBudget = await db.update(contractEstimates)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(contractEstimates.id, budgetId))
+        .returning();
+
+      res.json(updatedBudget[0]);
+    } catch (error) {
+      console.error('Failed to update contract budget:', error);
+      res.status(400).json({ error: "Failed to update contract budget" });
+    }
+  });
+
+  // Delete a contract budget
+  app.delete("/api/contract-budgets/:budgetId", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { budgetId } = req.params;
+      
+      // Verify access and delete
+      const deleted = await db.delete(contractEstimates)
+        .where(and(
+          eq(contractEstimates.id, budgetId),
+          eq(contractEstimates.organizationId, req.user!.organizationId)
+        ))
+        .returning();
+
+      if (deleted.length === 0) {
+        return res.status(404).json({ error: "Contract budget not found" });
+      }
+
+      res.json({ success: true, message: "Contract budget deleted" });
+    } catch (error) {
+      console.error('Failed to delete contract budget:', error);
+      res.status(500).json({ error: "Failed to delete contract budget" });
+    }
+  });
 
   // User Management routes
   app.get("/api/users/me", async (req: AuthenticatedRequest, res) => {
