@@ -74,10 +74,7 @@ export function ContractBudgetForm({ projectId, budget, onSuccess, onCancel }: C
         estimatedQuantity: data.estimatedQuantity ? parseFloat(data.estimatedQuantity) : null,
         awardDate: data.awardDate ? new Date(data.awardDate) : null,
       };
-      return apiRequest(`/api/projects/${projectId}/contract-budgets`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      return apiRequest(`/api/projects/${projectId}/contract-budgets`, "POST", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "contract-budgets"] });
@@ -101,10 +98,7 @@ export function ContractBudgetForm({ projectId, budget, onSuccess, onCancel }: C
         estimatedQuantity: data.estimatedQuantity ? parseFloat(data.estimatedQuantity) : null,
         awardDate: data.awardDate ? new Date(data.awardDate) : null,
       };
-      return apiRequest(`/api/contract-budgets/${budget!.id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
+      return apiRequest(`/api/contract-budgets/${budget!.id}`, "PUT", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "contract-budgets"] });

@@ -11,8 +11,8 @@ import {
   type AuthenticatedRequest 
 } from "./middleware/auth";
 import { z } from "zod";
-import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, type InsertProject, invoices, contractEstimates, requisitionLines } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, insertContractEstimateSchema, type InsertProject, invoices, contractEstimates, requisitionLines } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 import { db } from "./db";
 import { threeWayMatchService } from "./services/three-way-match";
 import { emailService } from "./services/email";

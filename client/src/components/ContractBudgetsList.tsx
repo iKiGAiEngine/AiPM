@@ -46,14 +46,14 @@ export function ContractBudgetsList({ projectId }: ContractBudgetsListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: budgets = [], isLoading } = useQuery({
+  const { data: budgets = [], isLoading } = useQuery<ContractEstimate[]>({
     queryKey: ["/api/projects", projectId, "contract-budgets"],
     queryFn: () => apiRequest(`/api/projects/${projectId}/contract-budgets`),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (budgetId: string) => 
-      apiRequest(`/api/contract-budgets/${budgetId}`, { method: "DELETE" }),
+      apiRequest(`/api/contract-budgets/${budgetId}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "contract-budgets"] });
       toast({ title: "Contract budget deleted successfully" });
