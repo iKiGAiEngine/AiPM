@@ -17,6 +17,7 @@ import RFQView from "@/pages/RFQView";
 import QuoteComparison from "@/pages/QuoteComparison";
 import NewRFQ from "@/pages/NewRFQ";
 import PurchaseOrders from "@/pages/PurchaseOrders";
+import POTracking from "@/pages/POTracking";
 import Deliveries from "@/pages/Deliveries";
 import NewDelivery from "@/pages/NewDelivery";
 import DeliveryView from "@/pages/DeliveryView";
@@ -189,6 +190,13 @@ export default function App() {
               <Route path="/purchase-orders" element={
                 <ProtectedRoute>
                   <PurchaseOrders />
+                </ProtectedRoute>
+              } />
+              
+              {/* PO Tracking */}
+              <Route path="/po-tracking" element={
+                <ProtectedRoute>
+                  <POTracking />
                 </ProtectedRoute>
               } />
               

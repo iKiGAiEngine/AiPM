@@ -35,6 +35,7 @@ export const poStatusEnum = pgEnum('po_status', [
   'closed'
 ]);
 export const deliveryStatusEnum = pgEnum('delivery_status', ['pending', 'partial', 'complete', 'damaged']);
+export const trackingStatusEnum = pgEnum('tracking_status', ['pending', 'in_transit', 'out_for_delivery', 'delivered', 'exception', 'returned']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['pending', 'approved', 'exception', 'paid']);
 export const matchStatusEnum = pgEnum('match_status', ['matched', 'price_variance', 'qty_variance', 'missing_po', 'tax_variance', 'freight_variance']);
 
@@ -286,9 +287,13 @@ export const purchaseOrders = pgTable("purchase_orders", {
   sentAt: timestamp("sent_at"),
   acknowledgedAt: timestamp("acknowledged_at"),
   // Enhanced tracking fields
+  estimatedLeadTimeDays: integer("estimated_lead_time_days"),
   estimatedShipmentDate: timestamp("estimated_shipment_date"),
+  estimatedDeliveryDate: timestamp("estimated_delivery_date"),
   trackingNumber: text("tracking_number"),
   carrierName: text("carrier_name"),
+  trackingStatus: trackingStatusEnum("tracking_status").default('pending'),
+  actualShipDate: timestamp("actual_ship_date"),
   deliveredAt: timestamp("delivered_at"),
   damageReportDeadline: timestamp("damage_report_deadline"),
   damageReportSent: boolean("damage_report_sent").default(false),

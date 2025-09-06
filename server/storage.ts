@@ -725,6 +725,60 @@ export class DatabaseStorage implements IStorage {
     return availablePOs;
   }
 
+  async getSentPurchaseOrdersForTracking(organizationId: string): Promise<any[]> {
+    // Get only POs that have been sent to vendors (excludes draft/pending)
+    return await db
+      .select({
+        id: purchaseOrders.id,
+        organizationId: purchaseOrders.organizationId,
+        projectId: purchaseOrders.projectId,
+        vendorId: purchaseOrders.vendorId,
+        number: purchaseOrders.number,
+        status: purchaseOrders.status,
+        shipToAddress: purchaseOrders.shipToAddress,
+        requestedDeliveryDate: purchaseOrders.requestedDeliveryDate,
+        totalAmount: purchaseOrders.totalAmount,
+        sentAt: purchaseOrders.sentAt,
+        acknowledgedAt: purchaseOrders.acknowledgedAt,
+        estimatedLeadTimeDays: purchaseOrders.estimatedLeadTimeDays,
+        estimatedShipmentDate: purchaseOrders.estimatedShipmentDate,
+        estimatedDeliveryDate: purchaseOrders.estimatedDeliveryDate,
+        trackingNumber: purchaseOrders.trackingNumber,
+        carrierName: purchaseOrders.carrierName,
+        trackingStatus: purchaseOrders.trackingStatus,
+        actualShipDate: purchaseOrders.actualShipDate,
+        deliveredAt: purchaseOrders.deliveredAt,
+        createdAt: purchaseOrders.createdAt,
+        vendor: {
+          id: vendors.id,
+          name: vendors.name,
+          company: vendors.company
+        },
+        project: {
+          id: projects.id,
+          name: projects.name,
+          projectNumber: projects.projectNumber
+        }
+      })
+      .from(purchaseOrders)
+      .leftJoin(vendors, eq(purchaseOrders.vendorId, vendors.id))
+      .leftJoin(projects, eq(purchaseOrders.projectId, projects.id))
+      .where(
+        and(
+          eq(purchaseOrders.organizationId, organizationId),
+          ne(purchaseOrders.status, 'draft' as any), // Exclude draft POs
+          ne(purchaseOrders.status, 'closed' as any)    // Exclude closed POs
+        )
+      )
+      .orderBy(desc(purchaseOrders.createdAt));
+  }
+
+  async updatePurchaseOrderTracking(id: string, trackingData: any): Promise<void> {
+    await db.update(purchaseOrders)
+      .set({ ...trackingData, updatedAt: sql`now()` })
+      .where(eq(purchaseOrders.id, id));
+  }
+
   // Delivery Lines
   async createDeliveryLine(line: InsertDeliveryLine): Promise<DeliveryLine> {
     const [newLine] = await db.insert(deliveryLines).values(line).returning();

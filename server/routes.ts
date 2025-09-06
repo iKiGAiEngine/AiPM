@@ -1410,6 +1410,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PO Tracking API Routes
+  app.get("/api/purchase-orders/tracking", async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get only sent POs for tracking (excludes draft/pending)
+      const sentPOs = await storage.getSentPurchaseOrdersForTracking(req.user!.organizationId);
+      res.json(sentPOs);
+    } catch (error) {
+      console.error("Tracking fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch tracking data" });
+    }
+  });
+
+  app.patch("/api/purchase-orders/:id/tracking", async (req: AuthenticatedRequest, res) => {
+    try {
+      const trackingData = req.body;
+      const user = req.user!;
+
+      // Verify PO exists and belongs to organization
+      const po = await storage.getPurchaseOrder(req.params.id);
+      if (!po || po.organizationId !== user.organizationId) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      // Update tracking information
+      await storage.updatePurchaseOrderTracking(req.params.id, trackingData);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Tracking update error:", error);
+      res.status(500).json({ error: "Failed to update tracking information" });
+    }
+  });
+
   // Enhanced PO Workflow API Routes
   
   // Vendor Acknowledgment

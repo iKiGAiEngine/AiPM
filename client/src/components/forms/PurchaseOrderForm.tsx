@@ -48,11 +48,6 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  console.log('=== PO FORM DEBUG ===');
-  console.log('fromRequisition:', fromRequisition);
-  console.log('fromRequisition?.lines?.length:', fromRequisition?.lines?.length);
-  console.log('isEdit:', isEdit);
-  console.log('existingPO:', existingPO);
   
   // Initialize lines state with a simple default - useEffect will handle the real data loading
   const [lines, setLines] = useState<POLine[]>([{ description: "", quantity: 1, unitPrice: 0, unit: "EA" }]);
@@ -72,15 +67,6 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
 
   // Update form and lines when data loads - this handles both existing PO and requisition data
   useEffect(() => {
-    console.log('=== useEffect DEBUG ===');
-    console.log('existingPO:', !!existingPO);
-    console.log('fromRequisition:', !!fromRequisition);
-    console.log('isInitialized:', isInitialized);
-    console.log('fromRequisition lines:', fromRequisition?.lines);
-    
-    if (fromRequisition) {
-      console.log('FULL fromRequisition object:', JSON.stringify(fromRequisition, null, 2));
-    }
     
     // Handle existing PO editing
     if (existingPO && !isInitialized) {
@@ -110,31 +96,21 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
       
       // Convert requisition lines to PO lines
       if (fromRequisition.lines && fromRequisition.lines.length > 0) {
-        console.log('Converting requisition lines to PO lines...');
-        console.log('Number of requisition lines:', fromRequisition.lines.length);
-        
-        const poLines = fromRequisition.lines.map((line, index) => {
-          console.log(`Converting line ${index + 1}:`, line);
+        const poLines = fromRequisition.lines.map((line) => {
           const quantity = parseFloat(line.quantity?.toString() || '1');
           const estimatedCost = parseFloat(line.estimatedCost?.toString() || '0');
           const unitPrice = quantity > 0 ? estimatedCost / quantity : 0;
           
-          const poLine = {
+          return {
             description: line.description,
             quantity: quantity,
             unitPrice: unitPrice,
             unit: line.unit,
             projectMaterialId: line.materialId || undefined
           };
-          console.log(`Converted PO line ${index + 1}:`, poLine);
-          return poLine;
         });
         
-        console.log('Final PO lines array:', poLines);
         setLines(poLines);
-        console.log('setLines called with:', poLines.length, 'lines');
-      } else {
-        console.log('No requisition lines found or empty array');
       }
       setIsInitialized(true);
     }

@@ -7,6 +7,7 @@ import {
   ClipboardList, 
   Calendar, 
   FileText, 
+  Package2,
   Truck, 
   Receipt, 
   Package, 
@@ -52,6 +53,12 @@ const navigation = [
     name: "Purchase Orders",
     href: "/purchase-orders",
     icon: FileText,
+    roles: ["Admin", "PM", "Purchaser"]
+  },
+  {
+    name: "PO Tracking",
+    href: "/po-tracking",
+    icon: Package2,
     roles: ["Admin", "PM", "Purchaser"]
   },
   {
