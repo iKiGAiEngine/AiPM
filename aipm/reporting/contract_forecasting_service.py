@@ -195,6 +195,10 @@ def compute_row(db, project_id, cc, include_pending=True, period=None, use_alt_I
     # N — Projected Gain/Loss
     N = M - I
 
+        # 🔍 Debugging: print cost code row details
+    print(f"[DEBUG] Project {project_id} — Cost Code {cc['code']}: "
+          f"A={A}, B={B}, C={C}, J={J}, M={M}, N={N}")
+    
     return Line(
         cost_code=f'{cc["code"]} — {cc.get("description","")}',
         A=A, B=B, C=C, cur=cur,
