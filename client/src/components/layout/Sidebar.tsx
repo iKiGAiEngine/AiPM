@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   DropdownMenu,
@@ -118,6 +118,10 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedProject, setSelectedProject, projects, isLoadingProjects } = useProject();
+  
+  // Custom dropdown state for desktop project switcher
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Get project-specific counts for dynamic badges
   const { data: dashboardStats } = useQuery({
@@ -176,6 +180,25 @@ export default function Sidebar() {
     navigate(href);
   };
 
+  // Handle clicking outside the dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProjectDropdownOpen(false);
+      }
+    };
+
+    if (isProjectDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isProjectDropdownOpen]);
+
+  const handleProjectSelect = (project: any) => {
+    setSelectedProject(project);
+    setIsProjectDropdownOpen(false);
+  };
+
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-sidebar lg:border-r lg:border-sidebar-border lg:max-h-screen">
       <div className="flex-1 flex flex-col min-h-0">
@@ -191,73 +214,81 @@ export default function Sidebar() {
 
         {/* Project Switcher */}
         <div className="p-4 border-b border-sidebar-border">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-between p-3 h-auto bg-sidebar-accent hover:bg-sidebar-accent/80"
-                data-testid="button-project-switcher"
-                disabled={isLoadingProjects}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
-                    <FolderOpen className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div className="text-left">
-                    {selectedProject ? (
-                      <>
-                        <div className="text-sm font-medium text-sidebar-foreground">{selectedProject.name}</div>
-                        <div className="text-xs text-sidebar-foreground/70">{selectedProject.status === 'active' ? 'Active Project' : selectedProject.status}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-sm font-medium text-sidebar-foreground">
-                          {isLoadingProjects ? 'Loading...' : 'All Projects'}
-                        </div>
-                        <div className="text-xs text-sidebar-foreground/70">View all documents</div>
-                      </>
-                    )}
-                  </div>
+          <div className="relative" ref={dropdownRef}>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-between p-3 h-auto bg-sidebar-accent hover:bg-sidebar-accent/80"
+              onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+              data-testid="button-project-switcher"
+              disabled={isLoadingProjects}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                  <FolderOpen className="w-4 h-4 text-blue-600" />
                 </div>
-                <ChevronDown className="w-4 h-4 text-sidebar-foreground/70" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64 z-50" align="start" sideOffset={8}>
-              <DropdownMenuItem
-                onClick={() => setSelectedProject(null)}
-                className={cn(
-                  "flex items-center space-x-3 p-3",
-                  !selectedProject && "bg-accent"
-                )}
-              >
-                <div className="w-4 h-4 bg-gray-100 rounded flex items-center justify-center">
-                  <FolderOpen className="w-3 h-3 text-gray-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-medium">All Projects</div>
-                  <div className="text-xs text-muted-foreground">View all documents</div>
-                </div>
-              </DropdownMenuItem>
-              {projects.map((project) => (
-                <DropdownMenuItem
-                  key={project.id}
-                  onClick={() => setSelectedProject(project)}
-                  className={cn(
-                    "flex items-center space-x-3 p-3",
-                    selectedProject?.id === project.id && "bg-accent"
+                <div className="text-left">
+                  {selectedProject ? (
+                    <>
+                      <div className="text-sm font-medium text-sidebar-foreground">{selectedProject.name}</div>
+                      <div className="text-xs text-sidebar-foreground/70">{selectedProject.status === 'active' ? 'Active Project' : selectedProject.status}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-sm font-medium text-sidebar-foreground">
+                        {isLoadingProjects ? 'Loading...' : 'All Projects'}
+                      </div>
+                      <div className="text-xs text-sidebar-foreground/70">View all documents</div>
+                    </>
                   )}
+                </div>
+              </div>
+              <ChevronDown className={cn(
+                "w-4 h-4 text-sidebar-foreground/70 transition-transform duration-200",
+                isProjectDropdownOpen && "rotate-180"
+              )} />
+            </Button>
+
+            {/* Custom Desktop Dropdown Menu */}
+            {isProjectDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
+                <div 
+                  className={cn(
+                    "flex items-center space-x-3 p-3 hover:bg-accent cursor-pointer transition-colors",
+                    !selectedProject && "bg-accent"
+                  )}
+                  onClick={() => handleProjectSelect(null)}
+                  data-testid="desktop-project-all"
                 >
-                  <div className="w-4 h-4 bg-blue-100 rounded flex items-center justify-center">
-                    <FolderOpen className="w-3 h-3 text-blue-600" />
+                  <div className="w-4 h-4 bg-gray-100 rounded flex items-center justify-center">
+                    <FolderOpen className="w-3 h-3 text-gray-600" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm font-medium">{project.name}</div>
-                    <div className="text-xs text-muted-foreground">{project.status}</div>
+                    <div className="text-sm font-medium">All Projects</div>
+                    <div className="text-xs text-muted-foreground">View all documents</div>
                   </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </div>
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className={cn(
+                      "flex items-center space-x-3 p-3 hover:bg-accent cursor-pointer transition-colors",
+                      selectedProject?.id === project.id && "bg-accent"
+                    )}
+                    onClick={() => handleProjectSelect(project)}
+                    data-testid={`desktop-project-${project.id}`}
+                  >
+                    <div className="w-4 h-4 bg-blue-100 rounded flex items-center justify-center">
+                      <FolderOpen className="w-3 h-3 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{project.name}</div>
+                      <div className="text-xs text-muted-foreground">{project.status}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Navigation */}
