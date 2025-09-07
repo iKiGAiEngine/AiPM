@@ -93,7 +93,7 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
   };
 
   const currentPage = pageTitle || "Dashboard";
-  const currentProject = pageSubtitle || (selectedProject ? selectedProject.name : "All Projects");
+  const currentProject = selectedProject ? selectedProject.name : "Select Project";
 
   return (
     <header className="bg-card border-b border-border px-4 py-3 sm:px-6">
@@ -110,29 +110,32 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
             <Menu className="w-5 h-5" />
           </Button>
 
-          {/* Page Title and Project Context */}
+          {/* Project Name as Main Title */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-semibold text-foreground truncate" data-testid="text-page-title">
-                {currentPage}
-              </h1>
-              {/* Project indicator on mobile */}
-              {selectedProject && (
-                <div className="lg:hidden flex items-center px-2 py-1 bg-blue-50 rounded-md">
-                  <FolderOpen className="w-3 h-3 text-blue-600 mr-1" />
-                  <span className="text-xs font-medium text-blue-700 truncate max-w-20">
-                    {selectedProject.name}
-                  </span>
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                  <FolderOpen className="w-4 h-4 text-blue-600" />
                 </div>
-              )}
+                <h1 className="text-xl font-semibold text-foreground truncate" data-testid="text-project-title">
+                  {currentProject}
+                </h1>
+              </div>
+              {/* Page context badge */}
+              <div className="hidden sm:flex items-center px-2 py-1 bg-muted rounded-md">
+                <span className="text-sm text-muted-foreground">
+                  {currentPage}
+                </span>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground hidden sm:block" data-testid="text-current-project">
-              {currentProject}
+            {/* Mobile page context */}
+            <p className="text-xs text-muted-foreground sm:hidden mt-1" data-testid="text-current-page-mobile">
+              {currentPage}
             </p>
-            {/* Mobile project subtitle - only show when no specific project is selected */}
-            {!selectedProject && (
-              <p className="text-xs text-muted-foreground sm:hidden" data-testid="text-current-project-mobile">
-                Tap menu to select project
+            {/* Project status */}
+            {selectedProject && (
+              <p className="text-sm text-muted-foreground hidden sm:block" data-testid="text-project-status">
+                {selectedProject.status === 'active' ? 'Active Project' : selectedProject.status}
               </p>
             )}
           </div>
