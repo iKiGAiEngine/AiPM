@@ -12,45 +12,8 @@ interface Vendor {
   initials: string;
 }
 
-// Mock data - in a real app this would come from an API
-const mockVendors: Vendor[] = [
-  {
-    id: '1',
-    name: 'ABC Supply Co.',
-    company: 'ABC Supply Company',
-    category: 'General Materials',
-    onTimePercentage: 94,
-    avgResponseTime: '2.3h',
-    initials: 'ABC'
-  },
-  {
-    id: '2',
-    name: 'FireSafe Systems',
-    company: 'FireSafe Protection Systems LLC',
-    category: 'Fire Protection',
-    onTimePercentage: 88,
-    avgResponseTime: '4.1h',
-    initials: 'FS'
-  },
-  {
-    id: '3',
-    name: 'Bobrick Hardware',
-    company: 'Bobrick Washroom Equipment Inc',
-    category: 'Restroom Accessories',
-    onTimePercentage: 96,
-    avgResponseTime: '1.8h',
-    initials: 'BH'
-  },
-  {
-    id: '4',
-    name: 'Metro Lockers Inc.',
-    company: 'Metropolitan Locker Systems',
-    category: 'Storage & Lockers',
-    onTimePercentage: 78,
-    avgResponseTime: '6.2h',
-    initials: 'ML'
-  }
-];
+// Real vendor performance data - no mock data shown until real data exists
+const vendors: Vendor[] = [];
 
 const getPerformanceBadgeColor = (percentage: number) => {
   if (percentage >= 95) return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
@@ -70,12 +33,13 @@ export default function VendorPerformance() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {mockVendors.length === 0 ? (
+          {vendors.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No vendor data available</p>
+              <p className="text-xs mt-1">Add vendors and start procurement to see performance metrics</p>
             </div>
           ) : (
-            mockVendors.map((vendor) => (
+            vendors.map((vendor) => (
               <div 
                 key={vendor.id}
                 className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"

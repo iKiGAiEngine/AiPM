@@ -19,41 +19,8 @@ interface ActivityItem {
   status?: 'success' | 'warning' | 'info' | 'error';
 }
 
-// Mock data - in a real app this would come from an API
-const mockActivities: ActivityItem[] = [
-  {
-    id: '1',
-    type: 'po_approved',
-    title: 'PO #2024-001 approved for $12,450',
-    description: 'ABC Supply - Restroom accessories for Zone B-3',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    status: 'success'
-  },
-  {
-    id: '2',
-    type: 'invoice_exception',
-    title: 'Invoice exception: Price variance on INV-4521',
-    description: '$150 difference from PO #2024-003 - requires review',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    status: 'warning'
-  },
-  {
-    id: '3',
-    type: 'delivery_received',
-    title: 'Delivery received: Fire protection equipment',
-    description: 'FireSafe Systems - Zone A-1, 15 items received',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    status: 'info'
-  },
-  {
-    id: '4',
-    type: 'requisition_submitted',
-    title: 'New requisition submitted by Mike Johnson',
-    description: 'REQ-2024-045 - Grab bars and accessories for Zone C-2',
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    status: 'info'
-  }
-];
+// Real activities - no mock data shown until real data exists
+const activities: ActivityItem[] = [];
 
 const getActivityIcon = (type: ActivityItem['type']) => {
   switch (type) {
@@ -97,13 +64,14 @@ export default function RecentActivity() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {mockActivities.length === 0 ? (
+          {activities.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p>No recent activity</p>
+              <p className="text-xs mt-1">Activity will appear here once you start using the system</p>
             </div>
           ) : (
-            mockActivities.map((activity) => {
+            activities.map((activity) => {
               const IconComponent = getActivityIcon(activity.type);
               const iconColorClass = getActivityIconColor(activity.status);
               
