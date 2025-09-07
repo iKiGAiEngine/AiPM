@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Search, Command } from "lucide-react";
+import { Search, Command, FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { useProject } from "@/contexts/ProjectContext";
+import { useNavigate } from "react-router-dom";
 
 interface GlobalSearchProps {
   isOpen: boolean;
@@ -24,6 +26,8 @@ interface SearchResult {
 export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const { selectedProject, setSelectedProject, projects } = useProject();
+  const navigate = useNavigate();
 
   // Debounce search query
   useEffect(() => {
@@ -48,11 +52,14 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     },
   });
 
-  const recentSearches = [
-    { type: 'project', name: 'Metro Plaza Office Tower', description: 'Project' },
-    { type: 'purchase_order', name: 'PO-2024-045', description: 'Purchase Order • $814.80' },
-    { type: 'vendor', name: 'Bobrick Hardware', description: 'Vendor • 96% on-time delivery' },
-  ];
+  // Show actual projects as recent searches instead of hardcoded data
+  const recentSearches = projects.map(project => ({
+    id: project.id,
+    type: 'project' as const,
+    name: project.name,
+    description: `Project • ${project.status}`,
+    projectData: project
+  }));
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -89,7 +96,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
               </div>
               <Input
                 type="text"
-                placeholder="Search projects, vendors, POs, materials..."
+                placeholder="Search projects or switch project context..."
                 className="w-full pl-10 pr-4 py-3 text-lg border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -103,7 +110,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             <div className="p-4 space-y-3">
               {debouncedQuery.length <= 2 && (
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Recent
+                  Switch Project
                 </div>
               )}
               
@@ -118,16 +125,32 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                   <Button
                     key={result.id || index}
                     variant="ghost"
-                    className="w-full justify-start p-2 h-auto"
+                    className={`w-full justify-start p-2 h-auto ${
+                      result.type === 'project' && selectedProject?.id === result.id ? 'bg-accent' : ''
+                    }`}
                     onClick={() => {
-                      // Navigate to result
-                      console.log('Navigate to:', result);
+                      if (result.type === 'project') {
+                        // Handle project selection
+                        const project = result.projectData || projects.find(p => p.id === result.id);
+                        if (project) {
+                          setSelectedProject(project);
+                          navigate('/dashboard'); // Navigate to dashboard with new project
+                        }
+                      } else {
+                        // Handle navigation to other result types
+                        console.log('Navigate to:', result);
+                        // Add specific navigation logic for vendors, POs, materials here
+                      }
                       onClose();
                     }}
                     data-testid={`button-search-result-${index}`}
                   >
-                    <Search className="w-4 h-4 mr-3 text-muted-foreground flex-shrink-0" />
-                    <div className="text-left">
+                    {result.type === 'project' ? (
+                      <FolderOpen className="w-4 h-4 mr-3 text-blue-600 flex-shrink-0" />
+                    ) : (
+                      <Search className="w-4 h-4 mr-3 text-muted-foreground flex-shrink-0" />
+                    )}
+                    <div className="text-left flex-1">
                       <div className="font-medium text-foreground">
                         {result.name || result.number}
                       </div>
@@ -139,6 +162,9 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                          (result.type === 'material' && `Material${result.manufacturer ? ` • ${result.manufacturer}` : ''}`)}
                       </div>
                     </div>
+                    {result.type === 'project' && selectedProject?.id === result.id && (
+                      <div className="text-xs text-blue-600 font-medium">Current</div>
+                    )}
                   </Button>
                 ))}
                 
