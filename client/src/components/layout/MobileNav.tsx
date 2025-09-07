@@ -164,14 +164,10 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
               <span>Current Project</span>
             </div>
             <Select 
-              value={selectedProject?.id || "all"} 
+              value={selectedProject?.id || ""} 
               onValueChange={(value) => {
-                if (value === "all") {
-                  setSelectedProject(null);
-                } else {
-                  const project = projects.find(p => p.id === value);
-                  if (project) setSelectedProject(project);
-                }
+                const project = projects.find(p => p.id === value);
+                if (project) setSelectedProject(project);
               }}
               disabled={isLoadingProjects}
             >
@@ -182,15 +178,6 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
                 <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
               </SelectTrigger>
               <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[300px]">
-                <SelectItem value="all" data-testid="mobile-project-all">
-                  <div className="flex items-center space-x-2">
-                    <FolderOpen className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="font-medium">All Projects</div>
-                      <div className="text-xs text-muted-foreground">View all documents</div>
-                    </div>
-                  </div>
-                </SelectItem>
                 {projects.map((project) => (
                   <SelectItem 
                     key={project.id} 

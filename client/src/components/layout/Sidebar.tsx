@@ -235,9 +235,9 @@ export default function Sidebar() {
                   ) : (
                     <>
                       <div className="text-sm font-medium text-sidebar-foreground">
-                        {isLoadingProjects ? 'Loading...' : 'All Projects'}
+                        {isLoadingProjects ? 'Loading...' : 'Select Project'}
                       </div>
-                      <div className="text-xs text-sidebar-foreground/70">View all documents</div>
+                      <div className="text-xs text-sidebar-foreground/70">Choose a project to work on</div>
                     </>
                   )}
                 </div>
@@ -251,22 +251,6 @@ export default function Sidebar() {
             {/* Custom Desktop Dropdown Menu */}
             {isProjectDropdownOpen && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
-                <div 
-                  className={cn(
-                    "flex items-center space-x-3 p-3 hover:bg-accent cursor-pointer transition-colors",
-                    !selectedProject && "bg-accent"
-                  )}
-                  onClick={() => handleProjectSelect(null)}
-                  data-testid="desktop-project-all"
-                >
-                  <div className="w-4 h-4 bg-gray-100 rounded flex items-center justify-center">
-                    <FolderOpen className="w-3 h-3 text-gray-600" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">All Projects</div>
-                    <div className="text-xs text-muted-foreground">View all documents</div>
-                  </div>
-                </div>
                 {projects.map((project) => (
                   <div
                     key={project.id}
