@@ -24,8 +24,13 @@ import {
   CreditCard,
   Bell,
   Globe,
-  Save
+  Save,
+  FolderOpen,
+  Plus,
+  Edit,
+  Eye
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const organizationSchema = z.object({
   name: z.string().min(1, "Organization name is required"),
@@ -74,6 +79,20 @@ export default function Settings() {
         },
       });
       if (!response.ok) throw new Error('Failed to fetch users');
+      return response.json();
+    },
+    enabled: user?.role === 'Admin',
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['/api/projects'],
+    queryFn: async () => {
+      const response = await fetch('/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch projects');
       return response.json();
     },
     enabled: user?.role === 'Admin',
@@ -167,10 +186,14 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
           <TabsTrigger value="organization" className="flex items-center space-x-2" data-testid="tab-organization">
             <Building className="w-4 h-4" />
             <span>Organization</span>
+          </TabsTrigger>
+          <TabsTrigger value="projects" className="flex items-center space-x-2" data-testid="tab-projects">
+            <FolderOpen className="w-4 h-4" />
+            <span>Projects</span>
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center space-x-2" data-testid="tab-users">
             <Users className="w-4 h-4" />
@@ -259,6 +282,68 @@ export default function Settings() {
                   {updateOrganization.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Projects Management */}
+        <TabsContent value="projects" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex items-center">
+                <FolderOpen className="w-5 h-5 mr-2" />
+                Project Management
+              </CardTitle>
+              <Button asChild data-testid="button-create-project">
+                <Link to="/projects/new">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Project
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {projects.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No projects found</p>
+                  <p className="text-sm mt-1">Create your first project to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {projects.map((project: any, index: number) => (
+                    <div key={project.id} className="flex items-center justify-between p-4 border border-border rounded-lg" data-testid={`project-item-${index}`}>
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <FolderOpen className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{project.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {project.client} • Contract Value: ${project.contractValue?.toLocaleString() || 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
+                          {project.status}
+                        </Badge>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/projects/${project.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/projects/${project.id}/edit`}>
+                            <Edit className="w-4 h-4 mr-1" />
+                            Edit
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

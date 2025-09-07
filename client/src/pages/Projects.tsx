@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Eye, FolderOpen, Building, MapPin, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Search, Eye, FolderOpen, Building, MapPin, DollarSign, TrendingUp, TrendingDown, Settings } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Project } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 const statusColors = {
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
@@ -29,6 +30,7 @@ interface ProjectWithStats extends Project {
 export default function Projects() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("active");
+  const { user } = useAuth();
 
   const { data: projects = [], isLoading, error } = useQuery<ProjectWithStats[]>({
     queryKey: ['/api/projects', statusFilter],
@@ -101,14 +103,16 @@ export default function Projects() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Projects</h1>
-          <p className="text-muted-foreground">Manage construction projects and budget tracking</p>
+          <p className="text-muted-foreground">View and browse construction projects</p>
         </div>
-        <Button asChild data-testid="button-new-project">
-          <Link to="/projects/new">
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
-          </Link>
-        </Button>
+        {user?.role === 'Admin' && (
+          <Button asChild data-testid="button-admin-projects">
+            <Link to="/settings?tab=projects">
+              <Settings className="w-4 h-4 mr-2" />
+              Manage Projects
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
