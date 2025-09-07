@@ -19,11 +19,12 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface MobileNavProps {
   isOpen: boolean;
@@ -157,75 +158,57 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
 
         {/* Mobile Project Switcher */}
         <div className="p-4 border-b border-sidebar-border">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-between p-3 h-auto bg-sidebar-accent hover:bg-sidebar-accent/80"
-                data-testid="button-mobile-project-switcher"
-                disabled={isLoadingProjects}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2 text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wide">
+              <FolderOpen className="w-3 h-3" />
+              <span>Current Project</span>
+            </div>
+            <Select 
+              value={selectedProject?.id || "all"} 
+              onValueChange={(value) => {
+                if (value === "all") {
+                  setSelectedProject(null);
+                } else {
+                  const project = projects.find(p => p.id === value);
+                  if (project) setSelectedProject(project);
+                }
+              }}
+              disabled={isLoadingProjects}
+            >
+              <SelectTrigger 
+                className="w-full bg-sidebar-accent border-sidebar-border hover:bg-sidebar-accent/80"
+                data-testid="select-mobile-project-switcher"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
-                    <FolderOpen className="w-4 h-4 text-blue-600" />
+                <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
+              </SelectTrigger>
+              <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[300px]">
+                <SelectItem value="all" data-testid="mobile-project-all">
+                  <div className="flex items-center space-x-2">
+                    <FolderOpen className="w-4 h-4 text-gray-600" />
+                    <div>
+                      <div className="font-medium">All Projects</div>
+                      <div className="text-xs text-muted-foreground">View all documents</div>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    {selectedProject ? (
-                      <>
-                        <div className="text-sm font-medium text-sidebar-foreground">{selectedProject.name}</div>
-                        <div className="text-xs text-sidebar-foreground/70">{selectedProject.status === 'active' ? 'Active Project' : selectedProject.status}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-sm font-medium text-sidebar-foreground">
-                          {isLoadingProjects ? 'Loading...' : 'All Projects'}
-                        </div>
-                        <div className="text-xs text-sidebar-foreground/70">View all documents</div>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <ChevronDown className="w-4 h-4 text-sidebar-foreground/70" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-[calc(100vw-2rem)] max-w-sm" align="start">
-              <DropdownMenuItem
-                onClick={() => setSelectedProject(null)}
-                className={cn(
-                  "flex items-center space-x-3 p-3",
-                  !selectedProject && "bg-accent"
-                )}
-                data-testid="mobile-project-all"
-              >
-                <div className="w-4 h-4 bg-gray-100 rounded flex items-center justify-center">
-                  <FolderOpen className="w-3 h-3 text-gray-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-medium">All Projects</div>
-                  <div className="text-xs text-muted-foreground">View all documents</div>
-                </div>
-              </DropdownMenuItem>
-              {projects.map((project) => (
-                <DropdownMenuItem
-                  key={project.id}
-                  onClick={() => setSelectedProject(project)}
-                  className={cn(
-                    "flex items-center space-x-3 p-3",
-                    selectedProject?.id === project.id && "bg-accent"
-                  )}
-                  data-testid={`mobile-project-${project.id}`}
-                >
-                  <div className="w-4 h-4 bg-blue-100 rounded flex items-center justify-center">
-                    <FolderOpen className="w-3 h-3 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{project.name}</div>
-                    <div className="text-xs text-muted-foreground">{project.status}</div>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </SelectItem>
+                {projects.map((project) => (
+                  <SelectItem 
+                    key={project.id} 
+                    value={project.id}
+                    data-testid={`mobile-project-${project.id}`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <FolderOpen className="w-4 h-4 text-blue-600" />
+                      <div>
+                        <div className="font-medium">{project.name}</div>
+                        <div className="text-xs text-muted-foreground">{project.status}</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Navigation */}
