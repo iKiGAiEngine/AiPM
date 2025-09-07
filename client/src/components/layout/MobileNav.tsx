@@ -156,45 +156,33 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
           </div>
         </div>
 
-        {/* Mobile Project Switcher */}
+        {/* Current Project Display */}
         <div className="p-4 border-b border-sidebar-border">
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wide">
               <FolderOpen className="w-3 h-3" />
               <span>Current Project</span>
             </div>
-            <Select 
-              value={selectedProject?.id || ""} 
-              onValueChange={(value) => {
-                const project = projects.find(p => p.id === value);
-                if (project) setSelectedProject(project);
-              }}
-              disabled={isLoadingProjects}
-            >
-              <SelectTrigger 
-                className="w-full bg-sidebar-accent border-sidebar-border hover:bg-sidebar-accent/80"
-                data-testid="select-mobile-project-switcher"
-              >
-                <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
-              </SelectTrigger>
-              <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[300px]">
-                {projects.map((project) => (
-                  <SelectItem 
-                    key={project.id} 
-                    value={project.id}
-                    data-testid={`mobile-project-${project.id}`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <FolderOpen className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <div className="font-medium">{project.name}</div>
-                        <div className="text-xs text-muted-foreground">{project.status}</div>
-                      </div>
+            <div className="flex items-center space-x-3 p-3 bg-sidebar-accent rounded-lg">
+              <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                <FolderOpen className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                {selectedProject ? (
+                  <>
+                    <div className="font-medium text-sidebar-foreground">{selectedProject.name}</div>
+                    <div className="text-xs text-sidebar-foreground/70">{selectedProject.status}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="font-medium text-sidebar-foreground">
+                      {isLoadingProjects ? 'Loading...' : 'No Project Selected'}
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    <div className="text-xs text-sidebar-foreground/70">Use search to select project</div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
