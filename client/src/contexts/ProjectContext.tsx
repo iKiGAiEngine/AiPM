@@ -77,9 +77,13 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   });
   
 
-  // Force project selection - no "All Projects" option
+  // Handle project selection - allow access when no projects exist
   useEffect(() => {
-    if (!selectedProject && projects.length > 0) {
+    if (projects.length === 0) {
+      // Clear project selection when no projects exist
+      setSelectedProject(null);
+      localStorage.removeItem('selectedProjectId');
+    } else if (!selectedProject && projects.length > 0) {
       // Try to restore from localStorage first
       const savedProjectId = localStorage.getItem('selectedProjectId');
       if (savedProjectId && savedProjectId !== 'all') {
@@ -90,7 +94,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         }
       }
       
-      // Force selection of first available project
+      // Auto-select first available project
       setSelectedProject(projects[0]);
     }
   }, [projects, selectedProject]);
@@ -99,9 +103,11 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   useEffect(() => {
     if (selectedProject) {
       localStorage.setItem('selectedProjectId', selectedProject.id);
+    } else if (projects.length === 0) {
+      // Remove project selection when no projects exist
+      localStorage.removeItem('selectedProjectId');
     }
-    // No longer save 'all' - always require a project selection
-  }, [selectedProject]);
+  }, [selectedProject, projects.length]);
 
   const value = {
     selectedProject,

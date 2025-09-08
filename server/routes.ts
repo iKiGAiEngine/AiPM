@@ -518,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         }
       } else {
-        // Fallback to organization-wide materials (for admin/setup contexts)
+        // Fallback to organization-wide materials (for admin/setup contexts or when no projects exist)
         if (search && typeof search === 'string') {
           materials = await storage.searchMaterials(req.user!.organizationId, search);
         } else {
@@ -2056,7 +2056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const results = await storage.projectScopedSearch(req.user!.organizationId, selectedProjectId, q);
         res.json(results);
       } else {
-        // Fallback to organization-wide search (for admin contexts)
+        // Fallback to organization-wide search (for admin contexts or when no projects exist)
         const results = await storage.globalSearch(req.user!.organizationId, q);
         res.json(results);
       }
@@ -2066,21 +2066,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard stats
-  app.get("/api/dashboard/stats", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/dashboard/stats", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { projectId } = req.query;
+      const selectedProjectId = req.headers['x-selected-project-id'] as string;
+      
+      // Use project context from header if available, otherwise fall back to query param
+      const effectiveProjectId = selectedProjectId || projectId;
+      
       let requisitions, purchaseOrders, invoices, projects;
 
-      if (projectId && typeof projectId === 'string') {
+      if (effectiveProjectId && typeof effectiveProjectId === 'string') {
         // Get filtered data for specific project
         [requisitions, purchaseOrders, invoices, projects] = await Promise.all([
-          storage.getRequisitionsByProject(projectId),
-          storage.getPurchaseOrdersByProject(projectId),
+          storage.getRequisitionsByProject(effectiveProjectId),
+          storage.getPurchaseOrdersByProject(effectiveProjectId),
           storage.getInvoicesByOrganization(req.user!.organizationId), // Invoices don't have project filtering yet
           storage.getProjectsByOrganization(req.user!.organizationId)
         ]);
       } else {
-        // Get all data for organization
+        // Get all data for organization (used when no project is selected or for admin overview)
         [requisitions, purchaseOrders, invoices, projects] = await Promise.all([
           storage.getRequisitionsByOrganization(req.user!.organizationId),
           storage.getPurchaseOrdersByOrganization(req.user!.organizationId),
