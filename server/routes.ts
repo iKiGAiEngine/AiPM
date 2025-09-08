@@ -5,6 +5,7 @@ import {
   authenticateToken, 
   requireRole, 
   requireOrganization, 
+  validateProjectOwnership,
   hashPassword, 
   verifyPassword, 
   generateTokens,
@@ -489,21 +490,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Material routes
-  app.get("/api/materials", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { search, projectId } = req.query;
+      const selectedProjectId = req.headers['x-selected-project-id'] as string;
+      
+      // Use project context from header if available, otherwise fall back to query param
+      const effectiveProjectId = selectedProjectId || projectId;
+      
       let materials;
       
-      if (search && typeof search === 'string') {
-        materials = await storage.searchMaterials(req.user!.organizationId, search);
+      if (effectiveProjectId && typeof effectiveProjectId === 'string') {
+        // Return project-specific materials when in project context
+        if (search && typeof search === 'string') {
+          // Search within project materials
+          const allProjectMaterials = await storage.getProjectMaterialsByProject(
+            effectiveProjectId, 
+            req.user!.organizationId, 
+            { search }
+          );
+          materials = allProjectMaterials;
+        } else {
+          // Get all project materials
+          materials = await storage.getProjectMaterialsByProject(
+            effectiveProjectId, 
+            req.user!.organizationId
+          );
+        }
       } else {
-        materials = await storage.getMaterialsByOrganization(req.user!.organizationId);
-      }
-      
-      // Filter by project if projectId provided (materials are global but may be filtered by usage)
-      if (projectId && typeof projectId === 'string') {
-        // For materials, we might want to show project-specific materials or all materials
-        // For now, return all materials as they're organization-wide
+        // Fallback to organization-wide materials (for admin/setup contexts)
+        if (search && typeof search === 'string') {
+          materials = await storage.searchMaterials(req.user!.organizationId, search);
+        } else {
+          materials = await storage.getMaterialsByOrganization(req.user!.organizationId);
+        }
       }
       
       res.json(materials);
@@ -563,7 +583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Individual requisition routes
-  app.get("/api/requisitions/:id", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/requisitions/:id", authenticateToken, validateProjectOwnership, async (req: AuthenticatedRequest, res) => {
     try {
       const requisition = await storage.getRequisition(req.params.id);
       if (!requisition || requisition.organizationId !== req.user!.organizationId) {
@@ -575,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/requisitions/:id/lines", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/requisitions/:id/lines", authenticateToken, validateProjectOwnership, async (req: AuthenticatedRequest, res) => {
     try {
       // First verify the requisition belongs to the user's organization
       const requisition = await storage.getRequisition(req.params.id);
@@ -893,7 +913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get individual RFQ
-  app.get("/api/rfqs/:id", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/rfqs/:id", authenticateToken, validateProjectOwnership, async (req: AuthenticatedRequest, res) => {
     try {
       const rfq = await storage.getRFQ(req.params.id);
       if (!rfq || rfq.organizationId !== req.user!.organizationId) {
@@ -1219,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/purchase-orders/:id", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/purchase-orders/:id", authenticateToken, validateProjectOwnership, async (req: AuthenticatedRequest, res) => {
     try {
       const po = await storage.getPurchaseOrder(req.params.id);
       if (!po || po.organizationId !== req.user!.organizationId) {
@@ -2022,15 +2042,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Global search
-  app.get("/api/search", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/search", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { q } = req.query;
       if (!q || typeof q !== 'string') {
         return res.json([]);
       }
       
-      const results = await storage.globalSearch(req.user!.organizationId, q);
-      res.json(results);
+      const selectedProjectId = req.headers['x-selected-project-id'] as string;
+      
+      if (selectedProjectId) {
+        // Project-scoped search: only return results related to the current project
+        const results = await storage.projectScopedSearch(req.user!.organizationId, selectedProjectId, q);
+        res.json(results);
+      } else {
+        // Fallback to organization-wide search (for admin contexts)
+        const results = await storage.globalSearch(req.user!.organizationId, q);
+        res.json(results);
+      }
     } catch (error) {
       res.status(500).json({ error: "Search failed" });
     }

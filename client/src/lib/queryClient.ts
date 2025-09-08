@@ -20,6 +20,12 @@ export async function apiRequest(
     headers['Authorization'] = `Bearer ${token}`;
   }
   
+  // Add project context header if project is selected
+  const selectedProjectId = localStorage.getItem('selectedProjectId');
+  if (selectedProjectId && selectedProjectId !== 'all') {
+    headers['X-Selected-Project-Id'] = selectedProjectId;
+  }
+  
   // Add content type for requests with data
   if (data) {
     headers['Content-Type'] = 'application/json';
@@ -67,6 +73,12 @@ export const getQueryFn: <T>(options: {
     const token = localStorage.getItem('accessToken') || localStorage.getItem('auth_token');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Add project context header if project is selected
+    const selectedProjectId = localStorage.getItem('selectedProjectId');
+    if (selectedProjectId && selectedProjectId !== 'all') {
+      headers['X-Selected-Project-Id'] = selectedProjectId;
     }
 
     const res = await fetch(url, {

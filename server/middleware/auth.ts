@@ -84,10 +84,12 @@ export function requireRole(roles: string[]) {
     }
 
     const roleHierarchy = {
-      'Admin': 5,
+      'Admin': 6,
+      'President': 5,
       'PM': 4,
-      'Purchaser': 3,
-      'AP': 2,
+      'Project Coordinator': 3,
+      'Purchaser': 2,
+      'AP': 1,
       'Field': 1
     };
 
@@ -107,4 +109,68 @@ export function requireOrganization(req: AuthenticatedRequest, res: Response, ne
     return res.status(403).json({ error: 'Organization access required' });
   }
   next();
+}
+
+export function requireProjectAccess(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const projectId = req.headers['x-selected-project-id'] as string;
+  if (!projectId) {
+    return res.status(400).json({ error: 'Project context required - no project selected' });
+  }
+
+  // Store project ID in request for use by route handlers
+  (req as any).selectedProjectId = projectId;
+  next();
+}
+
+export async function validateProjectOwnership(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  try {
+    // Extract resource ID from various possible parameter names
+    const resourceId = req.params.id || req.params.requisitionId || req.params.rfqId || req.params.poId;
+    
+    if (!resourceId) {
+      return next(); // Skip validation if no resource ID
+    }
+
+    // Determine resource type from the route path
+    const path = req.route?.path || req.path;
+    let resource = null;
+    
+    if (path.includes('/requisitions/')) {
+      resource = await storage.getRequisition(resourceId);
+    } else if (path.includes('/rfqs/')) {
+      resource = await storage.getRFQ(resourceId);
+    } else if (path.includes('/purchase-orders/')) {
+      resource = await storage.getPurchaseOrder(resourceId);
+    } else if (path.includes('/deliveries/')) {
+      resource = await storage.getDelivery(resourceId);
+    } else if (path.includes('/invoices/')) {
+      resource = await storage.getInvoice(resourceId);
+    }
+
+    if (resource) {
+      // Check organization ownership first
+      if (resource.organizationId !== req.user.organizationId) {
+        return res.status(404).json({ error: 'Resource not found' });
+      }
+
+      // Check project context if a project is selected
+      const selectedProjectId = req.headers['x-selected-project-id'] as string;
+      if (selectedProjectId && resource.projectId && resource.projectId !== selectedProjectId) {
+        return res.status(403).json({ error: 'Resource not accessible in current project context' });
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error('Project ownership validation error:', error);
+    res.status(500).json({ error: 'Failed to validate resource access' });
+  }
 }

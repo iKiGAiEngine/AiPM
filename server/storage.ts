@@ -1143,6 +1143,70 @@ export class DatabaseStorage implements IStorage {
 
     return results;
   }
+
+  // Project-Scoped Search
+  async projectScopedSearch(organizationId: string, projectId: string, query: string): Promise<any[]> {
+    const results: any[] = [];
+    
+    // Search requisitions in this project
+    const requisitionResults = await db.select().from(requisitions)
+      .where(and(
+        eq(requisitions.organizationId, organizationId),
+        eq(requisitions.projectId, projectId),
+        or(
+          like(requisitions.title, `%${query}%`),
+          like(requisitions.number, `%${query}%`)
+        )
+      ));
+    results.push(...requisitionResults.map(r => ({ ...r, type: 'requisition' })));
+
+    // Search RFQs in this project
+    const rfqResults = await db.select().from(rfqs)
+      .where(and(
+        eq(rfqs.organizationId, organizationId),
+        eq(rfqs.projectId, projectId),
+        or(
+          like(rfqs.title, `%${query}%`),
+          like(rfqs.number, `%${query}%`)
+        )
+      ));
+    results.push(...rfqResults.map(r => ({ ...r, type: 'rfq' })));
+
+    // Search purchase orders in this project
+    const poResults = await db.select().from(purchaseOrders)
+      .where(and(
+        eq(purchaseOrders.organizationId, organizationId),
+        eq(purchaseOrders.projectId, projectId),
+        like(purchaseOrders.number, `%${query}%`)
+      ));
+    results.push(...poResults.map(po => ({ ...po, type: 'purchase_order' })));
+
+    // Search project materials
+    const materialResults = await db.select().from(projectMaterials)
+      .where(and(
+        eq(projectMaterials.organizationId, organizationId),
+        eq(projectMaterials.projectId, projectId),
+        or(
+          like(projectMaterials.description, `%${query}%`),
+          like(projectMaterials.model, `%${query}%`),
+          like(projectMaterials.manufacturer, `%${query}%`)
+        )
+      ));
+    results.push(...materialResults.map(m => ({ ...m, type: 'project_material' })));
+
+    // Search vendors (project-agnostic but relevant)
+    const vendorResults = await db.select().from(vendors)
+      .where(and(
+        eq(vendors.organizationId, organizationId),
+        or(
+          like(vendors.name, `%${query}%`),
+          like(vendors.company, `%${query}%`)
+        )
+      ));
+    results.push(...vendorResults.map(v => ({ ...v, type: 'vendor' })));
+
+    return results;
+  }
 }
 
 export const storage = new DatabaseStorage();
