@@ -156,6 +156,7 @@ export interface IStorage {
   
   // Global Search
   globalSearch(organizationId: string, query: string): Promise<any[]>;
+  projectScopedSearch(organizationId: string, projectId: string, query: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1188,8 +1189,7 @@ export class DatabaseStorage implements IStorage {
         eq(projectMaterials.projectId, projectId),
         or(
           like(projectMaterials.description, `%${query}%`),
-          like(projectMaterials.model, `%${query}%`),
-          like(projectMaterials.manufacturer, `%${query}%`)
+          like(projectMaterials.model, `%${query}%`)
         )
       ));
     results.push(...materialResults.map(m => ({ ...m, type: 'project_material' })));
