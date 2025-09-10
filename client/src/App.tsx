@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -157,6 +157,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { selectedProject, projects, isLoadingProjects } = useProject();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
+  const location = useLocation();
 
   if (isLoading || isLoadingProjects) {
     return (
@@ -170,8 +171,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Force project selection before accessing main features
-  if (!selectedProject || projects.length === 0) {
+  // Allow admin users to access project creation and management routes even when no projects exist
+  const allowedRoutesWithoutProject = [
+    '/projects/new',
+    '/projects', 
+    '/settings'
+  ];
+  
+  const isRouteAllowedWithoutProject = allowedRoutesWithoutProject.some(route => 
+    location.pathname === route || location.pathname.startsWith(route + '/')
+  );
+  
+  const isAdmin = user.role === 'Admin' || user.role === 'PM';
+
+  // Force project selection before accessing main features, except for allowed admin routes
+  if ((!selectedProject || projects.length === 0) && !(isAdmin && isRouteAllowedWithoutProject)) {
     return <ProjectSelectionScreen />;
   }
 
