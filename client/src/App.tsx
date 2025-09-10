@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -85,10 +85,10 @@ function ProjectSelectionScreen() {
             </p>
             {isAdmin && (
               <Button asChild className="w-full">
-                <a href="/projects/new">
+                <Link to="/projects/new">
                   <Plus className="w-4 h-4 mr-2" />
                   Create First Project
-                </a>
+                </Link>
               </Button>
             )}
           </CardContent>
