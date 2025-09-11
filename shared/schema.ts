@@ -11,6 +11,7 @@ import {
   integer,
   pgEnum,
   index,
+  uniqueIndex,
   unique
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -74,7 +75,7 @@ export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
   name: text("name").notNull(),
-  projectNumber: text("project_number"),
+  projectNumber: text("project_number").notNull(),
   client: text("client"),
   address: text("address"),
   description: text("description"),
@@ -87,7 +88,8 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 }, (table) => ({
-  orgIdx: index("projects_org_idx").on(table.organizationId)
+  orgIdx: index("projects_org_idx").on(table.organizationId),
+  uniqueProjectNumber: uniqueIndex("projects_org_number_unique").on(table.organizationId, table.projectNumber)
 }));
 
 // Contract Estimates - awarded estimates that become part of the contract
@@ -868,6 +870,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const insertProjectSchema = createInsertSchema(projects).omit({
   id: true,
   organizationId: true,
+  projectNumber: true,
   createdAt: true,
   updatedAt: true
 });

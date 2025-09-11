@@ -44,15 +44,14 @@ import { ProjectMaterialsStep } from "@/components/forms/ProjectMaterialsStep";
 
 const costCodeSchema = z.object({
   scope: z.string().min(1, "Scope is required"),
-  projectNumber: z.string().min(1, "Project number is required"),
   phaseCode: z.string().min(1, "Phase code is required"),
   standardCode: z.string().min(1, "Standard code is required"),
   budget: z.string().min(1, "Budget is required"),
+  projectNumber: z.string().optional(),
 });
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
-  projectNumber: z.string().min(1, "Project number is required"),
   client: z.string().min(1, "Client is required"),
   address: z.string().min(1, "Address is required"),
   budget: z.string().min(1, "Cost Budget is required"), // Cost Budget
@@ -84,13 +83,12 @@ export default function NewProject() {
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [costCodeForm, setCostCodeForm] = useState<CostCode>({
     scope: "",
-    projectNumber: "",
     phaseCode: "",
     standardCode: "71130",
     budget: "",
+    projectNumber: undefined,
   });
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [sessionProjectNumber, setSessionProjectNumber] = useState<string>("");
   const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload');
 
   // Keyboard navigation helper
@@ -144,7 +142,6 @@ export default function NewProject() {
     resolver: zodResolver(projectSchema),
     defaultValues: {
       name: "",
-      projectNumber: "",
       client: "",
       address: "",
       budget: "", // Cost Budget
@@ -162,14 +159,13 @@ export default function NewProject() {
     mutationFn: async (data: ProjectFormData) => {
       const payload = {
         name: data.name,
-        projectNumber: data.projectNumber || null,
         client: data.client || null,
         address: data.address || null,
         status: data.status,
         budget: data.budget || null, // Cost Budget
         overheadFee: data.overheadFee || null, // Overhead/Fee
         contractValue: data.contractValue || null, // Total Contract Value
-        costCodes: data.costCodes?.map(cc => `${cc.scope} - ${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}`) || [],
+        costCodes: data.costCodes?.map(cc => `${cc.scope} - TBD-${cc.phaseCode}-${cc.standardCode}`) || [],
         erpIds: null,
       };
       
@@ -184,10 +180,17 @@ export default function NewProject() {
     },
     onSuccess: (data) => {
       setCreatedProjectId(data.id);
+      // Update cost codes with the actual project number from the created project
+      const updatedCostCodes = form.getValues("costCodes")?.map(cc => ({
+        ...cc,
+        projectNumber: data.projectNumber
+      })) || [];
+      form.setValue("costCodes", updatedCostCodes);
+      
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({
         title: "Project Created",
-        description: "Project created successfully. Now add materials to complete setup.",
+        description: `Project ${data.projectNumber} created successfully. Now add materials to complete setup.`,
       });
       // Move to materials step after project creation if coming from budget step
       if (currentStep === 'budget') {
@@ -206,13 +209,8 @@ export default function NewProject() {
   const onSubmit = (data: ProjectFormData) => {
     if (currentStep === 'info') {
       // Validate project info fields before proceeding
-      const hasErrors = form.formState.errors.name || form.formState.errors.projectNumber || form.formState.errors.client || form.formState.errors.address || form.formState.errors.budget || form.formState.errors.startDate || form.formState.errors.endDate;
+      const hasErrors = form.formState.errors.name || form.formState.errors.client || form.formState.errors.address || form.formState.errors.budget || form.formState.errors.startDate || form.formState.errors.endDate;
       if (!hasErrors) {
-        // Set session project number and initialize cost code form
-        if (data.projectNumber && !sessionProjectNumber) {
-          setSessionProjectNumber(data.projectNumber);
-          setCostCodeForm(prev => ({ ...prev, projectNumber: data.projectNumber }));
-        }
         setCurrentStep('budget');
       }
     } else if (currentStep === 'budget') {
@@ -230,13 +228,9 @@ export default function NewProject() {
   };
 
   const addCostCode = () => {
-    const projectNumber = form.watch("projectNumber") || sessionProjectNumber;
-    if (costCodeForm.scope.trim() && projectNumber && costCodeForm.phaseCode.trim() && costCodeForm.standardCode.trim() && costCodeForm.budget.trim()) {
+    if (costCodeForm.scope.trim() && costCodeForm.phaseCode.trim() && costCodeForm.standardCode.trim() && costCodeForm.budget.trim()) {
       const currentCodes = form.getValues("costCodes") || [];
-      const newCode = { ...costCodeForm };
-      
-      // Use the project number from the form
-      newCode.projectNumber = projectNumber;
+      const newCode = { ...costCodeForm, projectNumber: "TBD" };
       
       if (editingIndex !== null) {
         // Update existing cost code
@@ -246,8 +240,8 @@ export default function NewProject() {
         setEditingIndex(null);
       } else {
         // Add new cost code
-        const fullCode = `${newCode.projectNumber}-${newCode.phaseCode}-${newCode.standardCode}`;
-        const exists = currentCodes.some(cc => `${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}` === fullCode);
+        const fullCode = `TBD-${newCode.phaseCode}-${newCode.standardCode}`;
+        const exists = currentCodes.some(cc => `${cc.projectNumber || "TBD"}-${cc.phaseCode}-${cc.standardCode}` === fullCode);
         if (!exists) {
           form.setValue("costCodes", [...currentCodes, newCode]);
         }
@@ -255,10 +249,10 @@ export default function NewProject() {
       
       setCostCodeForm({ 
         scope: "", 
-        projectNumber: projectNumber, 
         phaseCode: "", 
         standardCode: "71130", 
-        budget: "" 
+        budget: "",
+        projectNumber: undefined
       });
     }
   };
@@ -273,13 +267,12 @@ export default function NewProject() {
 
   const cancelEdit = () => {
     setEditingIndex(null);
-    const projectNumber = form.watch("projectNumber") || sessionProjectNumber;
     setCostCodeForm({ 
       scope: "", 
-      projectNumber: projectNumber, 
       phaseCode: "", 
       standardCode: "71130", 
-      budget: "" 
+      budget: "",
+      projectNumber: undefined
     });
   };
 
@@ -384,7 +377,7 @@ export default function NewProject() {
       {currentStep === 'materials' ? (
         <ProjectMaterialsStep 
           projectId={createdProjectId!} 
-          costCodes={form.getValues("costCodes")?.map(cc => `${cc.scope} - ${cc.projectNumber}-${cc.phaseCode}-${cc.standardCode}`) || []}
+          costCodes={form.getValues("costCodes")?.map(cc => `${cc.scope} - ${cc.projectNumber || "TBD"}-${cc.phaseCode}-${cc.standardCode}`) || []}
           onNext={() => navigate("/projects")}
           onPrevious={() => setCurrentStep('budget')}
         />
@@ -446,7 +439,7 @@ export default function NewProject() {
                       placeholder="ABC Construction Company"
                       className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                       data-testid="input-client"
-                      onKeyDown={(e) => handleEnterKeyNavigation(e, "projectNumber")}
+                      onKeyDown={(e) => handleEnterKeyNavigation(e, "address")}
                     />
                     {form.formState.errors.client && (
                       <p className="text-sm text-destructive">
@@ -456,22 +449,6 @@ export default function NewProject() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="projectNumber">Project Number *</Label>
-                  <Input
-                    {...form.register("projectNumber")}
-                    id="projectNumber"
-                    placeholder="e.g., 23479024"
-                    className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
-                    data-testid="input-project-number-main"
-                    onKeyDown={(e) => handleEnterKeyNavigation(e, "address")}
-                  />
-                  {form.formState.errors.projectNumber && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.projectNumber.message}
-                    </p>
-                  )}
-                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="address">Project Address *</Label>
@@ -809,7 +786,7 @@ export default function NewProject() {
                             <div className="flex-1">
                               <div className="font-semibold text-lg">{costCode.scope}</div>
                               <div className="text-sm text-muted-foreground font-mono">
-                                {costCode.projectNumber}-{costCode.phaseCode}-{costCode.standardCode}
+                                {costCode.projectNumber || "TBD"}-{costCode.phaseCode}-{costCode.standardCode}
                               </div>
                               <div className="text-base font-semibold text-green-600 dark:text-green-400">
                                 ${parseFloat(costCode.budget).toLocaleString()}

@@ -213,9 +213,110 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Projects
-  async createProject(project: InsertProject & { organizationId: string }): Promise<Project> {
-    const [newProject] = await db.insert(projects).values(project).returning();
-    return newProject;
+  async createProject(project: InsertProject & { organizationId: string, costCodes?: any[] }): Promise<Project> {
+    const maxRetries = 5;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Use database transaction for atomic creation
+        const result = await db.transaction(async (tx) => {
+          // Generate automated project number within transaction
+          const projectNumber = await this.generateProjectNumberInTransaction(project.organizationId, tx);
+          
+          // Remove any client-provided projectNumber and use generated one
+          const { projectNumber: _, costCodes, ...projectData } = project as any;
+          
+          // Create the project
+          const [newProject] = await tx.insert(projects).values({
+            ...projectData,
+            projectNumber
+          }).returning();
+          
+          // If costCodes are provided, create contract estimates with the real project number
+          if (costCodes && Array.isArray(costCodes) && costCodes.length > 0) {
+            const contractEstimatesData = costCodes.map(cc => ({
+              organizationId: project.organizationId,
+              projectId: newProject.id,
+              estimateNumber: `${projectNumber}-${cc.phaseCode}-${cc.standardCode}`,
+              title: cc.scope,
+              description: cc.scope,
+              costCode: `${projectNumber}-${cc.phaseCode}-${cc.standardCode}`,
+              awardedValue: cc.budget,
+              isActive: true
+            }));
+            
+            await tx.insert(contractEstimates).values(contractEstimatesData);
+          }
+          
+          return newProject;
+        });
+        
+        return result;
+        
+      } catch (error: any) {
+        // If it's a unique constraint violation on project number, retry
+        if (error?.constraint?.includes('projects_org_number_unique') && attempt < maxRetries - 1) {
+          // Wait a small random amount before retrying
+          await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
+          continue;
+        }
+        
+        // If it's the last attempt or a different error, throw it
+        if (attempt === maxRetries - 1) {
+          throw new Error(`Failed to create project after ${maxRetries} attempts: ${error.message}`);
+        }
+        
+        throw error;
+      }
+    }
+    
+    throw new Error('Failed to create project after maximum retry attempts');
+  }
+
+  private async generateProjectNumber(organizationId: string): Promise<string> {
+    // This method is kept for backwards compatibility but now uses the transaction version
+    return await db.transaction(async (tx) => {
+      return await this.generateProjectNumberInTransaction(organizationId, tx);
+    });
+  }
+  
+  private async generateProjectNumberInTransaction(organizationId: string, tx: any): Promise<string> {
+    // Get current year (short format)
+    const currentYear = new Date().getFullYear() % 100;
+    const yearStr = currentYear.toString().padStart(2, '0');
+    
+    // Get organization settings for company code (default 479)
+    const org = await tx.select().from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+    
+    const settings = org[0]?.settings as any || {};
+    const companyCode = settings.companyCode || '479';
+    
+    // Find the highest existing project number for this year/org/company within transaction
+    const prefix = `K${yearStr}${companyCode}`;
+    const existingProjects = await tx.select().from(projects)
+      .where(and(
+        eq(projects.organizationId, organizationId),
+        sql`${projects.projectNumber} LIKE ${prefix}%`
+      ))
+      .orderBy(sql`${projects.projectNumber} DESC`)
+      .limit(1)
+      .for('update'); // Lock for update to prevent race conditions
+    
+    let nextSequence = 701; // Starting sequence number
+    
+    if (existingProjects.length > 0) {
+      const lastProjectNumber = existingProjects[0].projectNumber;
+      const lastSequence = parseInt(lastProjectNumber.substring(prefix.length));
+      if (!isNaN(lastSequence)) {
+        nextSequence = lastSequence + 1;
+      }
+    }
+    
+    const projectNumber = `${prefix}${nextSequence.toString().padStart(3, '0')}`;
+    
+    return projectNumber;
   }
 
   async getProject(id: string): Promise<Project | undefined> {
@@ -235,8 +336,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateProject(id: string, organizationId: string, data: Partial<Project>): Promise<Project | undefined> {
+    // Remove projectNumber from updates to prevent changes to generated project numbers
+    const { projectNumber, ...safeData } = data;
+    
     const [updatedProject] = await db.update(projects)
-      .set(data)
+      .set(safeData)
       .where(and(eq(projects.id, id), eq(projects.organizationId, organizationId)))
       .returning();
     return updatedProject || undefined;

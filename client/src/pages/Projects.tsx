@@ -183,6 +183,9 @@ export default function Projects() {
                         <CardTitle className="text-lg truncate" data-testid={`project-name-${project.id}`}>
                           {project.name}
                         </CardTitle>
+                        <p className="text-sm text-muted-foreground font-mono mb-1" data-testid={`project-number-${project.id}`}>
+                          #{project.projectNumber}
+                        </p>
                         {project.client && (
                           <p className="text-sm text-muted-foreground truncate" data-testid={`project-client-${project.id}`}>
                             <Building className="w-3 h-3 inline mr-1" />

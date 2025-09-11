@@ -126,6 +126,7 @@ function ProjectSelectionScreen() {
                   </div>
                   <div className="text-left">
                     <div className="font-medium">{project.name}</div>
+                    <div className="text-sm text-muted-foreground font-mono">#{project.projectNumber}</div>
                     <div className="text-sm text-muted-foreground">{project.status}</div>
                   </div>
                 </div>

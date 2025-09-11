@@ -335,8 +335,11 @@ export default function ProjectDetail() {
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-            <Badge className={statusColors[project.status as keyof typeof statusColors]}>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground" data-testid="project-title">{project.name}</h1>
+              <p className="text-lg text-muted-foreground font-mono" data-testid="project-number">#{project.projectNumber}</p>
+            </div>
+            <Badge className={statusColors[project.status as keyof typeof statusColors]} data-testid={`project-status-${project.id}`}>
               {project.status}
             </Badge>
           </div>

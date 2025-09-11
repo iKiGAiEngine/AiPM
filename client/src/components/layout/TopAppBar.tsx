@@ -19,6 +19,10 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/contexts/ProjectContext";
 
+interface DemoModeResponse {
+  enabled: boolean;
+}
+
 interface TopAppBarProps {
   onMobileMenuToggle?: () => void;
   onGlobalSearchOpen?: () => void;
@@ -35,7 +39,7 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
   const { selectedProject } = useProject();
 
   // Get current demo mode status
-  const { data: demoModeResponse, isLoading: demoModeLoading } = useQuery({
+  const { data: demoModeResponse, isLoading: demoModeLoading } = useQuery<DemoModeResponse>({
     queryKey: ['/api/settings/demo-mode'],
     enabled: !!user,
   });
@@ -94,6 +98,7 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
 
   const currentPage = pageTitle || "Dashboard";
   const currentProject = selectedProject ? selectedProject.name : "Select Project";
+  const currentProjectNumber = selectedProject ? selectedProject.projectNumber : null;
 
   return (
     <header className="bg-card border-b border-border px-4 py-3 sm:px-6">
@@ -117,9 +122,16 @@ export default function TopAppBar({ onMobileMenuToggle, onGlobalSearchOpen, page
                 <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
                   <FolderOpen className="w-4 h-4 text-blue-600" />
                 </div>
-                <h1 className="text-xl font-semibold text-foreground truncate" data-testid="text-project-title">
-                  {currentProject}
-                </h1>
+                <div className="min-w-0">
+                  <h1 className="text-xl font-semibold text-foreground truncate" data-testid="text-project-title">
+                    {currentProject}
+                  </h1>
+                  {currentProjectNumber && (
+                    <p className="text-sm text-muted-foreground font-mono" data-testid="text-project-number">
+                      #{currentProjectNumber}
+                    </p>
+                  )}
+                </div>
               </div>
               {/* Page context badge */}
               <div className="hidden sm:flex items-center px-2 py-1 bg-muted rounded-md">

@@ -140,7 +140,7 @@ export function ProjectMaterialsStep({
   const costCodeBudgets = React.useMemo(() => {
     if (!project || !costCodes || !Array.isArray(costCodes) || costCodes.length === 0) return {};
     
-    const totalBudget = project?.budget ? parseFloat(project.budget.toString()) : 0;
+    const totalBudget = (project as any)?.budget ? parseFloat((project as any).budget.toString()) : 0;
     const budgetPerCode = totalBudget / costCodes.length;
     return costCodes.reduce((acc, code) => {
       acc[code] = {

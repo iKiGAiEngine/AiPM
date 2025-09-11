@@ -318,6 +318,9 @@ export default function Settings() {
                         </div>
                         <div>
                           <div className="font-medium">{project.name}</div>
+                          <div className="text-sm text-muted-foreground font-mono mb-1">
+                            #{project.projectNumber}
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             {project.client} • Contract Value: ${project.contractValue?.toLocaleString() || 'N/A'}
                           </div>

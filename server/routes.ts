@@ -153,10 +153,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Raw request body:', JSON.stringify(req.body, null, 2));
       const projectData = insertProjectSchema.parse(req.body);
       console.log('Parsed project data:', JSON.stringify(projectData, null, 2));
+      
+      // Pass along costCodes if they exist in the request body
       const project = await storage.createProject({
         ...projectData,
-        organizationId: req.user!.organizationId
-      } as InsertProject & { organizationId: string });
+        organizationId: req.user!.organizationId,
+        costCodes: req.body.costCodes // Pass through cost codes for server-side processing
+      } as InsertProject & { organizationId: string, costCodes?: any[] });
+      
       res.status(201).json(project);
     } catch (error) {
       console.error('Project validation error details:', error);
@@ -289,12 +293,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/projects/:id", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
     try {
+      // Explicitly exclude projectNumber from updates to prevent unauthorized changes
       const projectData = {
         name: req.body.name,
-        projectNumber: req.body.projectNumber,
         client: req.body.client,
         address: req.body.address,
         budget: req.body.budget,
+        contractValue: req.body.contractValue,
+        overheadFee: req.body.overheadFee,
         status: req.body.status,
         description: req.body.description,
       };

@@ -21,6 +21,7 @@ interface SearchResult {
   sku?: string;
   manufacturer?: string;
   totalAmount?: string;
+  projectData?: any; // For project results from recent searches
 }
 
 export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
@@ -38,7 +39,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const { data: results = [], isLoading } = useQuery({
+  const { data: results = [], isLoading } = useQuery<SearchResult[]>({
     queryKey: ['/api/search', debouncedQuery],
     enabled: debouncedQuery.length > 2,
     queryFn: async () => {
@@ -53,11 +54,11 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   });
 
   // Show actual projects as recent searches instead of hardcoded data
-  const recentSearches = projects.map(project => ({
+  const recentSearches: SearchResult[] = projects.map(project => ({
     id: project.id,
     type: 'project' as const,
     name: project.name,
-    description: `Project • ${project.status}`,
+    description: `Project #${project.projectNumber} • ${project.status}`,
     projectData: project
   }));
 
