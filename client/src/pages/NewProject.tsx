@@ -152,6 +152,56 @@ export default function NewProject() {
     }
   }, [nextProjectNumberData, proposedProjectNumber]);
 
+  // Mobile keyboard overlay fix
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const removeMobileOverlays = () => {
+      // Remove any overlay elements
+      const overlays = document.querySelectorAll(
+        '[class*="overlay"], [class*="backdrop"], [data-overlay], [data-backdrop], .webview-overlay, .mobile-overlay'
+      );
+      overlays.forEach(overlay => {
+        if (overlay instanceof HTMLElement) {
+          overlay.style.display = 'none';
+          overlay.style.visibility = 'hidden';
+          overlay.style.opacity = '0';
+        }
+      });
+      
+      // Ensure body is scrollable
+      document.body.style.overflow = 'visible';
+      document.body.style.height = 'auto';
+      document.documentElement.style.height = 'auto';
+      
+      // Remove any webkit fill available that causes black overlay
+      const style = document.createElement('style');
+      style.textContent = `
+        @media (max-width: 640px) {
+          html, body { height: auto !important; min-height: 100% !important; }
+          .webview-overlay, .mobile-overlay, [data-mobile-overlay] { display: none !important; }
+        }
+      `;
+      document.head.appendChild(style);
+    };
+    
+    // Run immediately and on events
+    removeMobileOverlays();
+    
+    const handleFocus = () => {
+      setTimeout(removeMobileOverlays, 100);
+      setTimeout(removeMobileOverlays, 300);
+    };
+    
+    document.addEventListener('focusin', handleFocus);
+    document.addEventListener('touchstart', removeMobileOverlays);
+    
+    return () => {
+      document.removeEventListener('focusin', handleFocus);
+      document.removeEventListener('touchstart', removeMobileOverlays);
+    };
+  }, []);
+
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
