@@ -237,17 +237,46 @@
     /* Fix viewport height when keyboard appears */
     body {
       min-height: 100vh;
-      min-height: -webkit-fill-available;
+      /* Remove -webkit-fill-available that causes black overlay on mobile */
+      height: auto;
+      overflow-x: hidden;
     }
     
     html {
-      height: -webkit-fill-available;
+      /* Remove height restriction that causes overlay issues */
+      height: auto;
+      overflow-x: hidden;
+    }
+    
+    /* Prevent black overlay when keyboard appears */
+    body::before,
+    body::after {
+      display: none !important;
+    }
+    
+    /* Fix for iOS Safari black bar issues */
+    @supports (-webkit-touch-callout: none) {
+      body {
+        min-height: 100vh;
+        min-height: calc(100vh - env(keyboard-inset-height, 0px));
+      }
     }
     
     /* Ensure form content is scrollable when keyboard is open */
     .form-container {
       min-height: calc(100vh - 100px);
       padding-bottom: calc(100px + env(keyboard-inset-height, 0px));
+      /* Prevent any dark overlays */
+      background: transparent !important;
+      position: relative;
+      z-index: 1;
+    }
+    
+    /* Remove any potential backdrop elements on mobile */
+    .backdrop,
+    [data-backdrop],
+    .dialog-backdrop {
+      display: none !important;
     }
     
     /* Smooth scroll behavior when input is focused */
