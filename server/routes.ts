@@ -148,6 +148,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/projects/next-number", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const nextProjectNumber = await storage.getNextProjectNumber(req.user!.organizationId);
+      res.json({ projectNumber: nextProjectNumber });
+    } catch (error) {
+      console.error('Failed to get next project number:', error);
+      res.status(500).json({ error: "Failed to get next project number" });
+    }
+  });
+
+  app.get("/api/projects/peek-next-number", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const nextProjectNumber = await storage.peekNextProjectNumber(req.user!.organizationId);
+      res.json({ projectNumber: nextProjectNumber });
+    } catch (error) {
+      console.error('Failed to peek next project number:', error);
+      res.status(500).json({ error: "Failed to peek next project number" });
+    }
+  });
+
   app.post("/api/projects", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
     try {
       console.log('Raw request body:', JSON.stringify(req.body, null, 2));

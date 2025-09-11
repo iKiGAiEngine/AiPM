@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -81,6 +81,7 @@ export default function NewProject() {
   const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState<'info' | 'budget' | 'materials'>('info');
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  const [proposedProjectNumber, setProposedProjectNumber] = useState<string | null>(null);
   const [costCodeForm, setCostCodeForm] = useState<CostCode>({
     scope: "",
     phaseCode: "",
@@ -138,6 +139,19 @@ export default function NewProject() {
     return option ? option.label.split(" - ")[1] : "";
   };
 
+  // Fetch the next project number when component loads
+  const { data: nextProjectNumberData } = useQuery<{ projectNumber: string }>({
+    queryKey: ['/api/projects/next-number'],
+    enabled: !proposedProjectNumber // Only fetch if we don't have it yet
+  });
+
+  // Set the proposed project number when data is loaded
+  useEffect(() => {
+    if (nextProjectNumberData?.projectNumber && !proposedProjectNumber) {
+      setProposedProjectNumber(nextProjectNumberData.projectNumber);
+    }
+  }, [nextProjectNumberData, proposedProjectNumber]);
+
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
@@ -189,13 +203,11 @@ export default function NewProject() {
       
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({
-        title: "Project Created",
-        description: `Project ${data.projectNumber} created successfully. Now add materials to complete setup.`,
+        title: "Project Created Successfully!",
+        description: `Project ${data.projectNumber} has been created and is now active in the system.`,
       });
-      // Move to materials step after project creation if coming from budget step
-      if (currentStep === 'budget') {
-        setCurrentStep('materials');
-      }
+      // Navigate to projects after successful creation
+      setTimeout(() => navigate("/projects"), 1500);
     },
     onError: () => {
       toast({
@@ -214,17 +226,18 @@ export default function NewProject() {
         setCurrentStep('budget');
       }
     } else if (currentStep === 'budget') {
-      // Only create project if it hasn't been created yet
-      if (!createdProjectId) {
-        createProjectMutation.mutate(data);
-      } else {
-        // Project already exists, just move to materials step
-        setCurrentStep('materials');
-      }
+      // Move to materials step without creating the project yet
+      setCurrentStep('materials');
     } else {
       // Final step - navigate to projects list
       navigate("/projects");
     }
+  };
+
+  // This function is called only when the final "Create Project" button is clicked
+  const finalCreateProject = () => {
+    const data = form.getValues();
+    createProjectMutation.mutate(data);
   };
 
   const addCostCode = () => {
@@ -375,12 +388,75 @@ export default function NewProject() {
       </div>
 
       {currentStep === 'materials' ? (
-        <ProjectMaterialsStep 
-          projectId={createdProjectId!} 
-          costCodes={form.getValues("costCodes")?.map(cc => `${cc.scope} - ${cc.projectNumber || "TBD"}-${cc.phaseCode}-${cc.standardCode}`) || []}
-          onNext={() => navigate("/projects")}
-          onPrevious={() => setCurrentStep('budget')}
-        />
+        <div className="flex-1 flex flex-col">
+          <Card className="h-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <FileSpreadsheet className="w-6 h-6" />
+                  Project Materials
+                </CardTitle>
+                {proposedProjectNumber && (
+                  <div className="bg-blue-900/30 px-4 py-2 rounded-lg border border-blue-700">
+                    <div className="text-sm text-blue-300 font-medium">Project Number</div>
+                    <div className="text-xl font-mono font-bold text-blue-100" data-testid="text-project-number-materials">
+                      #{proposedProjectNumber}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  You can now create the project with the information you&apos;ve configured. Once created, you&apos;ll be able to add materials to your project.
+                </p>
+                
+                {/* Show cost codes summary */}
+                {form.getValues("costCodes") && form.getValues("costCodes")!.length > 0 && (
+                  <div className="bg-muted/30 p-4 rounded-lg border">
+                    <h4 className="font-semibold mb-2">Cost Codes to Create:</h4>
+                    <div className="space-y-2">
+                      {form.getValues("costCodes")?.map((cc, index) => (
+                        <div key={index} className="flex justify-between items-center p-2 bg-background rounded border">
+                          <span className="font-medium">{cc.scope}</span>
+                          <span className="font-mono text-sm text-muted-foreground">
+                            {proposedProjectNumber || "TBD"}-{cc.phaseCode}-{cc.standardCode}
+                          </span>
+                          <span className="text-green-400 font-semibold">
+                            ${parseFloat(cc.budget).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 text-base"
+              onClick={() => setCurrentStep('budget')}
+              data-testid="button-back"
+            >
+              Back to Budget
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 h-12 text-base bg-green-700 hover:bg-green-600"
+              onClick={finalCreateProject}
+              disabled={createProjectMutation.isPending}
+              data-testid="button-create-project"
+            >
+              {createProjectMutation.isPending ? "Creating Project..." : "Create Project"}
+            </Button>
+          </div>
+        </div>
       ) : (
         <form 
           onSubmit={form.handleSubmit(onSubmit)} 
@@ -407,10 +483,20 @@ export default function NewProject() {
               // Project Information Step
               <Card className="h-full">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <Building className="w-6 h-6" />
-                    Basic Project Details
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <Building className="w-6 h-6" />
+                      Basic Project Details
+                    </CardTitle>
+                    {proposedProjectNumber && (
+                      <div className="bg-blue-900/30 px-4 py-2 rounded-lg border border-blue-700">
+                        <div className="text-sm text-blue-300 font-medium">Proposed Project Number</div>
+                        <div className="text-xl font-mono font-bold text-blue-100" data-testid="text-proposed-project-number">
+                          #{proposedProjectNumber}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -662,10 +748,20 @@ export default function NewProject() {
             // Budget & Cost Codes Step
             <Card className="h-full">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <Tag className="w-6 h-6" />
-                  Cost Codes & Budget Allocation
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Tag className="w-6 h-6" />
+                    Cost Codes & Budget Allocation
+                  </CardTitle>
+                  {proposedProjectNumber && (
+                    <div className="bg-blue-900/30 px-4 py-2 rounded-lg border border-blue-700">
+                      <div className="text-sm text-blue-300 font-medium">Project Number</div>
+                      <div className="text-xl font-mono font-bold text-blue-100" data-testid="text-project-number-budget">
+                        #{proposedProjectNumber}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Budget Summary */}

@@ -46,6 +46,8 @@ export interface IStorage {
   getProject(id: string): Promise<Project | undefined>;
   getProjectsByOrganization(organizationId: string): Promise<Project[]>;
   updateProject(id: string, organizationId: string, data: Partial<Project>): Promise<Project | undefined>;
+  getNextProjectNumber(organizationId: string): Promise<string>;
+  peekNextProjectNumber(organizationId: string): Promise<string>;
   
   // Vendors
   createVendor(vendor: InsertVendor): Promise<Vendor>;
@@ -271,6 +273,16 @@ export class DatabaseStorage implements IStorage {
     }
     
     throw new Error('Failed to create project after maximum retry attempts');
+  }
+
+  async getNextProjectNumber(organizationId: string): Promise<string> {
+    // Public method to preview the next project number without creating a project
+    return await this.generateProjectNumber(organizationId);
+  }
+
+  async peekNextProjectNumber(organizationId: string): Promise<string> {
+    // Explicit non-mutating method to preview the next project number without advancing sequence
+    return await this.generateProjectNumber(organizationId);
   }
 
   private async generateProjectNumber(organizationId: string): Promise<string> {
