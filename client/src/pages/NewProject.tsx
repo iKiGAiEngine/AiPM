@@ -165,7 +165,7 @@ export default function NewProject() {
         budget: data.budget || null, // Cost Budget
         overheadFee: data.overheadFee || null, // Overhead/Fee
         contractValue: data.contractValue || null, // Total Contract Value
-        costCodes: data.costCodes?.map(cc => `${cc.scope} - TBD-${cc.phaseCode}-${cc.standardCode}`) || [],
+        costCodes: data.costCodes || [],
         erpIds: null,
       };
       
