@@ -2,7 +2,14 @@
 
 This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract budgets, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
-## Recent Updates (September 4, 2025)
+## Recent Updates (September 12, 2025)
+- **MOBILE KEYBOARD OVERLAY FIXES**: Resolved persistent black overlay and scrolling issues on mobile devices using proper web standards
+- **VIEWPORT HANDLING ENHANCED**: Added `interactive-widget=resizes-content` viewport meta tag for keyboard-safe layout behavior
+- **DATE FIELD SCROLLING FIXED**: Resolved scrolling stuck issue at start/end date fields with proper element reference handling and requestAnimationFrame
+- **KEYBOARD-SAFE VIEWPORT UNITS**: Replaced problematic 100vh with 100svh/100dvh units to prevent overlay artifacts on mobile
+- **SCROLL CONTAINER IMPROVEMENTS**: Added proper overflow handling and keyboard inset padding for seamless mobile form interaction
+
+## Previous Updates (September 4, 2025)
 - **MOBILE AUTHENTICATION FIXES**: Fixed JWT token validation issues that were preventing mobile project dropdown from loading
 - **TOKEN VALIDATION ENHANCED**: Added automatic cleanup of malformed JWT tokens to prevent authentication race conditions
 - **PROJECT DROPDOWN RELIABILITY**: Mobile hamburger menu now properly loads all projects immediately after login

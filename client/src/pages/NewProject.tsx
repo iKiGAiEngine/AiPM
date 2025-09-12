@@ -310,7 +310,7 @@ export default function NewProject() {
   };
 
   return (
-    <div className="p-4 sm:p-6 min-h-[100svh] flex flex-col max-w-6xl mx-auto overflow-y-auto pb-[calc(1rem+env(keyboard-inset-height,0px))]" 
+    <div className="p-4 sm:p-6 min-h-[100svh] flex flex-col max-w-6xl mx-auto overflow-y-auto pb-[calc(1rem+env(keyboard-inset-height,0px))] [scroll-padding-bottom:calc(env(keyboard-inset-height,0px)+1rem)]" 
          style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
@@ -683,9 +683,10 @@ export default function NewProject() {
                         data-testid="input-start-date"
                         onKeyDown={(e) => handleEnterKeyNavigation(e, "endDate")}
                         onFocus={(e) => {
-                          setTimeout(() => {
-                            e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                          }, 0);
+                          const el = e.currentTarget;
+                          requestAnimationFrame(() => {
+                            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                          });
                         }}
                       />
                     </div>
@@ -706,9 +707,10 @@ export default function NewProject() {
                         className="h-12 text-base bg-slate-900 text-slate-100 placeholder-slate-400 border-slate-700 focus:border-slate-500 focus:ring-0"
                         data-testid="input-end-date"
                         onFocus={(e) => {
-                          setTimeout(() => {
-                            e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                          }, 0);
+                          const el = e.currentTarget;
+                          requestAnimationFrame(() => {
+                            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                          });
                         }}
                         onKeyDown={(e) => handleEnterKeyNavigation(e)}
                       />
