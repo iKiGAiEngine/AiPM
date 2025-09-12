@@ -285,55 +285,15 @@
       scroll-behavior: smooth;
     }
 
-    /* AGGRESSIVE FIX: Remove all potential black overlays on mobile */
-    
-    /* Force remove any backdrop filters */
-    * {
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
+    /* Mobile keyboard-safe viewport handling */
+    html, body {
+      min-height: 100svh;
     }
     
-    /* Remove fixed positioned overlays */
-    .fixed[class*="bg-"],
-    .absolute[class*="bg-"],
-    [class*="backdrop"],
-    [class*="overlay"] {
-      display: none !important;
-    }
-    
-    /* Force visible keyboard controls */
-    input, textarea, select {
-      -webkit-user-select: text !important;
-      user-select: text !important;
-      -webkit-touch-callout: default !important;
-      touch-action: manipulation !important;
-      z-index: 9999 !important;
-      position: relative !important;
-    }
-    
-    /* Ensure main app container doesn't create overlays */
-    #root, [data-app], main, .main {
-      background: hsl(var(--background)) !important;
-      min-height: 100vh !important;
-      height: auto !important;
-      overflow: visible !important;
-      position: relative !important;
-    }
-    
-    /* Remove any modal-like behaviors */
-    body.modal-open,
-    body[style*="overflow: hidden"] {
-      overflow: visible !important;
-      height: auto !important;
-    }
-    
-    /* Specifically target Replit's mobile interface overlays */
-    .webview-overlay,
-    .mobile-overlay,
-    [class*="mobile-keyboard"],
-    [data-mobile-overlay] {
-      display: none !important;
-      visibility: hidden !important;
+    @supports (height: 100dvh) {
+      html, body {
+        min-height: 100dvh;
+      }
     }
   }
 }
