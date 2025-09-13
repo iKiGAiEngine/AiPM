@@ -2363,6 +2363,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vendor Performance
+  app.get("/api/dashboard/vendor-performance", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const selectedProjectId = req.headers['x-selected-project-id'] as string;
+      const limit = parseInt(req.query.limit as string) || 5;
+      
+      // Get vendors and their related data
+      const vendors = await storage.getVendorsByOrganization(req.user!.organizationId);
+      
+      let vendorPerformanceData = [];
+
+      for (const vendor of vendors.slice(0, limit)) {
+        // Get purchase orders for this vendor
+        const vendorPOs = await storage.getPurchaseOrdersByOrganization(req.user!.organizationId);
+        const vendorPurchaseOrders = vendorPOs.filter((po: any) => po.vendorId === vendor.id);
+        
+        if (selectedProjectId) {
+          // Filter by project if specified
+          vendorPurchaseOrders.filter((po: any) => po.projectId === selectedProjectId);
+        }
+
+        // Get deliveries for this vendor
+        const allDeliveries = await storage.getDeliveriesByOrganization(req.user!.organizationId);
+        const vendorDeliveries = allDeliveries.filter((delivery: any) => 
+          vendorPurchaseOrders.some((po: any) => po.id === delivery.poId)
+        );
+
+        // Calculate on-time delivery percentage
+        const onTimeDeliveries = vendorDeliveries.filter((delivery: any) => {
+          if (!delivery.deliveryDate) return false;
+          const po = vendorPurchaseOrders.find((po: any) => po.id === delivery.poId);
+          if (!po || !po.estimatedDeliveryDate) return true; // No date = assume on time
+          return new Date(delivery.deliveryDate) <= new Date(po.estimatedDeliveryDate);
+        });
+        
+        const onTimePercentage = vendorDeliveries.length > 0 
+          ? Math.round((onTimeDeliveries.length / vendorDeliveries.length) * 100)
+          : 100; // Default to 100% if no deliveries yet
+
+        // Calculate average response time (simplified - using PO acknowledgment time)
+        const acknowledgedPOs = vendorPurchaseOrders.filter((po: any) => po.acknowledgedAt && po.sentAt);
+        const avgResponseHours = acknowledgedPOs.length > 0
+          ? acknowledgedPOs.reduce((sum: number, po: any) => {
+              const responseTime = new Date(po.acknowledgedAt).getTime() - new Date(po.sentAt).getTime();
+              return sum + (responseTime / (1000 * 60 * 60)); // Convert to hours
+            }, 0) / acknowledgedPOs.length
+          : 24; // Default to 24 hours
+
+        const avgResponseTime = avgResponseHours < 1 
+          ? `${Math.round(avgResponseHours * 60)}m`
+          : avgResponseHours < 24
+          ? `${Math.round(avgResponseHours)}h`
+          : `${Math.round(avgResponseHours / 24)}d`;
+
+        // Create vendor initials
+        const nameParts = vendor.name.split(' ');
+        const initials = nameParts.length > 1 
+          ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+          : nameParts[0].substring(0, 2);
+
+        vendorPerformanceData.push({
+          id: vendor.id,
+          name: vendor.name,
+          company: vendor.company,
+          category: "General", // Could be enhanced with vendor categories
+          onTimePercentage,
+          avgResponseTime,
+          initials: initials.toUpperCase()
+        });
+      }
+
+      // Sort by on-time percentage (best performers first)
+      vendorPerformanceData.sort((a, b) => b.onTimePercentage - a.onTimePercentage);
+
+      res.json(vendorPerformanceData);
+    } catch (error) {
+      console.error('Vendor performance error:', error);
+      res.status(500).json({ error: "Failed to fetch vendor performance" });
+    }
+  });
+
   // Project Materials routes
   app.get("/api/projects/:projectId/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
