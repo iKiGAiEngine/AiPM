@@ -1,44 +1,19 @@
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface ProjectZone {
+interface BudgetItem {
   id: string;
   name: string;
   budget: number;
   committed: number;
   actual: number;
+  remaining: number;
   completionPercentage: number;
 }
-
-// Mock data - in a real app this would come from an API
-const mockZones: ProjectZone[] = [
-  {
-    id: '1',
-    name: 'Zone A-1: Main Lobby',
-    budget: 125000,
-    committed: 98500,
-    actual: 92150,
-    completionPercentage: 75
-  },
-  {
-    id: '2',
-    name: 'Zone B-3: Restrooms',
-    budget: 85000,
-    committed: 52300,
-    actual: 38750,
-    completionPercentage: 45
-  },
-  {
-    id: '3',
-    name: 'Zone C-2: Office Areas',
-    budget: 195000,
-    committed: 45800,
-    actual: 18900,
-    completionPercentage: 20
-  }
-];
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -63,6 +38,72 @@ const getProgressColor = (percentage: number) => {
 };
 
 export default function BudgetOverview() {
+  const { data: budgetData, isLoading, error } = useQuery<BudgetItem[]>({
+    queryKey: ['/api/dashboard/budget-overview'],
+    queryFn: async () => {
+      const response = await fetch('/api/dashboard/budget-overview', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch budget overview');
+      return response.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle>Budget Overview</CardTitle>
+          <Button variant="ghost" size="sm" data-testid="button-view-budget-details">
+            View details
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="border border-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <Skeleton className="h-2 w-full mb-2" />
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !budgetData) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle>Budget Overview</CardTitle>
+          <Button variant="ghost" size="sm" data-testid="button-view-budget-details">
+            View details
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Failed to load budget data</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -73,40 +114,40 @@ export default function BudgetOverview() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {mockZones.length === 0 ? (
+          {budgetData.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No budget data available</p>
+              <p className="text-xs mt-1">Budget items will appear here once you create contract estimates</p>
             </div>
           ) : (
-            mockZones.map((zone) => {
-              const remaining = zone.budget - zone.actual;
-              const variance = zone.committed - zone.actual;
-              const spendPercentage = (zone.actual / zone.budget) * 100;
+            budgetData.map((item) => {
+              const variance = item.committed - item.actual;
+              const spendPercentage = item.budget > 0 ? (item.actual / item.budget) * 100 : 0;
               
               return (
                 <div 
-                  key={zone.id}
+                  key={item.id}
                   className="border border-border rounded-lg p-4 hover:bg-muted/20 transition-colors"
-                  data-testid={`budget-zone-${zone.id}`}
+                  data-testid={`budget-item-${item.id}`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-foreground" data-testid={`zone-name-${zone.id}`}>
-                      {zone.name}
+                    <h4 className="font-medium text-foreground" data-testid={`item-name-${item.id}`}>
+                      {item.name}
                     </h4>
-                    <Badge variant="secondary" data-testid={`zone-completion-${zone.id}`}>
-                      {zone.completionPercentage}% complete
+                    <Badge variant="secondary" data-testid={`item-completion-${item.id}`}>
+                      {item.completionPercentage}% complete
                     </Badge>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-2">
                     <span className="text-muted-foreground">
-                      Budget: <span className="font-medium text-foreground">{formatCurrency(zone.budget)}</span>
+                      Budget: <span className="font-medium text-foreground">{formatCurrency(item.budget)}</span>
                     </span>
                     <span className="text-muted-foreground">
-                      Committed: <span className="font-medium text-foreground">{formatCurrency(zone.committed)}</span>
+                      Committed: <span className="font-medium text-foreground">{formatCurrency(item.committed)}</span>
                     </span>
                     <span className="text-muted-foreground">
-                      Actual: <span className="font-medium text-foreground">{formatCurrency(zone.actual)}</span>
+                      Actual: <span className="font-medium text-foreground">{formatCurrency(item.actual)}</span>
                     </span>
                   </div>
                   
@@ -114,17 +155,17 @@ export default function BudgetOverview() {
                     <div 
                       className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(spendPercentage)}`}
                       style={{ width: `${Math.min(spendPercentage, 100)}%` }}
-                      data-testid={`zone-progress-${zone.id}`}
+                      data-testid={`item-progress-${item.id}`}
                     />
                   </div>
                   
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span data-testid={`zone-remaining-${zone.id}`}>
+                    <span data-testid={`item-remaining-${item.id}`}>
                       Remaining: <span className="font-medium text-blue-600 dark:text-blue-400">
-                        {formatCurrency(remaining)}
+                        {formatCurrency(item.remaining)}
                       </span>
                     </span>
-                    <span data-testid={`zone-variance-${zone.id}`}>
+                    <span data-testid={`item-variance-${item.id}`}>
                       Variance: <span className={`font-medium ${getVarianceColor(variance)}`}>
                         {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
                       </span>
