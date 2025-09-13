@@ -2,7 +2,16 @@
 
 This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract budgets, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
-## Recent Updates (September 12, 2025)
+## Recent Updates (September 13, 2025)
+- **DASHBOARD DEMO DATA REPLACEMENT COMPLETED**: Successfully replaced all hardcoded demo data across 4 dashboard components with real-time API-driven data
+- **Dashboard Stats API Enhanced**: Added dynamic change calculations including weekly requisition trends, pending PO totals, and exception status indicators
+- **Budget Overview API Created**: New `/api/dashboard/budget-overview` endpoint provides real contract estimate data with committed/actual spending by cost code
+- **Recent Activity API Implemented**: New `/api/dashboard/recent-activity` endpoint aggregates real activity from requisitions, purchase orders, deliveries, and invoices
+- **Vendor Performance API Added**: New `/api/dashboard/vendor-performance` endpoint calculates real vendor metrics like on-time delivery and response times
+- **Cost Savings Calculation Fixed**: Corrected calculation to only include completed/closed purchase orders for accurate financial reporting
+- **React Query Integration**: All dashboard components now use React Query with proper loading states, error handling, and cache management
+
+## Previous Updates (September 12, 2025)
 - **MOBILE KEYBOARD OVERLAY FIXES**: Resolved persistent black overlay and scrolling issues on mobile devices using proper web standards
 - **VIEWPORT HANDLING ENHANCED**: Added `interactive-widget=resizes-content` viewport meta tag for keyboard-safe layout behavior
 - **DATE FIELD SCROLLING FIXED**: Resolved scrolling stuck issue at start/end date fields with proper element reference handling and requestAnimationFrame
