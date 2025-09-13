@@ -105,14 +105,24 @@ export default function Projects() {
           <h1 className="text-2xl font-bold text-foreground">Projects</h1>
           <p className="text-muted-foreground">View and browse construction projects</p>
         </div>
-        {user?.role === 'Admin' && (
-          <Button asChild data-testid="button-admin-projects">
-            <Link to="/settings?tab=projects">
-              <Settings className="w-4 h-4 mr-2" />
-              Manage Projects
-            </Link>
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {(user?.role === 'Admin' || user?.role === 'PM') && (
+            <Button asChild data-testid="button-new-project">
+              <Link to="/projects/new">
+                <Plus className="w-4 h-4 mr-2" />
+                New Project
+              </Link>
+            </Button>
+          )}
+          {user?.role === 'Admin' && (
+            <Button asChild variant="outline" data-testid="button-admin-projects">
+              <Link to="/settings?tab=projects">
+                <Settings className="w-4 h-4 mr-2" />
+                Manage Projects
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

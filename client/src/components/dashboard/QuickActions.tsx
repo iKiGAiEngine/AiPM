@@ -20,11 +20,22 @@ export default function QuickActions() {
 
   const actions = [
     {
-      title: "New Requisition",
-      description: "Request materials for the field",
+      title: "New Project",
+      description: "Create a new construction project",
       icon: Plus,
       bgColor: "bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30",
       iconBg: "bg-primary-600",
+      iconColor: "text-white",
+      roles: ["Admin", "PM"],
+      onClick: () => navigate("/projects/new"),
+      testId: "button-new-project"
+    },
+    {
+      title: "New Requisition",
+      description: "Request materials for the field",
+      icon: Plus,
+      bgColor: "bg-muted hover:bg-muted/80",
+      iconBg: "bg-muted-foreground",
       iconColor: "text-white",
       roles: ["Admin", "PM", "Purchaser", "Field"],
       onClick: () => navigate("/requisitions"),
