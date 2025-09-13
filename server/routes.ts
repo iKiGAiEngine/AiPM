@@ -2125,13 +2125,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate real cost savings from completed POs vs budgets
-      const costSavingsCalculation = purchaseOrders
-        .filter((po: any) => po.status === 'delivered' || po.status === 'closed')
-        .reduce((total: number, po: any) => {
-          // Simple calculation: assume 5% average savings on completed POs
-          const poTotal = parseFloat(po.totalAmount || '0');
-          return total + (poTotal * 0.05);
-        }, 0);
+      const completedPOs = purchaseOrders.filter((po: any) => po.status === 'delivered' || po.status === 'closed');
+      const costSavingsCalculation = completedPOs.reduce((total: number, po: any) => {
+        // Simple calculation: assume 5% average savings on completed POs only
+        const poTotal = parseFloat(po.totalAmount || '0');
+        return total + (poTotal * 0.05);
+      }, 0);
+
+      // Calculate pending PO total value
+      const pendingPOsValue = purchaseOrders
+        .filter((po: any) => po.status === 'draft' || po.status === 'sent')
+        .reduce((total: number, po: any) => total + parseFloat(po.totalAmount || '0'), 0);
+
+      // Calculate recent requisition trend (last 7 days vs previous 7 days)
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      
+      const recentRequisitions = requisitions.filter((r: any) => 
+        new Date(r.createdAt) >= sevenDaysAgo
+      ).length;
+      const previousRequisitions = requisitions.filter((r: any) => 
+        new Date(r.createdAt) >= fourteenDaysAgo && new Date(r.createdAt) < sevenDaysAgo
+      ).length;
+
+      const requisitionChange = recentRequisitions - previousRequisitions;
+      const requisitionChangeText = requisitionChange > 0 
+        ? `+${requisitionChange} this week`
+        : requisitionChange < 0 
+        ? `${requisitionChange} this week`
+        : "No change this week";
 
       const stats = {
         openRequisitions: requisitions.filter((r: any) => r.status === 'submitted').length,
@@ -2139,7 +2162,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceExceptions: invoices.filter((i: any) => i.status === 'exception').length,
         costSavings: Math.round(costSavingsCalculation).toString(),
         totalProjects: projects.length,
-        activeProjects: projects.filter((p: any) => p.status === 'active').length
+        activeProjects: projects.filter((p: any) => p.status === 'active').length,
+        // Dynamic change calculations
+        requisitionChange: requisitionChangeText,
+        pendingPOsValue: `$${Math.round(pendingPOsValue / 1000)}K total`,
+        invoiceExceptionsChange: invoices.filter((i: any) => i.status === 'exception').length > 0 
+          ? "Needs attention" 
+          : "All clear",
+        costSavingsChange: "This month"
       };
 
       res.json(stats);

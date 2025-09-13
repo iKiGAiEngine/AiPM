@@ -18,6 +18,11 @@ interface DashboardStats {
   costSavings: string;
   totalProjects: number;
   activeProjects: number;
+  // Dynamic change calculations
+  requisitionChange: string;
+  pendingPOsValue: string;
+  invoiceExceptionsChange: string;
+  costSavingsChange: string;
 }
 
 export default function DashboardStats() {
@@ -75,8 +80,10 @@ export default function DashboardStats() {
     {
       title: "Open Requisitions",
       value: stats.openRequisitions,
-      change: "+3 this week",
-      changeType: "positive" as const,
+      change: stats.requisitionChange,
+      changeType: stats.requisitionChange.includes('+') ? "positive" as const : 
+                  stats.requisitionChange.includes('-') ? "negative" as const : 
+                  "neutral" as const,
       icon: ClipboardList,
       bgColor: "bg-blue-100 dark:bg-blue-900/20",
       iconColor: "text-blue-600 dark:text-blue-400",
@@ -85,7 +92,7 @@ export default function DashboardStats() {
     {
       title: "Pending POs",
       value: stats.pendingPOs,
-      change: "$145K total",
+      change: stats.pendingPOsValue,
       changeType: "neutral" as const,
       icon: FileText,
       bgColor: "bg-amber-100 dark:bg-amber-900/20",
@@ -95,8 +102,8 @@ export default function DashboardStats() {
     {
       title: "Invoice Exceptions",
       value: stats.invoiceExceptions,
-      change: "Needs attention",
-      changeType: "negative" as const,
+      change: stats.invoiceExceptionsChange,
+      changeType: stats.invoiceExceptionsChange === "All clear" ? "positive" as const : "negative" as const,
       icon: AlertTriangle,
       bgColor: "bg-red-100 dark:bg-red-900/20",
       iconColor: "text-red-600 dark:text-red-400",
@@ -105,7 +112,7 @@ export default function DashboardStats() {
     {
       title: "Cost Savings",
       value: `$${parseFloat(stats.costSavings || '0').toLocaleString()}`,
-      change: "This month",
+      change: stats.costSavingsChange,
       changeType: "positive" as const,
       icon: DollarSign,
       bgColor: "bg-green-100 dark:bg-green-900/20",
