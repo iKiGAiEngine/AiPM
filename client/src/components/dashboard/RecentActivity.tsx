@@ -1,6 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   CheckCircle, 
   AlertTriangle, 
@@ -18,9 +20,6 @@ interface ActivityItem {
   timestamp: string;
   status?: 'success' | 'warning' | 'info' | 'error';
 }
-
-// Real activities - no mock data shown until real data exists
-const activities: ActivityItem[] = [];
 
 const getActivityIcon = (type: ActivityItem['type']) => {
   switch (type) {
@@ -54,6 +53,65 @@ const getActivityIconColor = (status: ActivityItem['status']) => {
 };
 
 export default function RecentActivity() {
+  const { data: activities, isLoading, error } = useQuery<ActivityItem[]>({
+    queryKey: ['/api/dashboard/recent-activity'],
+    queryFn: async () => {
+      const response = await fetch('/api/dashboard/recent-activity?limit=8', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch recent activity');
+      return response.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle>Recent Activity</CardTitle>
+          <Button variant="ghost" size="sm" data-testid="button-view-all-activity">
+            View all
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-start space-x-3 p-3">
+                <Skeleton className="w-8 h-8 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle>Recent Activity</CardTitle>
+          <Button variant="ghost" size="sm" data-testid="button-view-all-activity">
+            View all
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>Failed to load activity</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -64,7 +122,7 @@ export default function RecentActivity() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {activities.length === 0 ? (
+          {!activities || activities.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p>No recent activity</p>

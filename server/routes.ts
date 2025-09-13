@@ -2227,6 +2227,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Recent Activity
+  app.get("/api/dashboard/recent-activity", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const selectedProjectId = req.headers['x-selected-project-id'] as string;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      let activities: any[] = [];
+
+      if (selectedProjectId) {
+        // Get recent activity for specific project
+        const [requisitions, purchaseOrders, deliveries, invoices] = await Promise.all([
+          storage.getRequisitionsByProject(selectedProjectId),
+          storage.getPurchaseOrdersByProject(selectedProjectId), 
+          storage.getDeliveriesByOrganization(req.user!.organizationId),
+          storage.getInvoicesByOrganization(req.user!.organizationId)
+        ]);
+
+        // Process requisitions
+        requisitions.forEach((req: any) => {
+          activities.push({
+            id: `req-${req.id}`,
+            type: 'requisition_submitted',
+            title: `Requisition ${req.number} submitted`,
+            description: req.title,
+            timestamp: req.createdAt,
+            status: req.status === 'submitted' ? 'info' : 'success'
+          });
+        });
+
+        // Process purchase orders
+        purchaseOrders.forEach((po: any) => {
+          activities.push({
+            id: `po-${po.id}`,
+            type: 'po_approved',
+            title: `PO ${po.number} created`,
+            description: `Total: $${parseFloat(po.totalAmount || '0').toLocaleString()}`,
+            timestamp: po.createdAt,
+            status: 'success'
+          });
+        });
+
+        // Process deliveries (filter by project POs)
+        const projectPOIds = purchaseOrders.map((po: any) => po.id);
+        deliveries.filter((delivery: any) => projectPOIds.includes(delivery.poId)).forEach((delivery: any) => {
+          activities.push({
+            id: `delivery-${delivery.id}`,
+            type: 'delivery_received',
+            title: `Delivery received`,
+            description: `Packing slip: ${delivery.packingSlipNumber || 'N/A'}`,
+            timestamp: delivery.receivedAt,
+            status: delivery.status === 'complete' ? 'success' : 'warning'
+          });
+        });
+
+        // Process invoices (filter by project)
+        invoices.filter((invoice: any) => invoice.projectId === selectedProjectId).forEach((invoice: any) => {
+          if (invoice.status === 'exception') {
+            activities.push({
+              id: `invoice-${invoice.id}`,
+              type: 'invoice_exception',
+              title: `Invoice exception`,
+              description: `Invoice ${invoice.invoiceNumber}`,
+              timestamp: invoice.createdAt,
+              status: 'error'
+            });
+          }
+        });
+      } else {
+        // Get organization-wide activity
+        const [requisitions, purchaseOrders, deliveries, invoices] = await Promise.all([
+          storage.getRequisitionsByOrganization(req.user!.organizationId),
+          storage.getPurchaseOrdersByOrganization(req.user!.organizationId),
+          storage.getDeliveriesByOrganization(req.user!.organizationId),
+          storage.getInvoicesByOrganization(req.user!.organizationId)
+        ]);
+
+        // Add recent requisitions
+        requisitions.slice(-5).forEach((req: any) => {
+          activities.push({
+            id: `req-${req.id}`,
+            type: 'requisition_submitted',
+            title: `Requisition ${req.number} submitted`,
+            description: req.title,
+            timestamp: req.createdAt,
+            status: req.status === 'submitted' ? 'info' : 'success'
+          });
+        });
+
+        // Add recent purchase orders
+        purchaseOrders.slice(-5).forEach((po: any) => {
+          activities.push({
+            id: `po-${po.id}`,
+            type: 'po_approved',
+            title: `PO ${po.number} created`,
+            description: `Total: $${parseFloat(po.totalAmount || '0').toLocaleString()}`,
+            timestamp: po.createdAt,
+            status: 'success'
+          });
+        });
+
+        // Add recent deliveries
+        deliveries.slice(-3).forEach((delivery: any) => {
+          activities.push({
+            id: `delivery-${delivery.id}`,
+            type: 'delivery_received',
+            title: `Delivery received`,
+            description: `Packing slip: ${delivery.packingSlipNumber || 'N/A'}`,
+            timestamp: delivery.receivedAt,
+            status: delivery.status === 'complete' ? 'success' : 'warning'
+          });
+        });
+
+        // Add invoice exceptions
+        invoices.filter((invoice: any) => invoice.status === 'exception').slice(-3).forEach((invoice: any) => {
+          activities.push({
+            id: `invoice-${invoice.id}`,
+            type: 'invoice_exception',
+            title: `Invoice exception`,
+            description: `Invoice ${invoice.invoiceNumber}`,
+            timestamp: invoice.createdAt,
+            status: 'error'
+          });
+        });
+      }
+
+      // Sort by timestamp (most recent first) and limit results
+      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      activities = activities.slice(0, limit);
+
+      res.json(activities);
+    } catch (error) {
+      console.error('Recent activity error:', error);
+      res.status(500).json({ error: "Failed to fetch recent activity" });
+    }
+  });
+
   // Project Materials routes
   app.get("/api/projects/:projectId/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
