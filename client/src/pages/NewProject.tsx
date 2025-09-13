@@ -244,7 +244,7 @@ export default function NewProject() {
   const addCostCode = () => {
     if (costCodeForm.scope.trim() && costCodeForm.phaseCode.trim() && costCodeForm.standardCode.trim() && costCodeForm.budget.trim()) {
       const currentCodes = form.getValues("costCodes") || [];
-      const newCode = { ...costCodeForm, projectNumber: "TBD" };
+      const newCode = { ...costCodeForm, projectNumber: proposedProjectNumber || "TBD" };
       
       if (editingIndex !== null) {
         // Update existing cost code
@@ -254,7 +254,7 @@ export default function NewProject() {
         setEditingIndex(null);
       } else {
         // Add new cost code
-        const fullCode = `TBD-${newCode.phaseCode}-${newCode.standardCode}`;
+        const fullCode = `${proposedProjectNumber || "TBD"}-${newCode.phaseCode}-${newCode.standardCode}`;
         const exists = currentCodes.some(cc => `${cc.projectNumber || "TBD"}-${cc.phaseCode}-${cc.standardCode}` === fullCode);
         if (!exists) {
           form.setValue("costCodes", [...currentCodes, newCode]);
@@ -334,12 +334,12 @@ export default function NewProject() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">
             {currentStep === 'info' ? 'Project Information' : 
-             currentStep === 'budget' ? 'Budget & Cost Codes' : 'Project Materials'}
+             currentStep === 'budget' ? 'Budget & Cost Codes' : 'Project and Budget Summary'}
           </h1>
           <p className="text-muted-foreground">
             {currentStep === 'info' ? 'Enter basic project details and contract information' : 
              currentStep === 'budget' ? 'Configure cost codes and budget allocation' :
-             'Import or add materials for your project'
+             'Review and confirm your project and budget details'
             }
           </p>
         </div>
@@ -384,7 +384,7 @@ export default function NewProject() {
             3
           </div>
           <span className={`text-sm font-medium ${currentStep === 'materials' ? 'text-foreground' : 'text-muted-foreground'}`}>
-            Materials
+            Summary
           </span>
         </div>
       </div>
@@ -396,7 +396,7 @@ export default function NewProject() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <FileSpreadsheet className="w-6 h-6" />
-                  Project Materials
+                  Project and Budget Summary
                 </CardTitle>
                 {proposedProjectNumber && (
                   <div className="bg-blue-900/30 px-4 py-2 rounded-lg border border-blue-700">
@@ -950,7 +950,7 @@ export default function NewProject() {
                 className="flex-1 h-12 text-base"
                 data-testid="button-next-materials"
               >
-                Next: Materials Import
+                Next: Project and Budget Summary
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
