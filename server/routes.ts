@@ -171,14 +171,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/projects", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
     try {
       console.log('Raw request body:', JSON.stringify(req.body, null, 2));
-      const projectData = insertProjectSchema.parse(req.body);
+      
+      // Extract costCodes before schema parsing to preserve them
+      const { costCodes, ...bodyWithoutCostCodes } = req.body;
+      const projectData = insertProjectSchema.parse(bodyWithoutCostCodes);
       console.log('Parsed project data:', JSON.stringify(projectData, null, 2));
+      console.log('Cost codes to process:', JSON.stringify(costCodes, null, 2));
       
       // Pass along costCodes if they exist in the request body
       const project = await storage.createProject({
         ...projectData,
         organizationId: req.user!.organizationId,
-        costCodes: req.body.costCodes // Pass through cost codes for server-side processing
+        costCodes: costCodes // Pass through cost codes for server-side processing
       } as InsertProject & { organizationId: string, costCodes?: any[] });
       
       res.status(201).json(project);

@@ -243,7 +243,7 @@ export class DatabaseStorage implements IStorage {
               title: cc.scope,
               description: cc.scope,
               costCode: `${projectNumber}-${cc.phaseCode}-${cc.standardCode}`,
-              awardedValue: cc.budget,
+              awardedValue: cc.budget, // Keep as string for numeric field
               isActive: true
             }));
             
