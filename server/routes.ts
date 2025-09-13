@@ -12,7 +12,7 @@ import {
   type AuthenticatedRequest 
 } from "./middleware/auth";
 import { z } from "zod";
-import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, insertContractEstimateSchema, type InsertProject, invoices, contractEstimates, requisitionLines, purchaseOrders, purchaseOrderLines, invoiceLines } from "@shared/schema";
+import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, insertContractEstimateSchema, type InsertProject, invoices, contractEstimates, requisitionLines, purchaseOrders, purchaseOrderLines, invoiceLines, projectMaterials } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { db } from "./db";
 import { threeWayMatchService } from "./services/three-way-match";
@@ -2190,19 +2190,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get contract estimates (budget data) for the project
       const contractEstimates = await storage.getContractEstimatesByProject(selectedProjectId, req.user!.organizationId);
       
-      // Get purchase order lines for committed amounts
-      const poLinesData = await db.select()
+      // Get purchase order lines for committed amounts with project materials for cost codes
+      const poLinesData = await db.select({
+        poLine: purchaseOrderLines,
+        projectMaterial: projectMaterials
+      })
         .from(purchaseOrderLines)
         .innerJoin(purchaseOrders, eq(purchaseOrderLines.poId, purchaseOrders.id))
+        .leftJoin(projectMaterials, eq(purchaseOrderLines.projectMaterialId, projectMaterials.id))
         .where(and(
           eq(purchaseOrders.projectId, selectedProjectId),
           eq(purchaseOrders.organizationId, req.user!.organizationId)
         ));
 
-      // Get invoice lines for actual amounts (only matched/approved invoices)
-      const invoiceLinesData = await db.select()
+      // Get invoice lines for actual amounts (only matched/approved invoices) with cost codes
+      const invoiceLinesData = await db.select({
+        invoiceLine: invoiceLines,
+        projectMaterial: projectMaterials
+      })
         .from(invoiceLines)
         .innerJoin(invoices, eq(invoiceLines.invoiceId, invoices.id))
+        .leftJoin(purchaseOrderLines, eq(invoiceLines.poLineId, purchaseOrderLines.id))
+        .leftJoin(projectMaterials, eq(purchaseOrderLines.projectMaterialId, projectMaterials.id))
         .where(and(
           eq(invoices.projectId, selectedProjectId),
           eq(invoices.organizationId, req.user!.organizationId),
@@ -2214,26 +2223,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const costCode = estimate.costCode;
         
         // Calculate committed amount from PO lines with matching cost code
-        // Note: Purchase order lines are linked to project materials, which have cost codes
-        // For now, we'll use a simple approach - in a full implementation, we'd join through project materials
         const committedAmount = poLinesData
           .filter((pol: any) => {
-            // For now, include all PO lines for this project (simplified approach)
-            // TODO: Properly link through project materials to get cost code matching
-            return true;
+            // Match cost codes through project materials
+            return pol.projectMaterial && pol.projectMaterial.costCode === costCode;
           })
-          .reduce((sum: number, pol: any) => sum + parseFloat(pol.purchase_order_lines.lineTotal || '0'), 0);
+          .reduce((sum: number, pol: any) => sum + parseFloat(pol.poLine.lineTotal || '0'), 0);
 
         // Calculate actual amount from invoice lines with matching cost code
         const actualAmount = invoiceLinesData
           .filter((il: any) => {
-            // Find the PO line that this invoice line references
-            const relatedPOLine = poLinesData.find((pol: any) => 
-              pol.purchase_order_lines.id === il.invoice_lines.poLineId
-            );
-            return relatedPOLine && relatedPOLine.purchase_order_lines.costCode === costCode;
+            // Match cost codes through project materials
+            return il.projectMaterial && il.projectMaterial.costCode === costCode;
           })
-          .reduce((sum: number, il: any) => sum + parseFloat(il.invoice_lines.lineTotal || '0'), 0);
+          .reduce((sum: number, il: any) => sum + parseFloat(il.invoiceLine.lineTotal || '0'), 0);
 
         const budget = parseFloat(estimate.awardedValue || '0');
         const remaining = budget - actualAmount;
