@@ -1,0 +1,85 @@
+"""
+AiPM Phase 1 Backup Script
+--------------------------
+Bare-bones scheduled export of all AiPM data into a master Excel file.
+Run this script daily/weekly to ensure no data is ever lost.
+Later, replace mock_data sections with actual AiPM data sources.
+"""
+
+import os
+from openpyxl import Workbook, load_workbook
+from datetime import datetime
+
+# === Config ===
+BACKUP_FILE = "aipm_backup.xlsx"
+TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+# === Master Tabs and Headers (Project ID is always included) ===
+MASTER_STRUCTURE = {
+    "Projects": [
+        "Project ID", "Project Number", "Project Name", "Client/GC",
+        "Location", "Contract Value", "Budget Value", "Profit Margin",
+        "Status", "Start Date", "End Date", "PM Assigned"
+    ],
+    "Scopes": [
+        "Scope ID", "Project ID", "Division", "Cost Code",
+        "Description", "Budget Amount", "Forecast Amount", "Notes"
+    ],
+    "Purchase Orders": [
+        "PO ID", "Project ID", "Vendor Name", "Vendor Contact",
+        "Vendor Email", "PO Date", "PO Amount", "Status", "Notes"
+    ],
+    "Invoices": [
+        "Invoice ID", "Project ID", "PO ID", "Vendor",
+        "Invoice Date", "Invoice Amount", "Status", "Date Paid", "Notes"
+    ],
+    "Change Orders": [
+        "CO ID", "Project ID", "Description", "Type",
+        "Amount", "Approved Date", "Notes"
+    ],
+    "Forecasts/WIP": [
+        "Forecast ID", "Project ID", "Current Cost Budget", "Spent to Date",
+        "Committed", "Pending COs", "Forecasted Cost",
+        "Forecasted Revenue", "Projected Gain/Loss", "Notes"
+    ],
+    "Audit Logs": [
+        "Log ID", "Project ID", "User/AI Action", "Action Type",
+        "Timestamp", "Notes"
+    ]
+}
+
+# === Initialize workbook ===
+if os.path.exists(BACKUP_FILE):
+    wb = load_workbook(BACKUP_FILE)
+    print(f"🔄 Updating existing backup: {BACKUP_FILE}")
+else:
+    wb = Workbook()
+    # Create structured tabs
+    for i, (tab, headers) in enumerate(MASTER_STRUCTURE.items()):
+        ws = wb.create_sheet(tab, i)
+        ws.append(headers)
+    # Remove default sheet if present
+    if "Sheet" in wb.sheetnames:
+        wb.remove(wb["Sheet"])
+    print(f"✅ Created new backup file: {BACKUP_FILE}")
+
+# === Example Mock Data (replace with real AiPM data fetch later) ===
+mock_projects = [
+    ["Proj_001", "2025-001", "Riverside Museum Expansion", "Swinerton", "Riverside, CA",
+     800000, 750000, "6.25%", "Active", "2025-01-15", "2025-12-15", "HK"],
+    ["Proj_002", "2025-002", "Children’s Hospital TI", "McCarthy", "San Diego, CA",
+     600000, 560000, "6.7%", "Active", "2025-02-01", "2025-10-01", "HK"]
+]
+
+ws = wb["Projects"]
+for row in mock_projects:
+    ws.append(row)
+
+# Backup history tab
+if "BackupHistory" not in wb.sheetnames:
+    wb.create_sheet("BackupHistory")
+wb["BackupHistory"].append([TIMESTAMP, "Backup executed"])
+
+# Save backup
+wb.save(BACKUP_FILE)
+print(f"📁 Backup saved as {BACKUP_FILE} at {TIMESTAMP}")

@@ -1,0 +1,88 @@
+1. Scheduling
+
+Phase 1 (now):
+Start with a manual trigger / on-demand export so you can validate the structure and confirm data is flowing properly.
+
+Example: run python backup.py in Replit.
+
+Phase 2 (stable workflows):
+Use a scheduled background job.
+
+If your app is Node.js with node-cron, we can either:
+
+Call the backup script from Node (spawn a Python process), or
+
+Rebuild the script in TypeScript and keep it all in one stack.
+
+✅ Recommendation: On-demand first, cron later. That way you debug once before automating.
+
+2. Data Source
+
+Direct DB (Postgres/SQLite/etc.):
+
+Pros: Fast, direct, minimal dependencies.
+
+Cons: Bypasses authorization/validation logic in your app.
+
+API Endpoints (REST/GraphQL):
+
+Pros: Enforces business rules, respects auth, avoids DB coupling.
+
+Cons: Slightly slower, requires working endpoints.
+
+✅ Recommendation:
+
+If AiPM already has clean API endpoints, use those.
+
+If not, pull from the DB directly for Phase 1 (faster to set up).
+
+Long-term → switch to API so you don’t have two sources of truth.
+
+3. Access Control
+
+Admin-only should trigger backups at first (safest).
+
+Later, you might allow PM role to run an export for just their project(s).
+
+✅ Recommendation:
+
+Global scheduled backup = Admin only.
+
+On-demand export per project = PM allowed (e.g., “Download Project Report” button).
+
+4. Hosting (Node.js vs Python)
+
+Your main AiPM app is Node.js, so introducing a Python-only service is extra overhead (two runtimes, deployment complexity).
+
+If this backup grows into Phase 2 real-time mirroring, it will be cleaner if it’s in TypeScript/Node.
+
+✅ Recommendation:
+
+Prototype in Python now (fast and simple with openpyxl).
+
+Once stable → port to TypeScript using something like exceljs
+ for a fully integrated Node solution.
+
+🔹 Strategic Path Forward
+
+Phase 1 (Now):
+
+Keep backup in Python.
+
+Run on demand to validate structure.
+
+Export all projects into aipm_backup.xlsx.
+
+Phase 2 (After workflows are final):
+
+Add cron scheduling in Node.
+
+Migrate backup/export logic to TypeScript (exceljs).
+
+Wire hooks into project/PO/invoice creation flows.
+
+Phase 3 (Long-term):
+
+Add role-based access (Admin full export, PM single-project export).
+
+Route backups through API endpoints for consistency.

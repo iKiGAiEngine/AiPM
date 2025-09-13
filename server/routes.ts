@@ -2917,6 +2917,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin backup endpoint - returns all organizational data for backup
+  app.get("/api/admin/backup", requireRole(['Admin']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const organizationId = req.user!.organizationId;
+      
+      // Collect all organizational data using storage methods
+      const [
+        projects,
+        vendors,
+        projectMaterialsData,
+        requisitions,
+        purchaseOrdersData,
+        invoicesData,
+        deliveries,
+        rfqs,
+        contractEstimatesData
+      ] = await Promise.all([
+        // Projects
+        storage.getProjectsByOrganization(organizationId, true),
+        
+        // Vendors
+        storage.getVendorsByOrganization(organizationId),
+        
+        // Project Materials
+        db.select().from(projectMaterials)
+          .where(eq(projectMaterials.organizationId, organizationId)),
+          
+        // Requisitions
+        storage.getRequisitionsByOrganization(organizationId),
+            
+        // Purchase Orders
+        storage.getPurchaseOrdersByOrganization(organizationId),
+          
+        // Invoices
+        storage.getInvoicesByOrganization(organizationId),
+          
+        // Deliveries
+        storage.getDeliveriesByOrganization(organizationId),
+        
+        // RFQs
+        storage.getRFQsByOrganization(organizationId),
+        
+        // Contract Estimates
+        db.select().from(contractEstimates)
+          .where(eq(contractEstimates.organizationId, organizationId))
+      ]);
+
+      // Return structured backup data
+      const backupData = {
+        timestamp: new Date().toISOString(),
+        organizationId,
+        data: {
+          projects,
+          vendors,
+          projectMaterials: projectMaterialsData,
+          requisitions,
+          purchaseOrders: purchaseOrdersData,
+          invoices: invoicesData,
+          deliveries,
+          rfqs,
+          contractEstimates: contractEstimatesData
+        },
+        summary: {
+          projectCount: projects.length,
+          vendorCount: vendors.length,
+          materialCount: projectMaterialsData.length,
+          requisitionCount: requisitions.length,
+          poCount: purchaseOrdersData.length,
+          invoiceCount: invoicesData.length,
+          deliveryCount: deliveries.length,
+          rfqCount: rfqs.length,
+          contractEstimateCount: contractEstimatesData.length
+        }
+      };
+
+      res.json(backupData);
+    } catch (error) {
+      console.error('Backup failed:', error);
+      res.status(500).json({ error: "Failed to generate backup data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
