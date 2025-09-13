@@ -310,9 +310,9 @@ export class DatabaseStorage implements IStorage {
     const existingProjects = await tx.select().from(projects)
       .where(and(
         eq(projects.organizationId, organizationId),
-        sql`${projects.projectNumber} LIKE ${prefix}%`
+        like(projects.projectNumber, `${prefix}%`)
       ))
-      .orderBy(sql`${projects.projectNumber} DESC`)
+      .orderBy(desc(projects.projectNumber))
       .limit(1)
       .for('update'); // Lock for update to prevent race conditions
     
