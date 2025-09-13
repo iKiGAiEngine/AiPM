@@ -33,6 +33,7 @@ import Materials from "@/pages/Materials";
 import NewMaterial from "@/pages/NewMaterial";
 import ImportMaterials from "@/pages/ImportMaterials";
 import Vendors from "@/pages/Vendors";
+import NewVendor from "@/pages/NewVendor";
 import Projects from "@/pages/Projects";
 import NewProject from "@/pages/NewProject";
 import EditProject from "@/pages/EditProject";
@@ -378,6 +379,11 @@ export default function App() {
               } />
               
               {/* Vendors */}
+              <Route path="/vendors/new" element={
+                <ProtectedRoute>
+                  <NewVendor />
+                </ProtectedRoute>
+              } />
               <Route path="/vendors" element={
                 <ProtectedRoute>
                   <Vendors />
