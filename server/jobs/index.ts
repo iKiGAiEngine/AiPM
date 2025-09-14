@@ -1,21 +1,39 @@
 import cron from 'node-cron';
+import { spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 import { storage } from '../storage';
-import { EmailService } from '../services/email';
+import { emailService } from '../services/email';
 import { ThreeWayMatchService } from '../services/threeway-match';
+import { log } from '../vite';
 
-const emailService = new EmailService();
 const threeWayMatchService = new ThreeWayMatchService();
 
 export class JobScheduler {
+  private backupInProgress = false;
+
   constructor() {
+    log('🤖 Initializing job scheduler with automated backups...');
+    this.ensureBackupDirectory();
     this.initializeJobs();
+    log('✅ Job scheduler started - Automated backups scheduled for 8 AM, 2 PM, and 8 PM daily (America/New_York timezone)');
+  }
+
+  private ensureBackupDirectory(): void {
+    const backupDir = path.resolve(__dirname, '../../backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+      log('📁 Created backup directory: ' + backupDir);
+    }
   }
 
   private initializeJobs() {
     // Daily digest emails (8 AM every day)
     cron.schedule('0 8 * * *', async () => {
-      console.log('Running daily digest job...');
+      log('Running daily digest job...');
       await this.sendDailyDigests();
+    }, {
+      timezone: 'America/New_York'
     });
 
     // Vendor scoring updates (every Sunday at midnight)
@@ -40,6 +58,40 @@ export class JobScheduler {
     cron.schedule('0 2 * * *', async () => {
       console.log('Running data cleanup job...');
       await this.cleanupData();
+    });
+
+    // Automated backups (3 times daily: 8 AM, 2 PM, 8 PM)
+    cron.schedule('0 8 * * *', async () => {
+      if (this.backupInProgress) {
+        log('⏸️ [MORNING] Backup already in progress, skipping...');
+        return;
+      }
+      log('🌅 [MORNING] Starting scheduled backup job...');
+      await this.runAutomatedBackup('morning');
+    }, {
+      timezone: 'America/New_York'
+    });
+
+    cron.schedule('0 14 * * *', async () => {
+      if (this.backupInProgress) {
+        log('⏸️ [AFTERNOON] Backup already in progress, skipping...');
+        return;
+      }
+      log('☀️ [AFTERNOON] Starting scheduled backup job...');
+      await this.runAutomatedBackup('afternoon');
+    }, {
+      timezone: 'America/New_York'
+    });
+
+    cron.schedule('0 20 * * *', async () => {
+      if (this.backupInProgress) {
+        log('⏸️ [EVENING] Backup already in progress, skipping...');
+        return;
+      }
+      log('🌙 [EVENING] Starting scheduled backup job...');
+      await this.runAutomatedBackup('evening');
+    }, {
+      timezone: 'America/New_York'
     });
   }
 
@@ -182,7 +234,7 @@ export class JobScheduler {
         for (const rfq of overdueRFQs) {
           await storage.createNotification({
             organizationId: org.id,
-            userId: rfq.creator.id,
+            userId: rfq.createdById,
             title: 'Overdue RFQ',
             message: `RFQ ${rfq.number} is past due date`,
             type: 'warning',
@@ -194,7 +246,7 @@ export class JobScheduler {
         for (const po of overduePOs) {
           await storage.createNotification({
             organizationId: org.id,
-            userId: po.creator.id,
+            userId: po.createdById,
             title: 'Overdue Purchase Order',
             message: `PO ${po.number} delivery is overdue`,
             type: 'warning',
@@ -220,6 +272,92 @@ export class JobScheduler {
       console.log('Data cleanup completed');
     } catch (error) {
       console.error('Data cleanup job failed:', error);
+    }
+  }
+
+  private async runAutomatedBackup(timeOfDay: string): Promise<void> {
+    if (this.backupInProgress) {
+      log(`⏸️ [${timeOfDay.toUpperCase()}] Backup already in progress, aborting duplicate run`);
+      return;
+    }
+
+    this.backupInProgress = true;
+    const startTime = Date.now();
+    log(`🤖 [${timeOfDay.toUpperCase()}] Starting automated backup at ${new Date().toISOString()}`);
+    
+    try {
+      // Get admin credentials from environment - REQUIRED for security
+      const adminEmail = process.env.AIPM_ADMIN_EMAIL;
+      const adminPassword = process.env.AIPM_ADMIN_PASSWORD;
+      
+      if (!adminEmail || !adminPassword) {
+        log(`❌ [${timeOfDay.toUpperCase()}] Backup failed: Admin credentials not configured`);
+        log('Please set AIPM_ADMIN_EMAIL and AIPM_ADMIN_PASSWORD environment variables');
+        log('Backup job will not run without proper credentials');
+        return;
+      }
+
+      log(`🔐 [${timeOfDay.toUpperCase()}] Authenticating as: ${adminEmail}`);
+
+      const scriptPath = path.resolve(__dirname, '../../backup_script.py');
+      
+      return new Promise((resolve, reject) => {
+        const pythonProcess = spawn('python', [scriptPath], {
+          env: {
+            ...process.env,
+            AIPM_ADMIN_EMAIL: adminEmail,
+            AIPM_ADMIN_PASSWORD: adminPassword,
+            AIPM_API_BASE: process.env.AIPM_API_BASE || 'http://localhost:5000'
+          },
+          cwd: path.resolve(__dirname, '../..')
+        });
+
+        let output = '';
+        let errorOutput = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+          const message = data.toString();
+          output += message;
+          log(`[${timeOfDay.toUpperCase()}] ${message.trim()}`);
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+          const error = data.toString();
+          errorOutput += error;
+          log(`[${timeOfDay.toUpperCase()} ERROR] ${error.trim()}`);
+        });
+
+        pythonProcess.on('close', (code) => {
+          const duration = Date.now() - startTime;
+          
+          if (code === 0) {
+            log(`✅ [${timeOfDay.toUpperCase()}] Backup completed successfully in ${duration}ms`);
+            log(`📁 [${timeOfDay.toUpperCase()}] Backup file created with timestamp: ${new Date().toISOString()}`);
+            resolve();
+          } else {
+            log(`❌ [${timeOfDay.toUpperCase()}] Backup failed with exit code ${code} after ${duration}ms`);
+            if (errorOutput) {
+              log(`💥 [${timeOfDay.toUpperCase()}] Error details: ${errorOutput}`);
+            }
+            reject(new Error(`Backup failed with exit code ${code}: ${errorOutput}`));
+          }
+        });
+
+        pythonProcess.on('error', (error: Error) => {
+          const duration = Date.now() - startTime;
+          log(`💥 [${timeOfDay.toUpperCase()}] Backup process error after ${duration}ms: ${error.message}`);
+          log(`🔧 [${timeOfDay.toUpperCase()}] Check Python installation and script permissions`);
+          reject(error);
+        });
+      });
+
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      log(`💥 [${timeOfDay.toUpperCase()}] Backup job failed after ${duration}ms: ${error}`);
+      log(`📝 [${timeOfDay.toUpperCase()}] Please check backup system configuration and try again`);
+    } finally {
+      // Always reset the flag to prevent permanent blocking
+      this.backupInProgress = false;
     }
   }
 

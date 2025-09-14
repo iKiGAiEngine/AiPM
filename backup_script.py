@@ -17,7 +17,9 @@ from datetime import datetime
 
 # === Config ===
 AIPM_API_BASE = os.environ.get("AIPM_API_BASE", "http://localhost:5000")
+BACKUP_DIR = os.path.join(os.path.dirname(__file__), "backups")
 BACKUP_FILE = f"aipm_backup_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+BACKUP_PATH = os.path.join(BACKUP_DIR, BACKUP_FILE)
 TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # Login credentials - load from environment variables for security
@@ -30,6 +32,9 @@ if not ADMIN_EMAIL or not ADMIN_PASSWORD:
     print("  export AIPM_ADMIN_EMAIL=admin@metro-construction.com")
     print("  export AIPM_ADMIN_PASSWORD=your_secure_password")
     exit(1)
+
+# Ensure backup directory exists
+os.makedirs(BACKUP_DIR, exist_ok=True)
 
 def authenticate():
     """Authenticate with AiPM and get access token"""
@@ -75,18 +80,18 @@ def fetch_backup_data(access_token):
 
 def create_excel_backup(backup_data):
     """Convert API backup data to structured Excel file"""
-    print(f"📝 Creating Excel backup: {BACKUP_FILE}")
+    print(f"📝 Creating Excel backup: {BACKUP_PATH}")
     
     # Create or load workbook
-    if os.path.exists(BACKUP_FILE):
-        wb = load_workbook(BACKUP_FILE)
-        print(f"🔄 Updating existing backup: {BACKUP_FILE}")
+    if os.path.exists(BACKUP_PATH):
+        wb = load_workbook(BACKUP_PATH)
+        print(f"🔄 Updating existing backup: {BACKUP_PATH}")
     else:
         wb = Workbook()
         # Remove default sheet
         if "Sheet" in wb.sheetnames:
             wb.remove(wb["Sheet"])
-        print(f"✅ Created new backup file: {BACKUP_FILE}")
+        print(f"✅ Created new backup file: {BACKUP_PATH}")
     
     # Projects Tab
     if "Projects" not in wb.sheetnames:
@@ -241,9 +246,9 @@ def create_excel_backup(backup_data):
     ws_history.append(backup_record)
     
     # Save workbook
-    wb.save(BACKUP_FILE)
-    print(f"📁 Backup saved as {BACKUP_FILE} at {TIMESTAMP}")
-    return BACKUP_FILE
+    wb.save(BACKUP_PATH)
+    print(f"📁 Backup saved as {BACKUP_PATH} at {TIMESTAMP}")
+    return BACKUP_PATH
 
 def main():
     """Main backup execution"""
