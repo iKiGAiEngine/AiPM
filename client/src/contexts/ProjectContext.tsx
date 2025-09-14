@@ -37,6 +37,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     if (isAuthenticated && user) {
       console.log('ProjectContext - Authentication completed, invalidating projects query');
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+      // Also trigger immediate refetch to ensure data loads
+      queryClient.refetchQueries({ queryKey: ['/api/projects'] });
     }
   }, [isAuthenticated, user, queryClient]);
 
@@ -73,7 +75,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     refetchOnMount: true, // Always refetch when component mounts
     refetchOnWindowFocus: false, // Don't refetch on window focus
     staleTime: 0, // Override global staleTime for this query
-    retry: 1, // Reduce retries to avoid spam
+    retry: 3, // Allow more retries for better reliability
+    refetchOnReconnect: true, // Refetch when reconnected
   });
   
 

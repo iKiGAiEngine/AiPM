@@ -187,8 +187,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAdmin = user.role === 'Admin' || user.role === 'PM';
 
   // Force project selection before accessing main features, except for allowed admin routes
-  if ((!selectedProject || projects.length === 0) && !(isAdmin && isRouteAllowedWithoutProject)) {
-    return <ProjectSelectionScreen />;
+  // Only show project selection if there are no projects OR if there are projects but none selected
+  if (projects.length === 0 && !(isAdmin && isRouteAllowedWithoutProject)) {
+    return <ProjectSelectionScreen />; // Shows "No Projects Found"
+  }
+  
+  // If projects exist but none selected, show project selection (not "No Projects Found")
+  if (projects.length > 0 && !selectedProject) {
+    return <ProjectSelectionScreen />; // Shows project list to select from
   }
 
   return (
