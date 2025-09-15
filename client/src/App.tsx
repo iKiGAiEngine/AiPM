@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -7,9 +7,6 @@ import { ProjectProvider } from "@/contexts/ProjectContext";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FolderOpen, Plus, Search } from "lucide-react";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Requisitions from "@/pages/Requisitions";
@@ -52,108 +49,6 @@ import TopAppBar from "@/components/layout/TopAppBar";
 import MobileNav from "@/components/layout/MobileNav";
 import GlobalSearch from "@/components/layout/GlobalSearch";
 
-function ProjectSelectionScreen() {
-  const { projects, isLoadingProjects, setSelectedProject } = useProject();
-  const { user, isAuthenticated } = useAuth();
-  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
-  
-  // Show loading while authentication or projects are loading
-  if (isLoadingProjects || !isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  // Only show "No Projects Found" when authenticated AND projects loaded AND empty
-  if (isAuthenticated && !isLoadingProjects && projects.length === 0) {
-    const isAdmin = user?.role === 'Admin';
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FolderOpen className="w-8 h-8 text-blue-600" />
-            </div>
-            <CardTitle>No Projects Found</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">
-              {isAdmin 
-                ? 'Get started by creating your first project to begin managing materials and procurement.'
-                : 'No projects are available. Contact your administrator to set up projects.'
-              }
-            </p>
-            {isAdmin && (
-              <Button asChild className="w-full">
-                <Link to="/projects/new">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create First Project
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Projects exist but none selected - show project selection
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FolderOpen className="w-8 h-8 text-blue-600" />
-          </div>
-          <CardTitle>Select a Project</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground text-center">
-            Choose which project you'd like to work on. All your activity will be within this project context.
-          </p>
-          
-          <div className="space-y-2">
-            {projects.map((project) => (
-              <Button
-                key={project.id}
-                variant="outline"
-                className="w-full justify-start p-4 h-auto"
-                onClick={() => setSelectedProject(project)}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
-                    <FolderOpen className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium">{project.name}</div>
-                    <div className="text-sm text-muted-foreground font-mono">#{project.projectNumber}</div>
-                    <div className="text-sm text-muted-foreground">{project.status}</div>
-                  </div>
-                </div>
-              </Button>
-            ))}
-          </div>
-          
-          <div className="pt-4 text-center">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setIsGlobalSearchOpen(true)}
-              className="text-muted-foreground"
-            >
-              <Search className="w-4 h-4 mr-2" />
-              Or press ⌘K to search
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <GlobalSearch isOpen={isGlobalSearchOpen} onClose={() => setIsGlobalSearchOpen(false)} />
-    </div>
-  );
-}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -174,29 +69,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Allow admin users to access project creation and management routes even when no projects exist
-  const allowedRoutesWithoutProject = [
-    '/projects/new',
-    '/projects', 
-    '/settings'
-  ];
-  
-  const isRouteAllowedWithoutProject = allowedRoutesWithoutProject.some(route => 
-    location.pathname === route || location.pathname.startsWith(route + '/')
-  );
-  
-  const isAdmin = user.role === 'Admin' || user.role === 'PM';
-
-  // Force project selection before accessing main features, except for allowed admin routes
-  // Only show project selection if there are no projects OR if there are projects but none selected
-  if (projects.length === 0 && !(isAdmin && isRouteAllowedWithoutProject)) {
-    return <ProjectSelectionScreen />; // Shows "No Projects Found"
-  }
-  
-  // If projects exist but none selected, show project selection (not "No Projects Found")
-  if (projects.length > 0 && !selectedProject) {
-    return <ProjectSelectionScreen />; // Shows project list to select from
-  }
+  // No project selection screens - let the app work normally
 
   return (
     <div className="flex h-screen overflow-hidden">
