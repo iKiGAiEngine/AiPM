@@ -25,15 +25,18 @@ function parseCostCode(costCode: string): { phase: string; name: string } {
   const parts = costCode.split(' — ');
   const name = parts.length > 1 ? parts[1] : '';
   
-  // Extract phase code from the full code (e.g., "K25479701-102800-71130" -> "102800")
+  // Extract CSI material code from the full code (e.g., "K25479701-102800-71130" -> "102800")
   const codePart = parts[0];
   const codeParts = codePart.split('-');
   
-  // For codes like "K25479701-102800-71130", the phase is typically the middle part
+  // For codes like "K25479701-102800-71130", extract the CSI material code (middle part)
   let phase = '';
-  if (codeParts.length >= 2) {
-    // Take the second part which should be the phase code
+  if (codeParts.length >= 3) {
+    // Take the middle part which should be the CSI material code (102800, 104400, etc.)
     phase = codeParts[1];
+  } else if (codeParts.length === 2) {
+    // For codes like "102800-71130", take the first part
+    phase = codeParts[0];
   } else {
     // If no dashes, try to extract 6-digit number
     const match = codePart.match(/\d{6}/);

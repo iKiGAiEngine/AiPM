@@ -41,11 +41,11 @@ export class ContractForecastingService {
       .select({
         id: contractEstimates.costCode,
         code: contractEstimates.costCode,
-        description: contractEstimates.materialCategory
+        description: contractEstimates.title
       })
       .from(contractEstimates)
       .where(eq(contractEstimates.projectId, projectId))
-      .groupBy(contractEstimates.costCode, contractEstimates.materialCategory);
+      .groupBy(contractEstimates.costCode, contractEstimates.title);
     
     return budgets.map(budget => ({
       id: budget.id,
