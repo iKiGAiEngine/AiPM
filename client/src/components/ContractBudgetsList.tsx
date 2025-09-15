@@ -48,12 +48,15 @@ export function ContractBudgetsList({ projectId }: ContractBudgetsListProps) {
 
   const { data: budgets = [], isLoading } = useQuery<ContractEstimate[]>({
     queryKey: ["/api/projects", projectId, "contract-budgets"],
-    queryFn: () => apiRequest(`/api/projects/${projectId}/contract-budgets`),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/projects/${projectId}/contract-budgets`);
+      return response.json();
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (budgetId: string) => 
-      apiRequest(`/api/contract-budgets/${budgetId}`, "DELETE"),
+      apiRequest("DELETE", `/api/contract-budgets/${budgetId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "contract-budgets"] });
       toast({ title: "Contract budget deleted successfully" });

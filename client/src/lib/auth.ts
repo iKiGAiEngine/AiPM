@@ -126,13 +126,21 @@ export class AuthService {
       // JWT tokens have 3 parts separated by dots
       const parts = token.split('.');
       if (parts.length !== 3) {
-        console.log('Invalid token format, clearing...');
         this.logout();
         return false;
       }
+      
+      // Check if token is expired
+      const payload = JSON.parse(atob(parts[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      if (payload.exp && payload.exp < currentTime) {
+        // Token is expired - don't logout immediately, let refresh logic handle it
+        return false;
+      }
+      
       return true;
     } catch (error) {
-      console.log('Token validation failed, clearing...');
       this.logout();
       return false;
     }

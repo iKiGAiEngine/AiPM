@@ -4,19 +4,7 @@ import { authService, type AuthUser } from "@/lib/auth";
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Validate token on initial load
-    const token = localStorage.getItem('accessToken');
-    if (!token) return false;
-    
-    // Check token format
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      console.log('useAuth - Invalid token format detected, clearing...');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      return false;
-    }
-    
+    // Use authService to validate token on initial load
     return authService.isAuthenticated();
   });
   const queryClient = useQueryClient();
@@ -25,7 +13,12 @@ export function useAuth() {
     queryKey: ['/api/users/me'],
     queryFn: async () => {
       try {
-        return await authService.getCurrentUser();
+        const userData = await authService.getCurrentUser();
+        // If we successfully got user data, we're definitely authenticated
+        if (userData) {
+          setIsAuthenticated(true);
+        }
+        return userData;
       } catch (error) {
         console.log('useAuth - getCurrentUser failed, clearing auth state');
         // Clear auth state if user fetch fails
@@ -35,14 +28,20 @@ export function useAuth() {
         throw error;
       }
     },
-    enabled: isAuthenticated,
+    enabled: !!localStorage.getItem('accessToken'), // Enable if token exists
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   useEffect(() => {
+    // Immediately sync authentication state on mount
+    const initialAuth = authService.isAuthenticated();
+    console.log('useAuth - Initial auth check on mount:', initialAuth);
+    setIsAuthenticated(initialAuth);
+    
     const checkAuth = () => {
       const authenticated = authService.isAuthenticated();
+      console.log('useAuth - Storage change auth check:', authenticated);
       setIsAuthenticated(authenticated);
       
       if (!authenticated) {

@@ -29,13 +29,9 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const { isAuthenticated, user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Debug logging for projects state
-  console.log('ProjectContext - Auth state:', { isAuthenticated, hasUser: !!user, authTime: Date.now() });
-  
   // Force refetch when authentication state changes
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('ProjectContext - Authentication completed, invalidating projects query');
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       // Also trigger immediate refetch to ensure data loads
       queryClient.refetchQueries({ queryKey: ['/api/projects'] });
@@ -68,7 +64,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       }
       
       const data = await response.json();
-      console.log('ProjectContext - Projects fetched:', data.length, 'projects');
       return data;
     },
     enabled: isAuthenticated && !!user, // Only fetch when authenticated and user is loaded
