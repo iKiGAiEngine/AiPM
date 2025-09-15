@@ -242,13 +242,13 @@ Thank you for your business.
 
   async sendNotificationEmail(userEmail: string, notification: { title: string; message: string }): Promise<boolean> {
     const template: EmailTemplate = {
-      subject: `BuildProcure AI: ${notification.title}`,
+      subject: `AiPM: ${notification.title}`,
       html: `
         <h3>${notification.title}</h3>
         <p>${notification.message}</p>
-        <p><a href="${process.env.APP_URL || 'http://localhost:5000'}">View in BuildProcure AI</a></p>
+        <p><a href="${process.env.APP_URL || 'http://localhost:5000'}">View in AiPM</a></p>
       `,
-      text: `${notification.title}\n\n${notification.message}\n\nView in BuildProcure AI: ${process.env.APP_URL || 'http://localhost:5000'}`
+      text: `${notification.title}\n\n${notification.message}\n\nView in AiPM: ${process.env.APP_URL || 'http://localhost:5000'}`
     };
 
     return await this.sendEmail(userEmail, template);
@@ -282,7 +282,7 @@ Thank you for your business.
           
           <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
             <p style="color: #6b7280; font-size: 14px; margin-bottom: 0;">
-              This is an automated notification from BuildProcure AI.<br>
+              This is an automated notification from AiPM.<br>
               <a href="${process.env.APP_URL || 'http://localhost:5000'}">Login to view purchase order details</a>
             </p>
           </div>
@@ -304,7 +304,7 @@ IMPORTANT NOTICE: If no damage report is filed within 48 hours, materials will b
 
 If you notice any damaged or missing materials, please contact our procurement team immediately.
 
-BuildProcure AI
+AiPM
 ${process.env.APP_URL || 'http://localhost:5000'}
       `
     };

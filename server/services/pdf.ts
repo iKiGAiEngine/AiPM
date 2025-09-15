@@ -51,8 +51,8 @@ export class PDFService {
         doc.text(`Date: ${new Date(po.createdAt).toLocaleDateString()}`, 400, 70);
 
         // Company Info
-        doc.text('BuildProcure AI', 50, 100);
-        doc.text('Construction Materials Procurement', 50, 115);
+        doc.text('AiPM', 50, 100);
+        doc.text('Ai Project Manager', 50, 115);
 
         // Vendor Info
         doc.text('Vendor:', 50, 160);

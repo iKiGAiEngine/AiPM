@@ -85,8 +85,8 @@ export default function Login() {
               <Building2 className="w-8 h-8 text-primary-foreground" />
             </div>
           </div>
-          <h1 className="mt-4 text-3xl font-bold text-foreground">BuildProcure AI</h1>
-          <p className="mt-2 text-muted-foreground">Construction Materials Procurement Platform</p>
+          <h1 className="mt-4 text-3xl font-bold text-foreground">AiPM</h1>
+          <p className="mt-2 text-muted-foreground">Ai Project Manager</p>
         </div>
 
         {/* User Role Selection */}
@@ -188,7 +188,7 @@ export default function Login() {
 
         {/* Footer */}
         <div className="text-center text-sm text-muted-foreground">
-          <p>© 2024 BuildProcure AI. All rights reserved.</p>
+          <p>© 2024 AiPM. All rights reserved.</p>
         </div>
       </div>
     </div>

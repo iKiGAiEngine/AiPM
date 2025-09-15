@@ -29,7 +29,7 @@ export function Layout({ children }: LayoutProps) {
   const isMobile = useIsMobile();
 
   const currentPageConfig = pageConfig[location as keyof typeof pageConfig] || {
-    title: 'BuildProcure AI',
+    title: 'AiPM',
     subtitle: undefined
   };
 

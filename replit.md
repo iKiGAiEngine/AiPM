@@ -1,6 +1,6 @@
 # Overview
 
-This is a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract budgets, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
+This is AiPM, a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract budgets, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
 ## Recent Updates (September 13, 2025)
 - **DASHBOARD DEMO DATA REPLACEMENT COMPLETED**: Successfully replaced all hardcoded demo data across 4 dashboard components with real-time API-driven data
