@@ -1,8 +1,55 @@
 import { apiRequest } from './queryClient';
+import { authService } from './auth';
 import type { 
   Project, Material, Vendor, Requisition, RFQ, PurchaseOrder, 
   Delivery, Invoice, Notification, DashboardStats 
 } from '@/types';
+
+/**
+ * API fetch wrapper that automatically handles token refresh on 401/403 responses
+ */
+export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = authService.getAccessToken();
+  
+  // Add authorization header if token exists
+  const headers = new Headers(options.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const requestOptions = {
+    ...options,
+    headers,
+  };
+
+  try {
+    const response = await fetch(url, requestOptions);
+    
+    // If token is expired/invalid, try to refresh and retry once
+    if ((response.status === 401 || response.status === 403) && token) {
+      const newToken = await authService.refreshAccessToken();
+      
+      if (newToken) {
+        // Retry with new token
+        headers.set('Authorization', `Bearer ${newToken}`);
+        const retryOptions = {
+          ...options,
+          headers,
+        };
+        
+        return await fetch(url, retryOptions);
+      }
+      
+      // Refresh failed, return the original response
+      return response;
+    }
+    
+    return response;
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw error;
+  }
+}
 
 export class ApiService {
   // Dashboard

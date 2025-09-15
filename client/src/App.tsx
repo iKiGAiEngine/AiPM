@@ -54,10 +54,11 @@ import GlobalSearch from "@/components/layout/GlobalSearch";
 
 function ProjectSelectionScreen() {
   const { projects, isLoadingProjects, setSelectedProject } = useProject();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   
-  if (isLoadingProjects) {
+  // Show loading while authentication or projects are loading
+  if (isLoadingProjects || !isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -65,8 +66,8 @@ function ProjectSelectionScreen() {
     );
   }
 
-  // No projects exist - guide admin to create one
-  if (projects.length === 0) {
+  // Only show "No Projects Found" when authenticated AND projects loaded AND empty
+  if (isAuthenticated && !isLoadingProjects && projects.length === 0) {
     const isAdmin = user?.role === 'Admin';
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">

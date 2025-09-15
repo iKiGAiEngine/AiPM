@@ -73,18 +73,35 @@ export class AuthService {
         },
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          this.logout();
-          return null;
+      // If token is expired/invalid, try to refresh before logging out
+      if (response.status === 401 || response.status === 403) {
+        const newToken = await this.refreshAccessToken();
+        if (newToken) {
+          // Retry with new token
+          const retryResponse = await fetch(`${this.baseUrl}/users/me`, {
+            headers: {
+              'Authorization': `Bearer ${newToken}`,
+            },
+          });
+          
+          if (retryResponse.ok) {
+            return await retryResponse.json();
+          }
         }
+        
+        // Refresh failed or retry failed, logout
+        this.logout();
+        return null;
+      }
+
+      if (!response.ok) {
         throw new Error('Failed to fetch user');
       }
 
       return await response.json();
     } catch (error) {
       console.error('Failed to get current user:', error);
-      this.logout();
+      // Don't logout on network errors, only on auth errors
       return null;
     }
   }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { apiFetch } from '@/lib/api';
 import type { Project } from '@shared/schema';
 
 interface ProjectContextType {
@@ -14,7 +15,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export function useProject() {
   const context = useContext(ProjectContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useProject must be used within a ProjectProvider');
   }
   return context;
@@ -42,22 +43,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
     queryFn: async () => {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token');
-      }
-      
-      const response = await fetch('/api/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        throw new Error('Authentication failed');
-      }
+      const response = await apiFetch('/api/projects');
       
       if (!response.ok) {
         throw new Error('Failed to fetch projects');
