@@ -324,15 +324,6 @@ export default function ProjectDetail() {
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/projects")}
-          data-testid="button-back-to-projects"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Projects
-        </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <div>
