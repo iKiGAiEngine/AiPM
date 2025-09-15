@@ -5,7 +5,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Download, CheckCircle, XCircle } from 'lucide-react';
+import { Download, CheckCircle, XCircle, Maximize2, Minimize2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface CMiCLine {
@@ -40,24 +40,19 @@ export default function ContractForecastingCMiC() {
   const projectId = selectedProject?.id;
   const [includePending, setIncludePending] = useState(true);
   const [showVerification, setShowVerification] = useState(false);
+  const [isTableExpanded, setIsTableExpanded] = useState(false);
 
   const { data: forecastData, isLoading } = useQuery<ForecastingData>({
     queryKey: ['/api/reporting/contract-forecasting', projectId, includePending],
     queryFn: async () => {
       const url = `/api/reporting/contract-forecasting/${projectId}?include_pending=${includePending}`;
-      console.log('Frontend: Fetching forecasting data from:', url);
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (!response.ok) throw new Error('Failed to fetch forecasting data');
-      const data = await response.json();
-      console.log('Frontend: Received forecasting data:', data);
-      console.log('Frontend: Lines:', data.lines);
-      console.log('Frontend: Totals:', data.totals);
-      console.log('Frontend: Data type check:', typeof data.lines?.[0]?.A);
-      return data;
+      return await response.json();
     },
     enabled: !!projectId,
   });
@@ -106,9 +101,88 @@ export default function ContractForecastingCMiC() {
     );
   }
 
-  console.log('Rendering with forecastData:', forecastData);
-  console.log('Lines count:', forecastData.lines?.length);
-  console.log('First line:', forecastData.lines?.[0]);
+
+  // Table component that can be used in both normal and expanded views
+  const ForecastTable = ({ className = "" }: { className?: string }) => (
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm ${className}`}>
+      <div className="overflow-auto">
+        <table className="min-w-full">
+          <thead className="bg-gray-100 dark:bg-gray-700">
+            <tr>
+              <th className="px-4 py-3 text-left font-semibold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 min-w-[200px]">
+                Cost Code/Category
+              </th>
+              {forecastData.headers.map((header, index) => (
+                <th
+                  key={index}
+                  className="px-2 py-3 text-center font-semibold text-gray-900 dark:text-gray-100 text-xs min-w-[100px] border-l border-gray-200 dark:border-gray-600"
+                  style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', minHeight: '150px' }}
+                >
+                  <div className="whitespace-pre-line leading-tight">
+                    {header}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {forecastData.lines?.map((line, index) => (
+                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-600">
+                  {line.costCode}
+                </td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.A)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.B)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.C)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.currentPeriodCost)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.D_int)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.E_ext)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.F_adj)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.G_ctc)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.H_ctc_unposted)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(line.I_cost_fcst)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.J_rev_budget)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.K_unposted_rev)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.L_unposted_rev_adj)}</td>
+                <td className="px-2 py-3 text-right text-sm font-mono font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(line.M_rev_fcst)}</td>
+                <td className={`px-2 py-3 text-right text-sm font-mono font-semibold ${
+                  line.N_gain_loss > 0 ? 'text-green-600 dark:text-green-400' : line.N_gain_loss < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
+                }`}>
+                  {formatCurrency(line.N_gain_loss)}
+                </td>
+                </tr>
+            )) || []}
+            
+            {/* Totals Row */}
+            <tr className="bg-gray-100 dark:bg-gray-700 border-t-2 border-gray-300 dark:border-gray-500">
+              <td className="px-4 py-3 font-bold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 border-r border-gray-200 dark:border-gray-600">
+                TOTALS
+              </td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.A)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.B)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.C)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.currentPeriodCost)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.D_int)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.E_ext)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.F_adj)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.G_ctc)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.H_ctc_unposted)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.I_cost_fcst)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.J_rev_budget)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.K_unposted_rev)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.L_unposted_rev_adj)}</td>
+              <td className="px-2 py-3 text-right text-sm font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.M_rev_fcst)}</td>
+              <td className={`px-2 py-3 text-right text-sm font-mono font-bold text-lg ${
+                forecastData.totals.N_gain_loss > 0 ? 'text-green-600 dark:text-green-400' : forecastData.totals.N_gain_loss < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
+              }`}>
+                {formatCurrency(forecastData.totals.N_gain_loss)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -176,87 +250,72 @@ export default function ContractForecastingCMiC() {
       )}
 
       {/* Main Forecasting Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-100 dark:bg-gray-700">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 min-w-[200px]">
-                  Cost Code/Category
-                </th>
-                {forecastData.headers.map((header, index) => (
-                  <th
-                    key={index}
-                    className="px-2 py-3 text-center font-semibold text-gray-900 dark:text-gray-100 text-xs min-w-[100px] border-l border-gray-200 dark:border-gray-600"
-                    style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', minHeight: '150px' }}
-                  >
-                    <div className="whitespace-pre-line leading-tight">
-                      {header}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {forecastData.lines?.map((line, index) => {
-                console.log(`Rendering line ${index}:`, line);
-                return (
-                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-600">
-                    {line.costCode}
-                  </td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.A)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.B)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.C)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.currentPeriodCost)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.D_int)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.E_ext)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.F_adj)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.G_ctc)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.H_ctc_unposted)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(line.I_cost_fcst)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.J_rev_budget)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.K_unposted_rev)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.L_unposted_rev_adj)}</td>
-                  <td className="px-2 py-3 text-right text-sm font-mono font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(line.M_rev_fcst)}</td>
-                  <td className={`px-2 py-3 text-right text-sm font-mono font-semibold ${
-                    line.N_gain_loss > 0 ? 'text-green-600 dark:text-green-400' : line.N_gain_loss < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
-                  }`}>
-                    {formatCurrency(line.N_gain_loss)}
-                  </td>
-                  </tr>
-                );
-              }) || []}
-              
-              {/* Totals Row */}
-              <tr className="bg-gray-100 dark:bg-gray-700 border-t-2 border-gray-300 dark:border-gray-500">
-                <td className="px-4 py-3 font-bold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 border-r border-gray-200 dark:border-gray-600">
-                  TOTALS
-                </td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.A)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.B)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.C)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.currentPeriodCost)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.D_int)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.E_ext)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.F_adj)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.G_ctc)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.H_ctc_unposted)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.I_cost_fcst)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.J_rev_budget)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.K_unposted_rev)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.L_unposted_rev_adj)}</td>
-                <td className="px-2 py-3 text-right text-sm font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.M_rev_fcst)}</td>
-                <td className={`px-2 py-3 text-right text-sm font-mono font-bold text-lg ${
-                  forecastData.totals.N_gain_loss > 0 ? 'text-green-600 dark:text-green-400' : forecastData.totals.N_gain_loss < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
-                }`}>
-                  {formatCurrency(forecastData.totals.N_gain_loss)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div className="relative">
+        {/* Table Header with Expand Button */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Contract Forecasting Report</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsTableExpanded(true)}
+            className="gap-2"
+            data-testid="button-expand-table"
+          >
+            <Maximize2 className="w-4 h-4" />
+            Expand Table
+          </Button>
         </div>
+        
+        {/* Normal Table View */}
+        <ForecastTable />
       </div>
+
+      {/* Expanded Table Modal */}
+      {isTableExpanded && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+          onClick={(e) => e.target === e.currentTarget && setIsTableExpanded(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setIsTableExpanded(false)}
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+        >
+          <div className="fixed inset-4 bg-white dark:bg-gray-900 rounded-lg shadow-2xl flex flex-col">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-t-lg">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Contract Forecasting Report - Expanded View</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{forecastData.project.name}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTableExpanded(false)}
+                  className="gap-2"
+                  data-testid="button-collapse-table"
+                >
+                  <Minimize2 className="w-4 h-4" />
+                  Collapse
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsTableExpanded(false)}
+                  data-testid="button-close-table"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Modal Content - Full Screen Table with proper scrolling */}
+            <div className="flex-1 p-4 overflow-auto">
+              <ForecastTable />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Formula Legend */}
       <Card>
