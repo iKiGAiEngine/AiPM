@@ -17,6 +17,32 @@ interface CMiCLine {
   M_rev_fcst: number; N_gain_loss: number;
 }
 
+// Helper function to parse cost code into phase and name
+function parseCostCode(costCode: string): { phase: string; name: string } {
+  if (!costCode) return { phase: '', name: '' };
+  
+  // Split by " — " to separate code and description
+  const parts = costCode.split(' — ');
+  const name = parts.length > 1 ? parts[1] : '';
+  
+  // Extract phase code from the full code (e.g., "K25479701-102800-71130" -> "102800")
+  const codePart = parts[0];
+  const codeParts = codePart.split('-');
+  
+  // For codes like "K25479701-102800-71130", the phase is typically the middle part
+  let phase = '';
+  if (codeParts.length >= 2) {
+    // Take the second part which should be the phase code
+    phase = codeParts[1];
+  } else {
+    // If no dashes, try to extract 6-digit number
+    const match = codePart.match(/\d{6}/);
+    phase = match ? match[0] : codePart;
+  }
+  
+  return { phase, name };
+}
+
 interface ForecastingData {
   lines: CMiCLine[];
   totals: CMiCLine;
@@ -109,8 +135,11 @@ export default function ContractForecastingCMiC() {
         <table className="min-w-full">
           <thead className="bg-gray-100 dark:bg-gray-700">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 min-w-[200px]">
-                Cost Code/Category
+              <th className="px-4 py-3 text-left font-semibold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 min-w-[100px] border-r border-gray-200 dark:border-gray-600">
+                Phase
+              </th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-900 dark:text-gray-100 sticky left-[100px] bg-gray-100 dark:bg-gray-700 z-10 min-w-[200px] border-r border-gray-200 dark:border-gray-600">
+                Name
               </th>
               {forecastData.headers.map((header, index) => (
                 <th
@@ -126,10 +155,15 @@ export default function ContractForecastingCMiC() {
             </tr>
           </thead>
           <tbody>
-            {forecastData.lines?.map((line, index) => (
+            {forecastData.lines?.map((line, index) => {
+              const { phase, name } = parseCostCode(line.costCode);
+              return (
                 <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-600">
-                  {line.costCode}
+                  {phase}
+                </td>
+                <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 sticky left-[100px] bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-600">
+                  {name}
                 </td>
                 <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.A)}</td>
                 <td className="px-2 py-3 text-right text-sm font-mono text-gray-900 dark:text-gray-100">{formatCurrency(line.B)}</td>
@@ -151,11 +185,12 @@ export default function ContractForecastingCMiC() {
                   {formatCurrency(line.N_gain_loss)}
                 </td>
                 </tr>
-            )) || []}
+              );
+            }) || []}
             
             {/* Totals Row */}
             <tr className="bg-gray-100 dark:bg-gray-700 border-t-2 border-gray-300 dark:border-gray-500">
-              <td className="px-4 py-3 font-bold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 border-r border-gray-200 dark:border-gray-600">
+              <td colSpan={2} className="px-4 py-3 font-bold text-gray-900 dark:text-gray-100 sticky left-0 bg-gray-100 dark:bg-gray-700 z-10 border-r border-gray-200 dark:border-gray-600">
                 TOTALS
               </td>
               <td className="px-2 py-3 text-right text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{formatCurrency(forecastData.totals.A)}</td>
