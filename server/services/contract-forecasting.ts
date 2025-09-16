@@ -37,21 +37,40 @@ const Q = (x: number | string | null | undefined): number => {
 export class ContractForecastingService {
   
   async getCostCodes(projectId: string): Promise<Array<{id: string, code: string, description: string}>> {
-    const budgets = await db
-      .select({
-        id: contractEstimates.costCode,
-        code: contractEstimates.costCode,
-        description: contractEstimates.title
+    // Get distinct cost codes first, then get the title for each
+    const distinctCodes = await db
+      .selectDistinct({
+        costCode: contractEstimates.costCode
       })
       .from(contractEstimates)
-      .where(eq(contractEstimates.projectId, projectId))
-      .groupBy(contractEstimates.costCode, contractEstimates.title);
+      .where(eq(contractEstimates.projectId, projectId));
     
-    return budgets.map(budget => ({
-      id: budget.id,
-      code: budget.code,
-      description: budget.description || 'Unknown'
-    }));
+    const result = [];
+    for (const codeRow of distinctCodes) {
+      // Get the first budget entry for this cost code to get the title
+      const budgetWithTitle = await db
+        .select({
+          title: contractEstimates.title,
+          description: contractEstimates.description
+        })
+        .from(contractEstimates)
+        .where(and(
+          eq(contractEstimates.projectId, projectId),
+          eq(contractEstimates.costCode, codeRow.costCode)
+        ))
+        .limit(1);
+      
+      const title = budgetWithTitle[0]?.title || budgetWithTitle[0]?.description || 'Unknown';
+      
+      result.push({
+        id: codeRow.costCode,
+        code: codeRow.costCode,
+        description: title
+      });
+    }
+    
+    console.log(`DEBUG - getCostCodes result:`, result);
+    return result;
   }
 
   async getBudgetPlusApprovedCO(projectId: string, costCode: string): Promise<number> {
@@ -181,7 +200,7 @@ export class ContractForecastingService {
     // N — Projected Gain/Loss
     const N = Q(M - I);
 
-    return {
+    const result = {
       costCode: `${costCode.code} — ${costCode.description}`,
       A, B, C, currentPeriodCost,
       D_int, E_ext, F_adj,
@@ -189,6 +208,9 @@ export class ContractForecastingService {
       J_rev_budget: J, K_unposted_rev: K, L_unposted_rev_adj: L,
       M_rev_fcst: M, N_gain_loss: N
     };
+    
+    console.log(`DEBUG - Cost Code Row: ${costCode.code}, Description: ${costCode.description}, Result costCode: ${result.costCode}`);
+    return result;
   }
 
   async generateReport(projectId: string, includePending = true): Promise<{lines: CMiCLine[], totals: CMiCLine}> {
