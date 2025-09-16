@@ -171,8 +171,10 @@ export default function Settings() {
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Backup generation started. You'll receive the file when complete.",
+        description: "Backup generated successfully! You can download it below.",
       });
+      // Refresh the backup files list
+      refetchBackupFiles();
     },
     onError: () => {
       toast({
@@ -185,6 +187,21 @@ export default function Settings() {
 
   // Only show backup functionality for Admin users
   const canManageBackups = user?.role === 'Admin';
+
+  // Query for available backup files
+  const { data: backupFiles = [], refetch: refetchBackupFiles } = useQuery({
+    queryKey: ['/api/admin/backup/files'],
+    queryFn: async () => {
+      const response = await fetch('/api/admin/backup/files', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch backup files');
+      return response.json();
+    },
+    enabled: canManageBackups,
+  });
 
   // Check if user has admin access
   if (!user || (user.role !== 'Admin' && user.role !== 'PM')) {
@@ -694,6 +711,48 @@ export default function Settings() {
                   </div>
 
                   <Separator />
+
+                  {backupFiles.length > 0 && (
+                    <>
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Available Backup Files</h4>
+                        
+                        <div className="space-y-3">
+                          {backupFiles.map((file: any, index: number) => (
+                            <div key={file.name} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <Download className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div>
+                                  <div className="font-medium text-sm">{file.name}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Created: {new Date(file.created).toLocaleString()}
+                                    {file.size && ` • Size: ${Math.round(file.size / 1024)}KB`}
+                                  </div>
+                                </div>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = '/api/admin/backup/download';
+                                  link.download = file.name;
+                                  link.click();
+                                }}
+                                data-testid={`button-download-backup-${index}`}
+                              >
+                                <Download className="w-4 h-4 mr-1" />
+                                Download
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Separator />
+                    </>
+                  )}
 
                   <div className="space-y-4">
                     <h4 className="font-medium">Backup Information</h4>

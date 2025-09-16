@@ -21,6 +21,8 @@ import { ocrService } from "./services/ocr";
 import { PDFService } from "./services/pdf";
 import crypto from "crypto";
 import materialImportsRouter from "./routes/material-imports";
+import fs from "fs";
+import path from "path";
 
 const pdfService = new PDFService();
 
@@ -3010,18 +3012,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Import jobScheduler instance dynamically to avoid circular dependencies
       const { jobScheduler } = await import('./jobs');
       
-      // Trigger manual backup (runs in background)
-      jobScheduler.triggerManualBackup().catch((error: any) => {
-        console.error('Manual backup failed:', error);
-      });
-      
-      res.json({ 
-        success: true, 
-        message: "Backup generation started. You will receive the file when complete." 
-      });
+      // For now, generate backup directly using the /api/admin/backup endpoint data
+      try {
+        // Get the same data as the backup endpoint  
+        const organizationId = req.user!.organizationId;
+        
+        const [
+          projects,
+          vendors,
+          projectMaterialsData,
+          requisitions,
+          purchaseOrdersData,
+          invoicesData,
+          deliveries,
+          rfqs,
+          contractEstimatesData
+        ] = await Promise.all([
+          storage.getProjectsByOrganization(organizationId, true),
+          storage.getVendorsByOrganization(organizationId),
+          db.select().from(projectMaterials).where(eq(projectMaterials.organizationId, organizationId)),
+          storage.getRequisitionsByOrganization(organizationId),
+          storage.getPurchaseOrdersByOrganization(organizationId),
+          storage.getInvoicesByOrganization(organizationId),
+          storage.getDeliveriesByOrganization(organizationId),
+          storage.getRFQsByOrganization(organizationId),
+          db.select().from(contractEstimates).where(eq(contractEstimates.organizationId, organizationId))
+        ]);
+
+        const backupData = {
+          timestamp: new Date().toISOString(),
+          organizationId,
+          data: {
+            projects, vendors, projectMaterials: projectMaterialsData,
+            requisitions, purchaseOrders: purchaseOrdersData, invoices: invoicesData,
+            deliveries, rfqs, contractEstimates: contractEstimatesData
+          },
+          summary: {
+            projectCount: projects.length,
+            vendorCount: vendors.length,
+            materialCount: projectMaterialsData.length,
+            requisitionCount: requisitions.length,
+            poCount: purchaseOrdersData.length,
+            invoiceCount: invoicesData.length,
+            deliveryCount: deliveries.length,
+            rfqCount: rfqs.length,
+            contractEstimateCount: contractEstimatesData.length
+          }
+        };
+        
+        // Create backup directory
+        const backupDir = path.resolve(process.cwd(), 'backups');
+        if (!fs.existsSync(backupDir)) {
+          fs.mkdirSync(backupDir, { recursive: true });
+        }
+        
+        // Create filename
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `aipm_backup_${timestamp}.xlsx`;
+        const filepath = path.join(backupDir, filename);
+        
+        // Create a simple text file for now (we'd need to import xlsx library for full Excel)
+        const backupContent = JSON.stringify(backupData, null, 2);
+        fs.writeFileSync(filepath.replace('.xlsx', '.json'), backupContent);
+        
+        res.json({ 
+          success: true, 
+          message: "Backup generated successfully! Click the download button below to get your file.",
+          filename: filename.replace('.xlsx', '.json')
+        });
+        
+      } catch (backupError: any) {
+        console.error('Direct backup generation failed:', backupError);
+        res.status(500).json({ error: "Failed to generate backup directly" });
+      }
     } catch (error) {
       console.error('Failed to trigger backup:', error);
       res.status(500).json({ error: "Failed to start backup generation" });
+    }
+  });
+
+  // Admin backup download endpoint - serve generated backup files
+  app.get("/api/admin/backup/download", requireRole(['Admin']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const backupDir = path.resolve(process.cwd(), 'backups');
+      
+      // Get list of backup files
+      if (!fs.existsSync(backupDir)) {
+        return res.status(404).json({ error: "No backup files found" });
+      }
+      
+      const files = fs.readdirSync(backupDir)
+        .filter(file => file.startsWith('aipm_backup_') && (file.endsWith('.xlsx') || file.endsWith('.json')))
+        .sort((a, b) => b.localeCompare(a)) // Sort newest first
+        .slice(0, 10); // Limit to last 10 backups
+
+      if (files.length === 0) {
+        return res.status(404).json({ error: "No backup files found" });
+      }
+
+      // Return the most recent backup file
+      const latestFile = files[0];
+      const filePath = path.join(backupDir, latestFile);
+      
+      if (latestFile.endsWith('.json')) {
+        res.setHeader('Content-Type', 'application/json');
+      } else {
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      }
+      res.setHeader('Content-Disposition', `attachment; filename="${latestFile}"`);
+      
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+    } catch (error) {
+      console.error('Failed to download backup:', error);
+      res.status(500).json({ error: "Failed to download backup file" });
+    }
+  });
+
+  // Admin backup files list endpoint
+  app.get("/api/admin/backup/files", requireRole(['Admin']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const backupDir = path.resolve(process.cwd(), 'backups');
+      
+      if (!fs.existsSync(backupDir)) {
+        return res.json([]);
+      }
+      
+      const files = fs.readdirSync(backupDir)
+        .filter(file => file.startsWith('aipm_backup_') && (file.endsWith('.xlsx') || file.endsWith('.json')))
+        .map(file => {
+          const filePath = path.join(backupDir, file);
+          const stats = fs.statSync(filePath);
+          return {
+            name: file,
+            size: stats.size,
+            created: stats.birthtime.toISOString(),
+            downloadUrl: `/api/admin/backup/download/${file}`
+          };
+        })
+        .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
+        .slice(0, 10);
+
+      res.json(files);
+      
+    } catch (error) {
+      console.error('Failed to list backup files:', error);
+      res.status(500).json({ error: "Failed to list backup files" });
     }
   });
 
