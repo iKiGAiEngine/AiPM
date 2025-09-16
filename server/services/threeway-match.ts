@@ -1,7 +1,5 @@
 import { storage } from '../storage';
-import { EmailService } from './email';
-
-const emailService = new EmailService();
+import { emailService } from './email';
 
 export class ThreeWayMatchService {
   async performMatch(invoiceId: string): Promise<any> {
