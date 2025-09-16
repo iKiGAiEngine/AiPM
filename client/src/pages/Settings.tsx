@@ -736,24 +736,40 @@ export default function Settings() {
                                 size="sm" 
                                 onClick={async () => {
                                   try {
-                                    const response = await fetch('/api/admin/backup/download', {
+                                    console.log('Downloading backup file:', file.name);
+                                    const response = await fetch(`/api/admin/backup/download/${file.name}`, {
                                       headers: {
                                         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
                                       },
                                     });
                                     
                                     if (!response.ok) {
+                                      console.error('Download failed with status:', response.status);
                                       throw new Error('Failed to download backup');
                                     }
                                     
                                     const blob = await response.blob();
+                                    console.log('Downloaded blob size:', blob.size);
+                                    
+                                    if (blob.size === 0) {
+                                      throw new Error('Downloaded file is empty');
+                                    }
+                                    
                                     const url = window.URL.createObjectURL(blob);
                                     const link = document.createElement('a');
                                     link.href = url;
                                     link.download = file.name;
+                                    document.body.appendChild(link);
                                     link.click();
+                                    document.body.removeChild(link);
                                     window.URL.revokeObjectURL(url);
+                                    
+                                    toast({
+                                      title: "Success",
+                                      description: `Downloaded backup file: ${file.name}`,
+                                    });
                                   } catch (error) {
+                                    console.error('Download error:', error);
                                     toast({
                                       title: "Error",
                                       description: "Failed to download backup file",

@@ -3092,36 +3092,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin backup download endpoint - serve generated backup files
-  app.get("/api/admin/backup/download", requireRole(['Admin']), async (req: AuthenticatedRequest, res) => {
+  app.get("/api/admin/backup/download/:filename?", requireRole(['Admin']), async (req: AuthenticatedRequest, res) => {
     try {
       const backupDir = path.resolve(process.cwd(), 'backups');
+      const requestedFile = req.params.filename;
+      
+      console.log('Backup download request for file:', requestedFile || 'latest');
       
       // Get list of backup files
       if (!fs.existsSync(backupDir)) {
+        console.error('Backup directory does not exist:', backupDir);
         return res.status(404).json({ error: "No backup files found" });
       }
       
       const files = fs.readdirSync(backupDir)
         .filter(file => file.startsWith('aipm_backup_') && (file.endsWith('.xlsx') || file.endsWith('.json')))
-        .sort((a, b) => b.localeCompare(a)) // Sort newest first
-        .slice(0, 10); // Limit to last 10 backups
+        .sort((a, b) => b.localeCompare(a)); // Sort newest first
 
       if (files.length === 0) {
+        console.error('No backup files found in directory:', backupDir);
         return res.status(404).json({ error: "No backup files found" });
       }
 
-      // Return the most recent backup file
-      const latestFile = files[0];
-      const filePath = path.join(backupDir, latestFile);
+      // Determine which file to serve
+      let targetFile;
+      if (requestedFile) {
+        // Serve specific file if requested
+        const safeFilename = path.basename(requestedFile); // Prevent directory traversal
+        if (files.includes(safeFilename)) {
+          targetFile = safeFilename;
+        } else {
+          console.error('Requested file not found:', safeFilename);
+          return res.status(404).json({ error: "Requested backup file not found" });
+        }
+      } else {
+        // Serve latest file if no specific file requested
+        targetFile = files[0];
+      }
+
+      const filePath = path.join(backupDir, targetFile);
+      console.log('Serving backup file:', filePath);
       
-      if (latestFile.endsWith('.json')) {
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error('File does not exist:', filePath);
+        return res.status(404).json({ error: "Backup file not found" });
+      }
+
+      // Set appropriate headers
+      if (targetFile.endsWith('.json')) {
         res.setHeader('Content-Type', 'application/json');
       } else {
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       }
-      res.setHeader('Content-Disposition', `attachment; filename="${latestFile}"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${targetFile}"`);
       
+      // Get file stats for content length
+      const stats = fs.statSync(filePath);
+      res.setHeader('Content-Length', stats.size);
+      
+      console.log('Streaming file:', targetFile, 'Size:', stats.size, 'bytes');
+      
+      // Create and pipe file stream
       const fileStream = fs.createReadStream(filePath);
+      
+      fileStream.on('error', (error) => {
+        console.error('File stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Error reading backup file" });
+        }
+      });
+      
       fileStream.pipe(res);
       
     } catch (error) {
