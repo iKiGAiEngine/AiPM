@@ -734,11 +734,32 @@ export default function Settings() {
                               </div>
                               <Button 
                                 size="sm" 
-                                onClick={() => {
-                                  const link = document.createElement('a');
-                                  link.href = '/api/admin/backup/download';
-                                  link.download = file.name;
-                                  link.click();
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch('/api/admin/backup/download', {
+                                      headers: {
+                                        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+                                      },
+                                    });
+                                    
+                                    if (!response.ok) {
+                                      throw new Error('Failed to download backup');
+                                    }
+                                    
+                                    const blob = await response.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const link = document.createElement('a');
+                                    link.href = url;
+                                    link.download = file.name;
+                                    link.click();
+                                    window.URL.revokeObjectURL(url);
+                                  } catch (error) {
+                                    toast({
+                                      title: "Error",
+                                      description: "Failed to download backup file",
+                                      variant: "destructive",
+                                    });
+                                  }
                                 }}
                                 data-testid={`button-download-backup-${index}`}
                               >
