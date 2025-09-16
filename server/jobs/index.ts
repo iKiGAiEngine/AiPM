@@ -2,6 +2,10 @@ import cron from 'node-cron';
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { storage } from '../storage';
 import { emailService } from '../services/email';
 import { ThreeWayMatchService } from '../services/threeway-match';
