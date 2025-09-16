@@ -2535,7 +2535,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             costCode: normalizedCostCode,
             originalCodes: new Set([budget.costCode]),
             awardedValue: 0,
-            budgets: []
+            budgets: [],
+            title: budget.title || budget.description || 'Unknown' // Store the title
           });
         }
         costCodeMap.get(normalizedCostCode).originalCodes.add(budget.costCode);
@@ -2608,8 +2609,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log(`Line data for ${group.costCode}: Budget=${A}, Committed=${C}, Spent=${B}, CTC=${G_ctc}`);
         
+        // Get the original cost code (first one) and format with title
+        const originalCostCode = Array.from(group.originalCodes)[0];
+        const formattedCostCode = `${originalCostCode} — ${group.title}`;
+        
         return {
-          costCode: group.costCode,
+          costCode: formattedCostCode,
           A, B, C, currentPeriodCost,
           D_int: 0, E_ext: 0, F_adj: 0,
           G_ctc, H_ctc_unposted: 0, I_cost_fcst,

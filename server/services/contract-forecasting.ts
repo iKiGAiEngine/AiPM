@@ -69,7 +69,6 @@ export class ContractForecastingService {
       });
     }
     
-    console.log(`DEBUG - getCostCodes result:`, result);
     return result;
   }
 
@@ -200,7 +199,7 @@ export class ContractForecastingService {
     // N — Projected Gain/Loss
     const N = Q(M - I);
 
-    const result = {
+    return {
       costCode: `${costCode.code} — ${costCode.description}`,
       A, B, C, currentPeriodCost,
       D_int, E_ext, F_adj,
@@ -208,9 +207,6 @@ export class ContractForecastingService {
       J_rev_budget: J, K_unposted_rev: K, L_unposted_rev_adj: L,
       M_rev_fcst: M, N_gain_loss: N
     };
-    
-    console.log(`DEBUG - Cost Code Row: ${costCode.code}, Description: ${costCode.description}, Result costCode: ${result.costCode}`);
-    return result;
   }
 
   async generateReport(projectId: string, includePending = true): Promise<{lines: CMiCLine[], totals: CMiCLine}> {
