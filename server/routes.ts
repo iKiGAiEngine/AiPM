@@ -3071,14 +3071,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const filename = `aipm_backup_${timestamp}.xlsx`;
         const filepath = path.join(backupDir, filename);
         
-        // Create a simple text file for now (we'd need to import xlsx library for full Excel)
-        const backupContent = JSON.stringify(backupData, null, 2);
-        fs.writeFileSync(filepath.replace('.xlsx', '.json'), backupContent);
+        // Convert to Excel format using xlsx
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.utils.book_new();
+        
+        // Create individual sheets for each data type
+        if (projects.length > 0) {
+          const projectsSheet = XLSX.utils.json_to_sheet(projects);
+          XLSX.utils.book_append_sheet(workbook, projectsSheet, 'Projects');
+        }
+        
+        if (vendors.length > 0) {
+          const vendorsSheet = XLSX.utils.json_to_sheet(vendors);
+          XLSX.utils.book_append_sheet(workbook, vendorsSheet, 'Vendors');
+        }
+        
+        if (projectMaterialsData.length > 0) {
+          const materialsSheet = XLSX.utils.json_to_sheet(projectMaterialsData);
+          XLSX.utils.book_append_sheet(workbook, materialsSheet, 'Materials');
+        }
+        
+        if (requisitions.length > 0) {
+          const requisitionsSheet = XLSX.utils.json_to_sheet(requisitions);
+          XLSX.utils.book_append_sheet(workbook, requisitionsSheet, 'Requisitions');
+        }
+        
+        if (purchaseOrdersData.length > 0) {
+          const posSheet = XLSX.utils.json_to_sheet(purchaseOrdersData);
+          XLSX.utils.book_append_sheet(workbook, posSheet, 'Purchase Orders');
+        }
+        
+        if (invoicesData.length > 0) {
+          const invoicesSheet = XLSX.utils.json_to_sheet(invoicesData);
+          XLSX.utils.book_append_sheet(workbook, invoicesSheet, 'Invoices');
+        }
+        
+        if (deliveries.length > 0) {
+          const deliveriesSheet = XLSX.utils.json_to_sheet(deliveries);
+          XLSX.utils.book_append_sheet(workbook, deliveriesSheet, 'Deliveries');
+        }
+        
+        if (rfqs.length > 0) {
+          const rfqsSheet = XLSX.utils.json_to_sheet(rfqs);
+          XLSX.utils.book_append_sheet(workbook, rfqsSheet, 'RFQs');
+        }
+        
+        if (contractEstimatesData.length > 0) {
+          const contractsSheet = XLSX.utils.json_to_sheet(contractEstimatesData);
+          XLSX.utils.book_append_sheet(workbook, contractsSheet, 'Contract Estimates');
+        }
+        
+        // Create a summary sheet
+        const summaryData = [
+          { Item: 'Projects', Count: projects.length },
+          { Item: 'Vendors', Count: vendors.length },
+          { Item: 'Materials', Count: projectMaterialsData.length },
+          { Item: 'Requisitions', Count: requisitions.length },
+          { Item: 'Purchase Orders', Count: purchaseOrdersData.length },
+          { Item: 'Invoices', Count: invoicesData.length },
+          { Item: 'Deliveries', Count: deliveries.length },
+          { Item: 'RFQs', Count: rfqs.length },
+          { Item: 'Contract Estimates', Count: contractEstimatesData.length }
+        ];
+        const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+        
+        // Write the Excel file
+        XLSX.writeFile(workbook, filepath);
         
         res.json({ 
           success: true, 
-          message: "Backup generated successfully! Click the download button below to get your file.",
-          filename: filename.replace('.xlsx', '.json')
+          message: "Excel backup generated successfully! Click the download button below to get your file.",
+          filename: filename
         });
         
       } catch (backupError: any) {
