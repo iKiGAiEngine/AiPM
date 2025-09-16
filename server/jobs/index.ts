@@ -275,6 +275,11 @@ export class JobScheduler {
     }
   }
 
+  // Public method to trigger manual backups from API endpoints
+  public async triggerManualBackup(): Promise<void> {
+    return this.runAutomatedBackup('manual');
+  }
+
   private async runAutomatedBackup(timeOfDay: string): Promise<void> {
     if (this.backupInProgress) {
       log(`⏸️ [${timeOfDay.toUpperCase()}] Backup already in progress, aborting duplicate run`);

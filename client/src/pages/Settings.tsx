@@ -28,7 +28,12 @@ import {
   FolderOpen,
   Plus,
   Edit,
-  Eye
+  Eye,
+  Database,
+  Download,
+  Clock,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -151,6 +156,36 @@ export default function Settings() {
     updateOrganization.mutate(data);
   };
 
+  // Backup functionality
+  const triggerBackup = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/admin/backup/trigger', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to trigger backup');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Backup generation started. You'll receive the file when complete.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to start backup generation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Only show backup functionality for Admin users
+  const canManageBackups = user?.role === 'Admin';
+
   // Check if user has admin access
   if (!user || (user.role !== 'Admin' && user.role !== 'PM')) {
     return (
@@ -186,7 +221,7 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
           <TabsTrigger value="organization" className="flex items-center space-x-2" data-testid="tab-organization">
             <Building className="w-4 h-4" />
             <span>Organization</span>
@@ -206,6 +241,10 @@ export default function Settings() {
           <TabsTrigger value="notifications" className="flex items-center space-x-2" data-testid="tab-notifications">
             <Bell className="w-4 h-4" />
             <span>Notifications</span>
+          </TabsTrigger>
+          <TabsTrigger value="data" className="flex items-center space-x-2" data-testid="tab-data">
+            <Database className="w-4 h-4" />
+            <span>Data Management</span>
           </TabsTrigger>
         </TabsList>
 
@@ -578,6 +617,135 @@ export default function Settings() {
                 <Save className="w-4 h-4 mr-2" />
                 Save Notification Settings
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Data Management */}
+        <TabsContent value="data" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Database className="w-5 h-5 mr-2" />
+                Data Backup & Export
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {canManageBackups ? (
+                <>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/50">
+                      <div className="space-y-1">
+                        <h4 className="font-medium">Manual Backup</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Generate a complete backup of all organizational data
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => triggerBackup.mutate()}
+                        disabled={triggerBackup.isPending}
+                        data-testid="button-trigger-backup"
+                      >
+                        {triggerBackup.isPending ? (
+                          <>
+                            <Clock className="w-4 h-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4 mr-2" />
+                            Generate Backup
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 border border-border rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <h4 className="font-medium">Automated Backups</h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Automatic backups run 3 times daily
+                        </p>
+                        <div className="text-xs text-muted-foreground">
+                          <div>• 8:00 AM EST</div>
+                          <div>• 2:00 PM EST</div>
+                          <div>• 8:00 PM EST</div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 border border-border rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Database className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-medium">Backup Contents</h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Complete organizational data export
+                        </p>
+                        <div className="text-xs text-muted-foreground">
+                          <div>• Projects & Materials</div>
+                          <div>• Purchase Orders & Invoices</div>
+                          <div>• Vendors & Contracts</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Backup Information</h4>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Database className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">Output Format</div>
+                            <div className="text-xs text-muted-foreground">Excel (.xlsx) with multiple sheets</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">Security</div>
+                            <div className="text-xs text-muted-foreground">Admin-only access, no sensitive auth data</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                            <Clock className="w-4 h-4 text-orange-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">Generation Time</div>
+                            <div className="text-xs text-muted-foreground">Typically 30-60 seconds for full export</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <h4 className="font-medium mb-2">Admin Access Required</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Data backup functionality is restricted to Admin users only.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

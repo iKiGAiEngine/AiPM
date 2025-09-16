@@ -3004,6 +3004,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin backup trigger endpoint - manually trigger backup generation
+  app.post("/api/admin/backup/trigger", requireRole(['Admin']), async (req: AuthenticatedRequest, res) => {
+    try {
+      // Import jobScheduler instance dynamically to avoid circular dependencies
+      const { jobScheduler } = await import('./jobs');
+      
+      // Trigger manual backup (runs in background)
+      jobScheduler.triggerManualBackup().catch((error: any) => {
+        console.error('Manual backup failed:', error);
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Backup generation started. You will receive the file when complete." 
+      });
+    } catch (error) {
+      console.error('Failed to trigger backup:', error);
+      res.status(500).json({ error: "Failed to start backup generation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
