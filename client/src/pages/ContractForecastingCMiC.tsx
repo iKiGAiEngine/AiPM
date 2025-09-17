@@ -271,7 +271,7 @@ export default function ContractForecastingCMiC() {
             </Button>
             <Button onClick={exportCSV} className="gap-2">
               <Download className="w-4 h-4" />
-              Export CSV
+              Export Excel
             </Button>
           </div>
         </div>

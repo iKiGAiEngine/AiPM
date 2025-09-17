@@ -2796,82 +2796,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { phase, name };
       };
       
-      // Helper function to format number for CSV (2 decimal places, no currency symbol)
-      const formatNumber = (value: number): string => {
-        return (value || 0).toFixed(2);
-      };
-      
-      // Generate CSV content using real data
-      const csvRows = [];
-      
-      // Header row
-      csvRows.push(csvHeaders.join(','));
       
       // Get cost codes with their titles for proper parsing
       const costCodes = await contractForecastingService.getCostCodes(projectId);
       
-      // Data rows
+      // Import XLSX library for Excel export
+      const XLSX = await import('xlsx');
+      
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      
+      // Convert CSV data to Excel format
+      const worksheetData = [];
+      
+      // Add headers
+      worksheetData.push(csvHeaders);
+      
+      // Add data rows (reprocess to avoid CSV string conversion)
       for (const line of report.lines) {
-        // Find the cost code description from the service
         const costCodeInfo = costCodes.find(cc => cc.code === line.costCode);
         const fullCostCode = costCodeInfo ? `${line.costCode} — ${costCodeInfo.description}` : line.costCode;
         const { phase, name } = parseCostCode(fullCostCode);
         
-        const row = [
+        worksheetData.push([
           phase,
           name,
-          formatNumber(line.A),
-          formatNumber(line.B),
-          formatNumber(line.C),
-          formatNumber(line.currentPeriodCost),
-          formatNumber(line.D_int),
-          formatNumber(line.E_ext),
-          formatNumber(line.F_adj),
-          formatNumber(line.G_ctc),
-          formatNumber(line.H_ctc_unposted),
-          formatNumber(line.I_cost_fcst),
-          formatNumber(line.J_rev_budget),
-          formatNumber(line.K_unposted_rev),
-          formatNumber(line.L_unposted_rev_adj),
-          formatNumber(line.M_rev_fcst),
-          formatNumber(line.N_gain_loss)
-        ];
-        csvRows.push(row.join(','));
+          line.A || 0,
+          line.B || 0,
+          line.C || 0,
+          line.currentPeriodCost || 0,
+          line.D_int || 0,
+          line.E_ext || 0,
+          line.F_adj || 0,
+          line.G_ctc || 0,
+          line.H_ctc_unposted || 0,
+          line.I_cost_fcst || 0,
+          line.J_rev_budget || 0,
+          line.K_unposted_rev || 0,
+          line.L_unposted_rev_adj || 0,
+          line.M_rev_fcst || 0,
+          line.N_gain_loss || 0
+        ]);
       }
       
-      // Add totals row to match web interface
+      // Add totals row
       if (report.totals) {
-        const totalsRow = [
+        worksheetData.push([
           'TOTALS',
           '',
-          formatNumber(report.totals.A),
-          formatNumber(report.totals.B),
-          formatNumber(report.totals.C),
-          formatNumber(report.totals.currentPeriodCost),
-          formatNumber(report.totals.D_int),
-          formatNumber(report.totals.E_ext),
-          formatNumber(report.totals.F_adj),
-          formatNumber(report.totals.G_ctc),
-          formatNumber(report.totals.H_ctc_unposted),
-          formatNumber(report.totals.I_cost_fcst),
-          formatNumber(report.totals.J_rev_budget),
-          formatNumber(report.totals.K_unposted_rev),
-          formatNumber(report.totals.L_unposted_rev_adj),
-          formatNumber(report.totals.M_rev_fcst),
-          formatNumber(report.totals.N_gain_loss)
-        ];
-        csvRows.push(totalsRow.join(','));
+          report.totals.A || 0,
+          report.totals.B || 0,
+          report.totals.C || 0,
+          report.totals.currentPeriodCost || 0,
+          report.totals.D_int || 0,
+          report.totals.E_ext || 0,
+          report.totals.F_adj || 0,
+          report.totals.G_ctc || 0,
+          report.totals.H_ctc_unposted || 0,
+          report.totals.I_cost_fcst || 0,
+          report.totals.J_rev_budget || 0,
+          report.totals.K_unposted_rev || 0,
+          report.totals.L_unposted_rev_adj || 0,
+          report.totals.M_rev_fcst || 0,
+          report.totals.N_gain_loss || 0
+        ]);
       }
       
-      const csvContent = csvRows.join('\n');
-      console.log(`Generated CSV with ${csvRows.length - 1} data rows`);
+      // Create worksheet from data
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
       
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=contract_forecasting_${project.name.replace(/[^a-zA-Z0-9]/g, '_')}_${projectId}.csv`);
-      res.send(csvContent);
+      // Set column widths
+      worksheet['!cols'] = [
+        { width: 10 },   // Column A (Phase)
+        { width: 22 },   // Column B (Name)
+        { width: 15 },   // Column C
+        { width: 15 },   // Column D
+        { width: 15 },   // Column E
+        { width: 15 },   // Column F
+        { width: 15 },   // Column G
+        { width: 15 },   // Column H
+        { width: 15 },   // Column I
+        { width: 15 },   // Column J
+        { width: 15 },   // Column K
+        { width: 15 },   // Column L
+        { width: 15 },   // Column M
+        { width: 15 },   // Column N
+        { width: 15 },   // Column O
+        { width: 15 },   // Column P
+        { width: 15 }    // Column Q
+      ];
+      
+      // Set frozen panes (freeze first two columns A and B)
+      worksheet['!freeze'] = { xSplit: 2, ySplit: 1 };
+      
+      // Add text wrapping to header row (row 2, which is index 1)
+      const headerRowIndex = 1;
+      for (let col = 0; col < csvHeaders.length; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!worksheet[cellAddress]) worksheet[cellAddress] = {};
+        if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+        worksheet[cellAddress].s.alignment = { wrapText: true, vertical: 'top' };
+      }
+      
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Contract Forecasting');
+      
+      // Generate today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Create filename with project name, number, and date
+      const safeProjectName = project.name.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `${safeProjectName}_${projectId}_${today}_Contract_Forecasting.xlsx`;
+      
+      // Generate Excel buffer
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      console.log(`Generated Excel file with ${worksheetData.length - 1} data rows`);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.send(excelBuffer);
     } catch (error) {
-      console.error('Contract forecasting CSV export error:', error);
-      res.status(500).json({ error: 'Failed to export contract forecasting CSV' });
+      console.error('Contract forecasting Excel export error:', error);
+      res.status(500).json({ error: 'Failed to export contract forecasting Excel file' });
     }
   });
 
