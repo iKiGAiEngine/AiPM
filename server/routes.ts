@@ -2726,8 +2726,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export contract forecasting to CSV
-  app.get("/api/reporting/contract-forecasting/:projectId/export.csv", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+  // Export contract forecasting to Excel
+  app.get("/api/reporting/contract-forecasting/:projectId/export.xlsx", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
     try {
       const { projectId } = req.params;
       const includePending = req.query.include_pending !== 'false';
@@ -2738,7 +2738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      console.log(`=== CSV EXPORT REQUEST ===`);
+      console.log(`=== EXCEL EXPORT REQUEST ===`);
       console.log(`Project ID: ${projectId}`);
       console.log(`Include Pending: ${includePending}`);
       
@@ -2747,7 +2747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contractForecastingService = new ContractForecastingService();
       const report = await contractForecastingService.generateReport(projectId, includePending);
       
-      console.log(`Found ${report.lines.length} cost code lines for CSV export`);
+      console.log(`Found ${report.lines.length} cost code lines for Excel export`);
       
       // Define clean CSV headers that match the web interface
       const csvHeaders = [

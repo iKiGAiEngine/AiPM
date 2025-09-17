@@ -112,27 +112,37 @@ export default function ContractForecastingCMiC() {
 
   const exportCSV = async () => {
     try {
-      const response = await fetch(`/api/reporting/contract-forecasting/${projectId}/export.csv?include_pending=${includePending}`, {
+      const response = await fetch(`/api/reporting/contract-forecasting/${projectId}/export.xlsx?include_pending=${includePending}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       
       if (!response.ok) {
-        throw new Error('Failed to export CSV');
+        throw new Error('Failed to export Excel file');
+      }
+      
+      // Get the filename from the response headers or create a default
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `contract_forecasting_${projectId}.xlsx`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename=(.+)/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
       }
       
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `contract_forecasting_${projectId}.csv`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('CSV export failed:', error);
+      console.error('Excel export failed:', error);
       // You could add a toast notification here if needed
     }
   };
