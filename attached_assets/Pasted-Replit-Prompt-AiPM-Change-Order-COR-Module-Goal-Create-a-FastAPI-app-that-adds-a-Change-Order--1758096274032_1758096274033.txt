@@ -1,0 +1,776 @@
+Replit Prompt — AiPM Change Order (COR) Module
+
+Goal: Create a FastAPI app that adds a Change Order (COR) module tied to a project database and forecast reporting. It must:
+
+Track COR originator (RFI, Addendum, Email, etc.) and require originator backup.
+
+Require written approval backup before a COR can convert to a PO (hard gate).
+
+Apply approved CORs to either existing cost codes (budget adjustments) or create new scope lines.
+
+Expose reporting endpoints for pending/approved COR values and aging, so the Contract Forecast Report can consume them.
+
+Store uploads under /mnt/data/uploads/<project_id>/<cor_id>/….
+
+Tech/Packages
+
+Python 3.11
+
+fastapi, uvicorn, jinja2, python-multipart
+
+sqlalchemy, alembic, pydantic
+
+htmx (for snappy forms), bootstrap (basic styling)
+
+sqlite (swap to Postgres later)
+
+File Tree
+aipm_cor/
+  app.py
+  config.py
+  db.py
+  models.py
+  schemas.py
+  services/
+    cor_service.py
+    po_service.py
+    files.py
+    reporting.py
+  routers/
+    ui.py
+    api_cor.py
+    api_po.py
+    api_reporting.py
+  templates/
+    base.html
+    cor_list.html
+    cor_form.html
+    cor_detail.html
+  static/
+    bootstrap.min.css
+    htmx.min.js
+  alembic.ini
+  migrations/ (alembic will create)
+  README.md
+  requirements.txt
+
+Data Model (minimum viable)
+
+Project: id, number (unique), name
+
+CostCode: id, project_id, code, description
+
+ChangeOrder (COR):
+
+id, project_id, cor_number (e.g., RIV-001), title, description
+
+type (BUDGET_ADJUSTMENT | ADDED_SCOPE)
+
+originator (RFI | ADDENDUM | EMAIL | OWNER_DIRECTIVE | OTHER)
+
+status (DRAFT | SUBMITTED | APPROVED | REJECTED | PO_CREATED)
+
+estimated_cost, final_cost
+
+existing_costcode_id (nullable; if null and type is ADDED_SCOPE, requires new scope fields)
+
+new_scope_code, new_scope_description (nullable unless ADDED_SCOPE)
+
+created_at, approved_at, po_created_at
+
+ChangeOrderDoc: id, cor_id, kind (ORIGINATOR_BACKUP | APPROVAL_BACKUP | OTHER), filename, path
+
+PurchaseOrder (minimal): id, project_id, po_number, cor_id (unique), amount, costcode_id
+
+Rules (gatekeeping)
+
+Cannot SUBMIT unless at least one ORIGINATOR_BACKUP is attached.
+
+Cannot APPROVE unless at least one APPROVAL_BACKUP is attached.
+
+Cannot CREATE PO unless COR is APPROVED and final_cost is set.
+
+If type = BUDGET_ADJUSTMENT then existing_costcode_id is required.
+
+If type = ADDED_SCOPE, then new_scope_code and new_scope_description are required; PO creation will auto-provision a new CostCode if it doesn’t exist yet.
+
+Reporting
+
+Expose JSON for:
+
+/api/reporting/cor/summary?project=<project_number> → pending total, approved total, count by status, % growth.
+
+/api/reporting/cor/aging?project=<project_number> → days in status (draft→submitted→approved→po).
+
+These endpoints will be pulled into your Contract Forecast Report builder to combine with base contract/budget.
+
+Create the project and files
+
+requirements.txt
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+jinja2==3.1.4
+python-multipart==0.0.9
+SQLAlchemy==2.0.34
+alembic==1.13.2
+pydantic==2.9.2
+
+
+config.py
+
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join("/mnt/data", "aipm_cor")
+UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
+DB_URL = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(DATA_DIR, 'aipm_cor.db')}")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+db.py
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from config import DB_URL
+
+engine = create_engine(DB_URL, echo=False, future=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+class Base(DeclarativeBase):
+    pass
+
+def get_db():
+    from contextlib import contextmanager
+    @contextmanager
+    def _session():
+        db = SessionLocal()
+        try:
+            yield db
+            db.commit()
+        except:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+    return _session()
+
+
+models.py
+
+from sqlalchemy import String, Enum, ForeignKey, DateTime, Numeric, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime
+import enum
+from db import Base
+
+class CorStatus(enum.Enum):
+    DRAFT = "DRAFT"
+    SUBMITTED = "SUBMITTED"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    PO_CREATED = "PO_CREATED"
+
+class CorType(enum.Enum):
+    BUDGET_ADJUSTMENT = "BUDGET_ADJUSTMENT"
+    ADDED_SCOPE = "ADDED_SCOPE"
+
+class DocKind(enum.Enum):
+    ORIGINATOR_BACKUP = "ORIGINATOR_BACKUP"
+    APPROVAL_BACKUP = "APPROVAL_BACKUP"
+    OTHER = "OTHER"
+
+class Project(Base):
+    __tablename__ = "projects"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    costcodes: Mapped[list["CostCode"]] = relationship(back_populates="project")
+    cors: Mapped[list["ChangeOrder"]] = relationship(back_populates="project")
+    pos: Mapped[list["PurchaseOrder"]] = relationship(back_populates="project")
+
+class CostCode(Base):
+    __tablename__ = "costcodes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    code: Mapped[str] = mapped_column(String(50))
+    description: Mapped[str] = mapped_column(String(200))
+    project: Mapped[Project] = relationship(back_populates="costcodes")
+
+    __table_args__ = (UniqueConstraint("project_id", "code", name="uq_project_costcode"),)
+
+class ChangeOrder(Base):
+    __tablename__ = "change_orders"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    cor_number: Mapped[str] = mapped_column(String(50))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(String(1000))
+    type: Mapped[CorType] = mapped_column(Enum(CorType))
+    originator: Mapped[str] = mapped_column(String(50))  # RFI/ADDENDUM/EMAIL/OWNER_DIRECTIVE/OTHER
+    status: Mapped[CorStatus] = mapped_column(Enum(CorStatus), default=CorStatus.DRAFT)
+    estimated_cost: Mapped[float | None] = mapped_column(Numeric(12,2))
+    final_cost: Mapped[float | None] = mapped_column(Numeric(12,2))
+    existing_costcode_id: Mapped[int | None] = mapped_column(ForeignKey("costcodes.id"), nullable=True)
+    new_scope_code: Mapped[str | None] = mapped_column(String(50))
+    new_scope_description: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    po_created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    project: Mapped[Project] = relationship(back_populates="cors")
+    existing_costcode: Mapped[CostCode | None] = relationship()
+    docs: Mapped[list["ChangeOrderDoc"]] = relationship(back_populates="cor", cascade="all,delete-orphan")
+    po: Mapped["PurchaseOrder | None"] = relationship(back_populates="cor", uselist=False)
+
+    __table_args__ = (UniqueConstraint("project_id", "cor_number", name="uq_project_cornumber"),)
+
+class ChangeOrderDoc(Base):
+    __tablename__ = "change_order_docs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cor_id: Mapped[int] = mapped_column(ForeignKey("change_orders.id"))
+    kind: Mapped[DocKind] = mapped_column(Enum(DocKind))
+    filename: Mapped[str] = mapped_column(String(255))
+    path: Mapped[str] = mapped_column(String(500))
+    cor: Mapped[ChangeOrder] = relationship(back_populates="docs")
+
+class PurchaseOrder(Base):
+    __tablename__ = "purchase_orders"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    po_number: Mapped[str] = mapped_column(String(50))
+    cor_id: Mapped[int] = mapped_column(ForeignKey("change_orders.id"), unique=True)
+    amount: Mapped[float] = mapped_column(Numeric(12,2))
+    costcode_id: Mapped[int] = mapped_column(ForeignKey("costcodes.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    project: Mapped[Project] = relationship(back_populates="pos")
+    cor: Mapped[ChangeOrder] = relationship(back_populates="po")
+
+
+schemas.py (Pydantic request/response models)
+
+from pydantic import BaseModel, Field
+from typing import Optional, Literal
+from decimal import Decimal
+
+Originator = Literal["RFI","ADDENDUM","EMAIL","OWNER_DIRECTIVE","OTHER"]
+CorType = Literal["BUDGET_ADJUSTMENT","ADDED_SCOPE"]
+
+class CORCreate(BaseModel):
+    project_number: str
+    cor_number: str
+    title: str
+    description: str
+    type: CorType
+    originator: Originator
+    estimated_cost: Optional[Decimal] = None
+    existing_costcode_code: Optional[str] = None
+    new_scope_code: Optional[str] = None
+    new_scope_description: Optional[str] = None
+
+class CORUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    originator: Optional[Originator] = None
+    estimated_cost: Optional[Decimal] = None
+    final_cost: Optional[Decimal] = None
+    status: Optional[Literal["DRAFT","SUBMITTED","APPROVED","REJECTED","PO_CREATED"]] = None
+    existing_costcode_code: Optional[str] = None
+    new_scope_code: Optional[str] = None
+    new_scope_description: Optional[str] = None
+
+class POCreate(BaseModel):
+    project_number: str
+    po_number: str
+    amount: Decimal
+    costcode_code: Optional[str] = None  # if None and COR ADDED_SCOPE: use new_scope_code
+
+
+services/files.py (uploads)
+
+import os, uuid
+from config import UPLOAD_DIR
+
+def save_cor_file(project_number: str, cor_number: str, filename: str, file_bytes: bytes) -> str:
+    safe_proj = project_number.replace("/", "_")
+    safe_cor = cor_number.replace("/", "_")
+    folder = os.path.join(UPLOAD_DIR, safe_proj, safe_cor)
+    os.makedirs(folder, exist_ok=True)
+    unique = f"{uuid.uuid4().hex}_{filename}"
+    path = os.path.join(folder, unique)
+    with open(path, "wb") as f:
+        f.write(file_bytes)
+    return path
+
+
+services/cor_service.py (core validations + state transitions)
+
+from sqlalchemy.orm import Session
+from models import Project, CostCode, ChangeOrder, ChangeOrderDoc, DocKind, CorStatus, CorType
+from decimal import Decimal
+from datetime import datetime
+
+def get_or_create_costcode(db: Session, project: Project, code: str, description: str | None = None) -> CostCode:
+    cc = db.query(CostCode).filter_by(project_id=project.id, code=code).one_or_none()
+    if cc: return cc
+    cc = CostCode(project_id=project.id, code=code, description=description or code)
+    db.add(cc); db.flush()
+    return cc
+
+def ensure_originator_backup_exists(db: Session, cor: ChangeOrder) -> bool:
+    return db.query(ChangeOrderDoc).filter_by(cor_id=cor.id, kind=DocKind.ORIGINATOR_BACKUP).count() > 0
+
+def ensure_approval_backup_exists(db: Session, cor: ChangeOrder) -> bool:
+    return db.query(ChangeOrderDoc).filter_by(cor_id=cor.id, kind=DocKind.APPROVAL_BACKUP).count() > 0
+
+def validate_cor_shape(cor: ChangeOrder):
+    if cor.type == CorType.BUDGET_ADJUSTMENT and not cor.existing_costcode_id:
+        raise ValueError("Existing cost code required for Budget Adjustment COR.")
+    if cor.type == CorType.ADDED_SCOPE and not (cor.new_scope_code and cor.new_scope_description):
+        raise ValueError("New scope code & description required for Added Scope COR.")
+
+def move_to_submitted(db: Session, cor: ChangeOrder):
+    if not ensure_originator_backup_exists(db, cor):
+        raise ValueError("Cannot submit: originator backup is required.")
+    validate_cor_shape(cor)
+    cor.status = CorStatus.SUBMITTED
+
+def move_to_approved(db: Session, cor: ChangeOrder):
+    if not ensure_approval_backup_exists(db, cor):
+        raise ValueError("Cannot approve: approval backup is required.")
+    if cor.final_cost is None:
+        raise ValueError("Cannot approve: final_cost must be set.")
+    validate_cor_shape(cor)
+    cor.status = CorStatus.APPROVED
+    cor.approved_at = datetime.utcnow()
+
+
+services/po_service.py (create PO with gates)
+
+from sqlalchemy.orm import Session
+from models import Project, ChangeOrder, PurchaseOrder, CorStatus, CorType
+from decimal import Decimal
+from datetime import datetime
+from .cor_service import get_or_create_costcode
+
+def create_po_from_cor(db: Session, project: Project, cor: ChangeOrder, po_number: str, amount: Decimal, costcode_code: str | None):
+    if cor.status != CorStatus.APPROVED:
+        raise ValueError("PO creation blocked: COR must be APPROVED.")
+    if amount is None:
+        raise ValueError("PO amount required.")
+    # determine cost code
+    if cor.type == CorType.BUDGET_ADJUSTMENT:
+        cc_id = cor.existing_costcode_id
+    else:
+        code = costcode_code or cor.new_scope_code
+        desc = cor.new_scope_description or code
+        cc = get_or_create_costcode(db, project, code, desc)
+        cc_id = cc.id
+    po = PurchaseOrder(
+        project_id=project.id,
+        po_number=po_number,
+        cor_id=cor.id,
+        amount=amount,
+        costcode_id=cc_id
+    )
+    db.add(po)
+    cor.status = CorStatus.PO_CREATED
+    cor.po_created_at = datetime.utcnow()
+    return po
+
+
+services/reporting.py
+
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from models import Project, ChangeOrder, CorStatus
+
+def cor_summary(db: Session, project_number: str):
+    project = db.query(Project).filter_by(number=project_number).one()
+    q = db.query(ChangeOrder).filter_by(project_id=project.id)
+    total_pending = sum([float(c.estimated_cost or 0) for c in q.filter(ChangeOrder.status.in_([CorStatus.DRAFT, CorStatus.SUBMITTED])).all()])
+    total_approved = sum([float(c.final_cost or 0) for c in q.filter(ChangeOrder.status.in_([CorStatus.APPROVED, CorStatus.PO_CREATED])).all()])
+    counts = {s.name: db.query(func.count(ChangeOrder.id)).filter_by(project_id=project.id, status=s).scalar() for s in CorStatus}
+    return {
+        "project": project_number,
+        "pending_total": round(total_pending,2),
+        "approved_total": round(total_approved,2),
+        "counts_by_status": counts
+    }
+
+def cor_aging(db: Session, project_number: str):
+    from datetime import datetime
+    project = db.query(Project).filter_by(number=project_number).one()
+    items = []
+    for c in db.query(ChangeOrder).filter_by(project_id=project.id).all():
+        created = c.created_at
+        approved = c.approved_at
+        poed = c.po_created_at
+        def days(a,b): 
+            return ((b - a).days if a and b else None)
+        items.append({
+            "cor_number": c.cor_number,
+            "status": c.status.name,
+            "days_draft_to_submitted": None,  # extend if you add timestamps per status
+            "days_created_to_approved": days(created, approved),
+            "days_approved_to_po": days(approved, poed),
+        })
+    return {"project": project_number, "aging": items}
+
+
+routers/api_cor.py (CRUD, uploads, status transitions)
+
+from fastapi import APIRouter, Depends, UploadFile, Form
+from sqlalchemy.orm import Session
+from db import get_db
+from models import Project, CostCode, ChangeOrder, ChangeOrderDoc, DocKind, CorStatus, CorType
+from schemas import CORCreate, CORUpdate
+from services.files import save_cor_file
+from services.cor_service import move_to_submitted, move_to_approved, validate_cor_shape
+from decimal import Decimal
+
+router = APIRouter(prefix="/api/cor", tags=["COR"])
+
+def _get_project(db: Session, project_number: str) -> Project:
+    p = db.query(Project).filter_by(number=project_number).one_or_none()
+    if not p: 
+        p = Project(number=project_number, name=project_number)
+        db.add(p); db.flush()
+    return p
+
+@router.post("")
+def create_cor(payload: CORCreate, db: Session = Depends(get_db)):
+    project = _get_project(db, payload.project_number)
+    cor = ChangeOrder(
+        project_id=project.id,
+        cor_number=payload.cor_number,
+        title=payload.title,
+        description=payload.description,
+        type=CorType(payload.type),
+        originator=payload.originator,
+        estimated_cost=payload.estimated_cost
+    )
+    if payload.existing_costcode_code:
+        cc = db.query(CostCode).filter_by(project_id=project.id, code=payload.existing_costcode_code).one_or_none()
+        if cc: cor.existing_costcode_id = cc.id
+    if payload.type == "ADDED_SCOPE":
+        cor.new_scope_code = payload.new_scope_code
+        cor.new_scope_description = payload.new_scope_description
+    db.add(cor); db.flush()
+    return {"id": cor.id, "cor_number": cor.cor_number}
+
+@router.post("/{project_number}/{cor_number}/upload")
+async def upload_doc(project_number: str, cor_number: str, kind: DocKind = Form(...), file: UploadFile = Form(...), db: Session = Depends(get_db)):
+    project = _get_project(db, project_number)
+    cor = db.query(ChangeOrder).filter_by(project_id=project.id, cor_number=cor_number).one()
+    bytes_ = await file.read()
+    path = save_cor_file(project_number, cor_number, file.filename, bytes_)
+    doc = ChangeOrderDoc(cor_id=cor.id, kind=kind, filename=file.filename, path=path)
+    db.add(doc); db.flush()
+    return {"ok": True, "path": path}
+
+@router.patch("/{project_number}/{cor_number}")
+def update_cor(project_number: str, cor_number: str, payload: CORUpdate, db: Session = Depends(get_db)):
+    project = _get_project(db, project_number)
+    cor = db.query(ChangeOrder).filter_by(project_id=project.id, cor_number=cor_number).one()
+    for k,v in payload.model_dump(exclude_unset=True).items():
+        if k == "existing_costcode_code" and v:
+            cc = db.query(CostCode).filter_by(project_id=project.id, code=v).one_or_none()
+            if cc: cor.existing_costcode_id = cc.id
+        elif k == "status":
+            setattr(cor, "status", CorStatus(v))
+        else:
+            setattr(cor, k, v)
+    db.flush()
+    return {"ok": True}
+
+@router.post("/{project_number}/{cor_number}/submit")
+def submit_cor(project_number: str, cor_number: str, db: Session = Depends(get_db)):
+    project = _get_project(db, project_number)
+    cor = db.query(ChangeOrder).filter_by(project_id=project.id, cor_number=cor_number).one()
+    move_to_submitted(db, cor)
+    return {"status": cor.status.name}
+
+@router.post("/{project_number}/{cor_number}/approve")
+def approve_cor(project_number: str, cor_number: str, final_cost: Decimal, db: Session = Depends(get_db)):
+    project = _get_project(db, project_number)
+    cor = db.query(ChangeOrder).filter_by(project_id=project.id, cor_number=cor_number).one()
+    cor.final_cost = final_cost
+    move_to_approved(db, cor)
+    return {"status": cor.status.name}
+
+
+routers/api_po.py (create PO from COR)
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from db import get_db
+from models import Project, ChangeOrder
+from schemas import POCreate
+from services.po_service import create_po_from_cor
+
+router = APIRouter(prefix="/api/po", tags=["PO"])
+
+def _get_project(db, num):
+    from models import Project
+    p = db.query(Project).filter_by(number=num).one()
+    return p
+
+@router.post("/from-cor")
+def po_from_cor(payload: POCreate, cor_number: str, db: Session = Depends(get_db)):
+    project = _get_project(db, payload.project_number)
+    cor = db.query(ChangeOrder).filter_by(project_id=project.id, cor_number=cor_number).one()
+    po = create_po_from_cor(db, project, cor, payload.po_number, payload.amount, payload.costcode_code)
+    return {"po_id": po.id, "status": cor.status.name}
+
+
+routers/api_reporting.py
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from db import get_db
+from services.reporting import cor_summary, cor_aging
+
+router = APIRouter(prefix="/api/reporting", tags=["Reporting"])
+
+@router.get("/cor/summary")
+def summary(project: str, db: Session = Depends(get_db)):
+    return cor_summary(db, project)
+
+@router.get("/cor/aging")
+def aging(project: str, db: Session = Depends(get_db)):
+    return cor_aging(db, project)
+
+
+routers/ui.py (simple pages)
+
+from fastapi import APIRouter, Request, Depends, Form, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.orm import Session
+from db import get_db
+from models import Project, ChangeOrder, CorType, CorStatus, ChangeOrderDoc, DocKind
+from services.files import save_cor_file
+from datetime import datetime
+
+router = APIRouter(tags=["UI"])
+
+@router.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return request.app.state.templates.TemplateResponse("base.html", {"request": request})
+
+@router.get("/projects/{project_number}/cor", response_class=HTMLResponse)
+def list_cor(project_number: str, request: Request, db: Session = Depends(get_db)):
+    project = db.query(Project).filter_by(number=project_number).one_or_none()
+    cors = []
+    if project:
+        cors = db.query(ChangeOrder).filter_by(project_id=project.id).order_by(ChangeOrder.created_at.desc()).all()
+    return request.app.state.templates.TemplateResponse("cor_list.html", {"request": request, "project_number": project_number, "cors": cors})
+
+@router.get("/projects/{project_number}/cor/new", response_class=HTMLResponse)
+def new_cor(project_number: str, request: Request):
+    return request.app.state.templates.TemplateResponse("cor_form.html", {"request": request, "project_number": project_number})
+
+@router.post("/projects/{project_number}/cor/new")
+def create_cor(project_number: str, title: str = Form(...), cor_number: str = Form(...), description: str = Form(""), originator: str = Form(...), type: str = Form(...), existing_costcode_code: str = Form(None), new_scope_code: str = Form(None), new_scope_description: str = Form(None), db: Session = Depends(get_db)):
+    project = db.query(Project).filter_by(number=project_number).one_or_none()
+    if not project:
+        project = Project(number=project_number, name=project_number)
+        db.add(project); db.flush()
+    from models import ChangeOrder, CorType
+    cor = ChangeOrder(
+        project_id=project.id,
+        cor_number=cor_number,
+        title=title,
+        description=description,
+        originator=originator,
+        type=CorType(type),
+    )
+    if type == "BUDGET_ADJUSTMENT" and existing_costcode_code:
+        from models import CostCode
+        cc = db.query(CostCode).filter_by(project_id=project.id, code=existing_costcode_code).one_or_none()
+        if cc: cor.existing_costcode_id = cc.id
+    if type == "ADDED_SCOPE":
+        cor.new_scope_code = new_scope_code
+        cor.new_scope_description = new_scope_description
+    db.add(cor); db.flush()
+    return RedirectResponse(url=f"/projects/{project_number}/cor/{cor.cor_number}", status_code=303)
+
+@router.get("/projects/{project_number}/cor/{cor_number}", response_class=HTMLResponse)
+def cor_detail(project_number: str, cor_number: str, request: Request, db: Session = Depends(get_db)):
+    project = db.query(Project).filter_by(number=project_number).one()
+    cor = db.query(ChangeOrder).filter_by(project_id=project.id, cor_number=cor_number).one()
+    docs = db.query(ChangeOrderDoc).filter_by(cor_id=cor.id).all()
+    return request.app.state.templates.TemplateResponse("cor_detail.html", {"request": request, "project_number": project_number, "cor": cor, "docs": docs, "CorStatus": CorStatus, "DocKind": DocKind})
+
+
+templates/base.html
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AiPM — Change Orders</title>
+  <link rel="stylesheet" href="/static/bootstrap.min.css">
+  <script src="/static/htmx.min.js"></script>
+  <style>body{padding:20px}</style>
+</head>
+<body>
+  <h1>AiPM — Change Orders</h1>
+  <p><a href="/projects/DEMO-001/cor">Demo Project CORs</a></p>
+  {% block content %}{% endblock %}
+</body>
+</html>
+
+
+templates/cor_list.html
+
+{% extends "base.html" %}
+{% block content %}
+<h3>Project {{ project_number }} — CORs</h3>
+<a class="btn btn-primary mb-3" href="/projects/{{ project_number }}/cor/new">New COR</a>
+<table class="table table-sm table-striped">
+  <thead><tr><th>#</th><th>Title</th><th>Type</th><th>Status</th><th>Est</th><th>Final</th><th></th></tr></thead>
+  <tbody>
+  {% for c in cors %}
+    <tr>
+      <td>{{ c.cor_number }}</td>
+      <td>{{ c.title }}</td>
+      <td>{{ c.type.name }}</td>
+      <td>{{ c.status.name }}</td>
+      <td>{{ c.estimated_cost }}</td>
+      <td>{{ c.final_cost }}</td>
+      <td><a href="/projects/{{ project_number }}/cor/{{ c.cor_number }}">Open</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+
+
+templates/cor_form.html
+
+{% extends "base.html" %}
+{% block content %}
+<h3>New COR — Project {{ project_number }}</h3>
+<form method="post">
+  <div class="mb-2"><label>Title</label><input class="form-control" name="title" required></div>
+  <div class="mb-2"><label>COR Number</label><input class="form-control" name="cor_number" required></div>
+  <div class="mb-2"><label>Description</label><textarea class="form-control" name="description"></textarea></div>
+  <div class="mb-2">
+    <label>Originator</label>
+    <select class="form-select" name="originator" required>
+      <option>RFI</option><option>ADDENDUM</option><option>EMAIL</option><option>OWNER_DIRECTIVE</option><option>OTHER</option>
+    </select>
+  </div>
+  <div class="mb-2">
+    <label>Type</label>
+    <select class="form-select" name="type" required>
+      <option value="BUDGET_ADJUSTMENT">Budget Adjustment</option>
+      <option value="ADDED_SCOPE">Added Scope</option>
+    </select>
+  </div>
+  <div class="mb-2"><label>Existing Cost Code (if Budget Adjustment)</label><input class="form-control" name="existing_costcode_code"></div>
+  <div class="mb-2"><label>New Scope Code (if Added Scope)</label><input class="form-control" name="new_scope_code"></div>
+  <div class="mb-2"><label>New Scope Description (if Added Scope)</label><input class="form-control" name="new_scope_description"></div>
+  <button class="btn btn-success">Create</button>
+</form>
+{% endblock %}
+
+
+templates/cor_detail.html
+
+{% extends "base.html" %}
+{% block content %}
+<h3>COR {{ cor.cor_number }} — {{ cor.title }}</h3>
+<p>Status: <b>{{ cor.status.name }}</b></p>
+<p>Type: {{ cor.type.name }} | Originator: {{ cor.originator }}</p>
+<p>Estimated: {{ cor.estimated_cost }} | Final: {{ cor.final_cost }}</p>
+
+<h5>Documents</h5>
+<ul>
+  {% for d in docs %}
+    <li>{{ d.kind.name }} — {{ d.filename }}</li>
+  {% endfor %}
+</ul>
+
+<form hx-post="/api/cor/{{ project_number }}/{{ cor.cor_number }}/upload" hx-encoding="multipart/form-data" class="mb-3">
+  <div class="row g-2">
+    <div class="col-auto">
+      <select class="form-select" name="kind">
+        <option value="ORIGINATOR_BACKUP">Originator Backup</option>
+        <option value="APPROVAL_BACKUP">Approval Backup</option>
+        <option value="OTHER">Other</option>
+      </select>
+    </div>
+    <div class="col"><input type="file" name="file" class="form-control" required></div>
+    <div class="col-auto"><button class="btn btn-outline-primary">Upload</button></div>
+  </div>
+</form>
+
+<div class="mb-3">
+  <form hx-patch="/api/cor/{{ project_number }}/{{ cor.cor_number }}" hx-trigger="change delay:500ms">
+    <label>Final Cost</label>
+    <input class="form-control" type="number" step="0.01" name="final_cost" value="{{ cor.final_cost or '' }}">
+  </form>
+</div>
+
+<div class="d-flex gap-2">
+  <form action="/api/cor/{{ project_number }}/{{ cor.cor_number }}/submit" method="post">
+    <button class="btn btn-warning">Submit</button>
+  </form>
+  <form action="/api/cor/{{ project_number }}/{{ cor.cor_number }}/approve" method="post">
+    <input type="hidden" name="final_cost" value="{{ cor.final_cost or 0 }}">
+    <button class="btn btn-success">Approve</button>
+  </form>
+</div>
+{% endblock %}
+
+
+app.py
+
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import text
+from db import engine, Base
+from routers import ui, api_cor, api_po, api_reporting
+
+app = FastAPI(title="AiPM COR Module")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+app.state.templates = templates
+
+# Create tables on boot (Alembic can be added later)
+Base.metadata.create_all(bind=engine)
+
+app.include_router(ui.router)
+app.include_router(api_cor.router)
+app.include_router(api_po.router)
+app.include_router(api_reporting.router)
+
+@app.get("/health")
+def health():
+    with engine.connect() as c:
+        c.execute(text("select 1"))
+    return {"ok": True}
+
+
+static
+Download and save the minified Bootstrap CSS and HTMX into static/bootstrap.min.css and static/htmx.min.js (or link via CDN if you prefer).
+
+alembic.ini / migrations
+(Optional now; you can initialize later with alembic init migrations if you want migrations instead of create_all().)
+
+README.md
+
+Run: pip install -r requirements.txt
+
+Start: uvicorn app:app --host 0.0.0.0 --port 7860 --reload
+
+Visit: https://<repl>.replit.app/ then /projects/DEMO-001/cor
+
+API quick checks:
+
+GET /api/reporting/cor/summary?project=DEMO-001
+
+GET /api/reporting/cor/aging?project=DEMO-001
