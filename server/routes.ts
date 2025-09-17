@@ -2738,12 +2738,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      // Return simple CSV for now
-      const csvContent = `Cost Code,A,B,C,Current Period,D,E,F,G,H,I,J,K,L,M,N
-02-Site Work,125000,125000,125000,0,0,0,0,0,0,125000,125000,0,0,125000,0`;
+      console.log(`=== CSV EXPORT REQUEST ===`);
+      console.log(`Project ID: ${projectId}`);
+      console.log(`Include Pending: ${includePending}`);
+      
+      // Use the same service as the main forecasting endpoint
+      const { ContractForecastingService, CMIC_HEADERS } = await import('./services/contract-forecasting');
+      const contractForecastingService = new ContractForecastingService();
+      const report = await contractForecastingService.generateReport(projectId, includePending);
+      
+      console.log(`Found ${report.lines.length} cost code lines for CSV export`);
+      
+      // Generate CSV content using real data
+      const csvRows = [];
+      
+      // Header row
+      csvRows.push(['Cost Code/Category', ...CMIC_HEADERS].join(','));
+      
+      // Data rows
+      for (const line of report.lines) {
+        const row = [
+          line.costCode,
+          line.A || 0,
+          line.B || 0,
+          line.C || 0,
+          line.currentPeriodCost || 0,
+          line.D_int || 0,
+          line.E_ext || 0,
+          line.F_adj || 0,
+          line.G_ctc || 0,
+          line.H_ctc_unposted || 0,
+          line.I_cost_fcst || 0,
+          line.J_rev_budget || 0,
+          line.K_unposted_rev || 0,
+          line.L_unposted_rev_adj || 0,
+          line.M_rev_fcst || 0,
+          line.N_gain_loss || 0
+        ];
+        csvRows.push(row.join(','));
+      }
+      
+      const csvContent = csvRows.join('\n');
+      console.log(`Generated CSV with ${csvRows.length - 1} data rows`);
       
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=contract_forecasting_${projectId}.csv`);
+      res.setHeader('Content-Disposition', `attachment; filename=contract_forecasting_${project.name.replace(/[^a-zA-Z0-9]/g, '_')}_${projectId}.csv`);
       res.send(csvContent);
     } catch (error) {
       console.error('Contract forecasting CSV export error:', error);
