@@ -2743,39 +2743,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Include Pending: ${includePending}`);
       
       // Use the same service as the main forecasting endpoint
-      const { ContractForecastingService, CMIC_HEADERS } = await import('./services/contract-forecasting');
+      const { ContractForecastingService } = await import('./services/contract-forecasting');
       const contractForecastingService = new ContractForecastingService();
       const report = await contractForecastingService.generateReport(projectId, includePending);
       
       console.log(`Found ${report.lines.length} cost code lines for CSV export`);
       
+      // Define clean CSV headers that match the web interface
+      const csvHeaders = [
+        'Phase',
+        'Name', 
+        'A: Current Cost Budget',
+        'B: Spent/Committed (Less Adv SCOs)',
+        'C: Spent/Committed Total',
+        'Current Period Cost',
+        'D: Unposted Internal PCI Cost',
+        'E: Unposted External PCI Cost', 
+        'F: Unposted PCI Cost Adjusted',
+        'G: Cost to Complete',
+        'H: CTC Unposted PCIs',
+        'I: Cost Forecast',
+        'J: Revenue Budget',
+        'K: Unposted PCI Revenue',
+        'L: Unposted PCI Revenue Adjusted',
+        'M: Revenue Forecast',
+        'N: Projected Gain/Loss'
+      ];
+      
+      // Helper function to parse cost code into phase and name (same as frontend)
+      const parseCostCode = (costCode: string): { phase: string; name: string } => {
+        if (!costCode) return { phase: '', name: '' };
+        
+        // Split by " — " to separate code and description
+        const parts = costCode.split(' — ');
+        const name = parts.length > 1 ? parts[1] : '';
+        
+        // Extract CSI material code from the full code
+        const codePart = parts[0];
+        const codeParts = codePart.split('-');
+        
+        let phase = '';
+        if (codeParts.length >= 3) {
+          // Take the middle part which should be the CSI material code
+          phase = codeParts[1];
+        } else if (codeParts.length === 2) {
+          phase = codeParts[0];
+        } else {
+          const match = codePart.match(/\d{6}/);
+          phase = match ? match[0] : codePart;
+        }
+        
+        return { phase, name };
+      };
+      
+      // Helper function to format number for CSV (2 decimal places, no currency symbol)
+      const formatNumber = (value: number): string => {
+        return (value || 0).toFixed(2);
+      };
+      
       // Generate CSV content using real data
       const csvRows = [];
       
       // Header row
-      csvRows.push(['Cost Code/Category', ...CMIC_HEADERS].join(','));
+      csvRows.push(csvHeaders.join(','));
+      
+      // Get cost codes with their titles for proper parsing
+      const costCodes = await contractForecastingService.getCostCodes(projectId);
       
       // Data rows
       for (const line of report.lines) {
+        // Find the cost code description from the service
+        const costCodeInfo = costCodes.find(cc => cc.code === line.costCode);
+        const fullCostCode = costCodeInfo ? `${line.costCode} — ${costCodeInfo.description}` : line.costCode;
+        const { phase, name } = parseCostCode(fullCostCode);
+        
         const row = [
-          line.costCode,
-          line.A || 0,
-          line.B || 0,
-          line.C || 0,
-          line.currentPeriodCost || 0,
-          line.D_int || 0,
-          line.E_ext || 0,
-          line.F_adj || 0,
-          line.G_ctc || 0,
-          line.H_ctc_unposted || 0,
-          line.I_cost_fcst || 0,
-          line.J_rev_budget || 0,
-          line.K_unposted_rev || 0,
-          line.L_unposted_rev_adj || 0,
-          line.M_rev_fcst || 0,
-          line.N_gain_loss || 0
+          phase,
+          name,
+          formatNumber(line.A),
+          formatNumber(line.B),
+          formatNumber(line.C),
+          formatNumber(line.currentPeriodCost),
+          formatNumber(line.D_int),
+          formatNumber(line.E_ext),
+          formatNumber(line.F_adj),
+          formatNumber(line.G_ctc),
+          formatNumber(line.H_ctc_unposted),
+          formatNumber(line.I_cost_fcst),
+          formatNumber(line.J_rev_budget),
+          formatNumber(line.K_unposted_rev),
+          formatNumber(line.L_unposted_rev_adj),
+          formatNumber(line.M_rev_fcst),
+          formatNumber(line.N_gain_loss)
         ];
         csvRows.push(row.join(','));
+      }
+      
+      // Add totals row to match web interface
+      if (report.totals) {
+        const totalsRow = [
+          'TOTALS',
+          '',
+          formatNumber(report.totals.A),
+          formatNumber(report.totals.B),
+          formatNumber(report.totals.C),
+          formatNumber(report.totals.currentPeriodCost),
+          formatNumber(report.totals.D_int),
+          formatNumber(report.totals.E_ext),
+          formatNumber(report.totals.F_adj),
+          formatNumber(report.totals.G_ctc),
+          formatNumber(report.totals.H_ctc_unposted),
+          formatNumber(report.totals.I_cost_fcst),
+          formatNumber(report.totals.J_rev_budget),
+          formatNumber(report.totals.K_unposted_rev),
+          formatNumber(report.totals.L_unposted_rev_adj),
+          formatNumber(report.totals.M_rev_fcst),
+          formatNumber(report.totals.N_gain_loss)
+        ];
+        csvRows.push(totalsRow.join(','));
       }
       
       const csvContent = csvRows.join('\n');
