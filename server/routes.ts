@@ -2938,11 +2938,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Generated Excel file with ${worksheetData.length - 1} data rows`);
       console.log(`Filename: ${filename}`);
+      console.log(`Buffer size: ${excelBuffer.length} bytes`);
+      console.log(`First 4 bytes: ${excelBuffer.slice(0, 4).toString('hex')} (should start with 504B for valid ZIP)`);
       
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Length', excelBuffer.length.toString());
-      res.send(excelBuffer);
+      res.status(200).end(excelBuffer);
     } catch (error) {
       console.error('Contract forecasting Excel export error:', error);
       res.status(500).json({ error: 'Failed to export contract forecasting Excel file' });

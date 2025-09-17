@@ -126,7 +126,8 @@ export default function ContractForecastingCMiC() {
       const contentDisposition = response.headers.get('content-disposition');
       let filename = `contract_forecasting_${projectId}.xlsx`;
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename=(.+)/);
+        // Handle both quoted and unquoted filenames properly
+        const filenameMatch = contentDisposition.match(/filename=["']?([^"';]+)["']?/);
         if (filenameMatch) {
           filename = filenameMatch[1];
         }
