@@ -2889,32 +2889,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set frozen panes (freeze first two columns A and B)
       worksheet['!freeze'] = { xSplit: 2, ySplit: 1 };
       
-      // Add text wrapping to header row (row 2, which is index 1)
-      const headerRowIndex = 1;
+      // Set row heights - set adequate height for header row text wrapping
+      worksheet['!rows'] = [
+        { hpx: 40 } // 40 pixel height for header row to accommodate text wrapping
+      ];
+      
+      // Add text wrapping and formatting to header row (row 1, index 0)
       for (let col = 0; col < csvHeaders.length; col++) {
         const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
         if (!worksheet[cellAddress]) worksheet[cellAddress] = {};
         if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
-        worksheet[cellAddress].s.alignment = { wrapText: true, vertical: 'top' };
+        worksheet[cellAddress].s.alignment = { 
+          wrapText: true, 
+          vertical: 'top',
+          horizontal: 'center'
+        };
+        // Make header row bold
+        worksheet[cellAddress].s.font = { bold: true };
       }
       
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Contract Forecasting');
       
-      // Generate today's date in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0];
+      // Generate today's date in MM.DD.YY format
+      const today = new Date();
+      const dateStr = today.toLocaleDateString('en-US', {
+        month: '2-digit', 
+        day: '2-digit', 
+        year: '2-digit'
+      }).replace(/\//g, '.');
       
-      // Create filename with project name, number, and date
+      // Create filename with project name, project number, and date
       const safeProjectName = project.name.replace(/[^a-zA-Z0-9]/g, '_');
-      const filename = `${safeProjectName}_${projectId}_${today}_Contract_Forecasting.xlsx`;
+      const filename = `${safeProjectName}_${project.projectNumber || projectId}_${dateStr}_Contract_Forecasting.xlsx`;
       
-      // Generate Excel buffer
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      // Generate Excel buffer with better options
+      const excelBuffer = XLSX.write(workbook, { 
+        type: 'buffer', 
+        bookType: 'xlsx',
+        compression: true,
+        Props: {
+          Title: 'Contract Forecasting Report',
+          Subject: 'Contract Forecasting',
+          Author: 'AiPM',
+          CreatedDate: new Date()
+        }
+      });
       
       console.log(`Generated Excel file with ${worksheetData.length - 1} data rows`);
+      console.log(`Filename: ${filename}`);
       
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', excelBuffer.length.toString());
       res.send(excelBuffer);
     } catch (error) {
       console.error('Contract forecasting Excel export error:', error);
