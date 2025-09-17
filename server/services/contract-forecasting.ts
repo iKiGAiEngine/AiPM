@@ -157,7 +157,7 @@ export class ContractForecastingService {
       .leftJoin(projectMaterials, eq(purchaseOrderLines.projectMaterialId, projectMaterials.id))
       .where(and(
         eq(purchaseOrders.projectId, projectId),
-        sql`${purchaseOrders.status} IN ('sent', 'acknowledged', 'pending_shipment', 'pending_delivery', 'delivered', 'matched_pending_payment', 'received_nbs_wh', 'closed')`,
+        sql`${purchaseOrders.status} IN ('sent', 'acknowledged', 'pending_shipment', 'pending_delivery', 'delivered', 'matched_pending_payment', 'received_nbs_wh', 'closed', 'pending_invoice_match')`,
         eq(projectMaterials.costCode, costCode)
       ));
     
