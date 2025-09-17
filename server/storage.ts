@@ -18,11 +18,14 @@ import {
   type InvoiceLine, type InsertInvoiceLine,
   type Notification, type InsertNotification,
   type ContractEstimate, type InsertContractEstimate,
+  type ChangeOrder, type InsertChangeOrder,
+  type ChangeOrderDoc, type InsertChangeOrderDoc,
   organizations, users, projects, vendors, materials,
   requisitions, requisitionLines, rfqs, rfqLines,
   quotes, quoteLines, purchaseOrders, purchaseOrderLines,
   deliveries, deliveryLines, invoices, invoiceLines,
-  notifications, projectMaterials, contractEstimates
+  notifications, projectMaterials, contractEstimates,
+  changeOrders, changeOrderDocs
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, inArray, sql, ne } from "drizzle-orm";
@@ -136,6 +139,18 @@ export interface IStorage {
   createInvoiceLine(line: InsertInvoiceLine): Promise<InvoiceLine>;
   getInvoiceLines(invoiceId: string): Promise<InvoiceLine[]>;
   
+  // Change Orders
+  createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder>;
+  getChangeOrder(id: string): Promise<ChangeOrder | undefined>;
+  getChangeOrdersByProject(projectId: string): Promise<ChangeOrder[]>;
+  getChangeOrdersByOrganization(organizationId: string): Promise<ChangeOrder[]>;
+  updateChangeOrder(id: string, updates: Partial<ChangeOrder>): Promise<void>;
+  updateChangeOrderStatus(id: string, status: string): Promise<void>;
+  
+  // Change Order Documents
+  createChangeOrderDoc(doc: InsertChangeOrderDoc): Promise<ChangeOrderDoc>;
+  getChangeOrderDocs(changeOrderId: string): Promise<ChangeOrderDoc[]>;
+
   // Notifications
   createNotification(notification: InsertNotification): Promise<Notification>;
   getNotificationsByUser(userId: string): Promise<Notification[]>;
@@ -1018,6 +1033,57 @@ export class DatabaseStorage implements IStorage {
 
   async markNotificationAsRead(id: string): Promise<void> {
     await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  }
+
+  // Change Orders
+  async createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder> {
+    const [newChangeOrder] = await db.insert(changeOrders).values(changeOrder).returning();
+    return newChangeOrder;
+  }
+
+  async getChangeOrder(id: string): Promise<ChangeOrder | undefined> {
+    const [changeOrder] = await db.select().from(changeOrders).where(eq(changeOrders.id, id));
+    return changeOrder || undefined;
+  }
+
+  async getChangeOrdersByProject(projectId: string): Promise<ChangeOrder[]> {
+    return await db.select().from(changeOrders)
+      .where(eq(changeOrders.projectId, projectId))
+      .orderBy(desc(changeOrders.createdAt));
+  }
+
+  async getChangeOrdersByOrganization(organizationId: string): Promise<ChangeOrder[]> {
+    return await db.select().from(changeOrders)
+      .where(eq(changeOrders.organizationId, organizationId))
+      .orderBy(desc(changeOrders.createdAt));
+  }
+
+  async updateChangeOrder(id: string, updates: Partial<ChangeOrder>): Promise<void> {
+    await db.update(changeOrders).set({ ...updates, updatedAt: new Date() }).where(eq(changeOrders.id, id));
+  }
+
+  async updateChangeOrderStatus(id: string, status: string): Promise<void> {
+    const updateData: any = { status: status as any, updatedAt: new Date() };
+    
+    if (status === 'approved') {
+      updateData.approvedAt = new Date();
+    } else if (status === 'po_created') {
+      updateData.poCreatedAt = new Date();
+    }
+    
+    await db.update(changeOrders).set(updateData).where(eq(changeOrders.id, id));
+  }
+
+  // Change Order Documents
+  async createChangeOrderDoc(doc: InsertChangeOrderDoc): Promise<ChangeOrderDoc> {
+    const [newDoc] = await db.insert(changeOrderDocs).values(doc).returning();
+    return newDoc;
+  }
+
+  async getChangeOrderDocs(changeOrderId: string): Promise<ChangeOrderDoc[]> {
+    return await db.select().from(changeOrderDocs)
+      .where(eq(changeOrderDocs.changeOrderId, changeOrderId))
+      .orderBy(desc(changeOrderDocs.createdAt));
   }
 
   // Project Materials

@@ -40,6 +40,12 @@ export const trackingStatusEnum = pgEnum('tracking_status', ['pending', 'in_tran
 export const invoiceStatusEnum = pgEnum('invoice_status', ['pending', 'approved', 'exception', 'paid']);
 export const matchStatusEnum = pgEnum('match_status', ['matched', 'price_variance', 'qty_variance', 'missing_po', 'tax_variance', 'freight_variance']);
 
+// Change Order Enums
+export const changeOrderStatusEnum = pgEnum('change_order_status', ['draft', 'submitted', 'approved', 'rejected', 'po_created']);
+export const changeOrderTypeEnum = pgEnum('change_order_type', ['budget_adjustment', 'added_scope']);
+export const changeOrderOriginatorEnum = pgEnum('change_order_originator', ['rfi', 'addendum', 'email', 'owner_directive', 'other']);
+export const changeOrderDocKindEnum = pgEnum('change_order_doc_kind', ['originator_backup', 'approval_backup', 'other']);
+
 // Organizations
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -304,6 +310,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   nbsWarehouseReceivedAt: timestamp("nbs_warehouse_received_at"),
   packingSlipId: uuid("packing_slip_id"),
   statusHistory: jsonb("status_history"),
+  changeOrderId: uuid("change_order_id").references(() => changeOrders.id), // Link to Change Order if PO created from COR
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 }, (table) => ({
@@ -363,6 +370,46 @@ export const deliveryLines = pgTable("delivery_lines", {
   createdAt: timestamp("created_at").defaultNow()
 }, (table) => ({
   deliveryIdx: index("delivery_lines_delivery_idx").on(table.deliveryId)
+}));
+
+// Change Orders
+export const changeOrders = pgTable("change_orders", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  createdById: uuid("created_by_id").references(() => users.id).notNull(),
+  corNumber: text("cor_number").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: changeOrderTypeEnum("type").notNull(),
+  originator: changeOrderOriginatorEnum("originator").notNull(),
+  status: changeOrderStatusEnum("status").default('draft'),
+  estimatedCost: numeric("estimated_cost", { precision: 12, scale: 2 }),
+  finalCost: numeric("final_cost", { precision: 12, scale: 2 }),
+  existingCostCodeId: uuid("existing_cost_code_id").references(() => contractEstimates.id), // References contractEstimates.id for budget adjustments
+  newScopeCode: text("new_scope_code"),
+  newScopeDescription: text("new_scope_description"),
+  approvedAt: timestamp("approved_at"),
+  poCreatedAt: timestamp("po_created_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  orgIdx: index("change_orders_org_idx").on(table.organizationId),
+  projectIdx: index("change_orders_project_idx").on(table.projectId),
+  uniqueCorNumber: uniqueIndex("change_orders_project_cor_number_unique").on(table.projectId, table.corNumber)
+}));
+
+// Change Order Documents
+export const changeOrderDocs = pgTable("change_order_docs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  changeOrderId: uuid("change_order_id").references(() => changeOrders.id).notNull(),
+  kind: changeOrderDocKindEnum("kind").notNull(),
+  filename: text("filename").notNull(),
+  documentUrl: text("document_url").notNull(),
+  uploadedById: uuid("uploaded_by_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  changeOrderIdx: index("change_order_docs_cor_idx").on(table.changeOrderId)
 }));
 
 // Invoices
@@ -640,7 +687,11 @@ export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many })
   }),
   lines: many(purchaseOrderLines),
   deliveries: many(deliveries),
-  invoices: many(invoices)
+  invoices: many(invoices),
+  changeOrder: one(changeOrders, {
+    fields: [purchaseOrders.changeOrderId],
+    references: [changeOrders.id]
+  })
 }));
 
 export const purchaseOrderLinesRelations = relations(purchaseOrderLines, ({ one, many }) => ({
@@ -685,6 +736,35 @@ export const deliveryLinesRelations = relations(deliveryLines, ({ one }) => ({
   purchaseOrderLine: one(purchaseOrderLines, {
     fields: [deliveryLines.poLineId],
     references: [purchaseOrderLines.id]
+  })
+}));
+
+// Change Orders Relations
+export const changeOrdersRelations = relations(changeOrders, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [changeOrders.organizationId],
+    references: [organizations.id]
+  }),
+  project: one(projects, {
+    fields: [changeOrders.projectId],
+    references: [projects.id]
+  }),
+  createdBy: one(users, {
+    fields: [changeOrders.createdById],
+    references: [users.id]
+  }),
+  documents: many(changeOrderDocs),
+  purchaseOrders: many(purchaseOrders)
+}));
+
+export const changeOrderDocsRelations = relations(changeOrderDocs, ({ one }) => ({
+  changeOrder: one(changeOrders, {
+    fields: [changeOrderDocs.changeOrderId],
+    references: [changeOrders.id]
+  }),
+  uploadedBy: one(users, {
+    fields: [changeOrderDocs.uploadedById],
+    references: [users.id]
   })
 }));
 
@@ -966,6 +1046,19 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true
 });
 
+export const insertChangeOrderSchema = createInsertSchema(changeOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedAt: true,
+  poCreatedAt: true
+});
+
+export const insertChangeOrderDocSchema = createInsertSchema(changeOrderDocs).omit({
+  id: true,
+  createdAt: true
+});
+
 export const insertMaterialImportRunSchema = createInsertSchema(materialImportRuns).omit({
   id: true,
   createdAt: true,
@@ -1056,6 +1149,12 @@ export type InsertInvoiceLine = z.infer<typeof insertInvoiceLineSchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type ChangeOrder = typeof changeOrders.$inferSelect;
+export type InsertChangeOrder = z.infer<typeof insertChangeOrderSchema>;
+
+export type ChangeOrderDoc = typeof changeOrderDocs.$inferSelect;
+export type InsertChangeOrderDoc = z.infer<typeof insertChangeOrderDocSchema>;
 
 export type MaterialImportRun = typeof materialImportRuns.$inferSelect;
 export type InsertMaterialImportRun = z.infer<typeof insertMaterialImportRunSchema>;

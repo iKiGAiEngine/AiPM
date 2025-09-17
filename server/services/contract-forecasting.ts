@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { contractEstimates, purchaseOrders, purchaseOrderLines, projectMaterials, invoices, deliveries, deliveryLines } from "@shared/schema";
+import { contractEstimates, purchaseOrders, purchaseOrderLines, projectMaterials, invoices, deliveries, deliveryLines, changeOrders } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 export interface CMiCLine {
@@ -37,17 +37,36 @@ const Q = (x: number | string | null | undefined): number => {
 export class ContractForecastingService {
   
   async getCostCodes(projectId: string): Promise<Array<{id: string, code: string, description: string}>> {
-    // Get distinct cost codes first, then get the title for each
-    const distinctCodes = await db
+    // Get distinct cost codes from contract estimates
+    const contractCodes = await db
       .selectDistinct({
         costCode: contractEstimates.costCode
       })
       .from(contractEstimates)
       .where(eq(contractEstimates.projectId, projectId));
     
+    // Get distinct cost codes from approved change orders with added scope
+    const addedScopeCodes = await db
+      .selectDistinct({
+        costCode: changeOrders.newScopeCode
+      })
+      .from(changeOrders)
+      .where(and(
+        eq(changeOrders.projectId, projectId),
+        eq(changeOrders.type, 'added_scope'),
+        eq(changeOrders.status, 'approved'),
+        sql`${changeOrders.newScopeCode} IS NOT NULL`
+      ));
+
+    // Combine and deduplicate cost codes
+    const allCostCodes = new Set<string>();
+    contractCodes.forEach(row => allCostCodes.add(row.costCode));
+    addedScopeCodes.forEach(row => row.costCode && allCostCodes.add(row.costCode));
+    
     const result = [];
-    for (const codeRow of distinctCodes) {
-      // Get the first budget entry for this cost code to get the title
+    for (const costCode of Array.from(allCostCodes)) {
+      // First try to get title from contract estimates
+      let title = 'Unknown';
       const budgetWithTitle = await db
         .select({
           title: contractEstimates.title,
@@ -56,15 +75,33 @@ export class ContractForecastingService {
         .from(contractEstimates)
         .where(and(
           eq(contractEstimates.projectId, projectId),
-          eq(contractEstimates.costCode, codeRow.costCode)
+          eq(contractEstimates.costCode, costCode)
         ))
         .limit(1);
       
-      const title = budgetWithTitle[0]?.title || budgetWithTitle[0]?.description || 'Unknown';
+      if (budgetWithTitle[0]) {
+        title = budgetWithTitle[0]?.title || budgetWithTitle[0]?.description || 'Unknown';
+      } else {
+        // If not found in contract estimates, check change orders
+        const changeOrderWithTitle = await db
+          .select({
+            title: changeOrders.newScopeDescription
+          })
+          .from(changeOrders)
+          .where(and(
+            eq(changeOrders.projectId, projectId),
+            eq(changeOrders.newScopeCode, costCode),
+            eq(changeOrders.type, 'added_scope'),
+            eq(changeOrders.status, 'approved')
+          ))
+          .limit(1);
+        
+        title = changeOrderWithTitle[0]?.title || 'Added Scope';
+      }
       
       result.push({
-        id: codeRow.costCode,
-        code: codeRow.costCode,
+        id: costCode,
+        code: costCode,
         description: title
       });
     }
@@ -73,7 +110,8 @@ export class ContractForecastingService {
   }
 
   async getBudgetPlusApprovedCO(projectId: string, costCode: string): Promise<number> {
-    const result = await db
+    // Get base budget from contract estimates
+    const contractBudgetResult = await db
       .select({ 
         total: sql<number>`COALESCE(SUM(${contractEstimates.awardedValue}), 0)` 
       })
@@ -83,7 +121,29 @@ export class ContractForecastingService {
         eq(contractEstimates.costCode, costCode)
       ));
     
-    return Q(result[0]?.total || 0);
+    const baseBudget = contractBudgetResult[0]?.total || 0;
+
+    // Get approved Change Orders for this cost code
+    // For budget adjustments: match the existing cost code
+    // For added scope: match the new scope code
+    const approvedCOsResult = await db
+      .select({ 
+        total: sql<number>`COALESCE(SUM(${changeOrders.finalCost}), 0)` 
+      })
+      .from(changeOrders)
+      .leftJoin(contractEstimates, eq(changeOrders.existingCostCodeId, contractEstimates.id))
+      .where(and(
+        eq(changeOrders.projectId, projectId),
+        eq(changeOrders.status, 'approved'),
+        sql`(
+          (${changeOrders.type} = 'budget_adjustment' AND ${contractEstimates.costCode} = ${costCode}) OR
+          (${changeOrders.type} = 'added_scope' AND ${changeOrders.newScopeCode} = ${costCode})
+        )`
+      ));
+
+    const approvedCOTotal = approvedCOsResult[0]?.total || 0;
+    
+    return Q(Number(baseBudget) + Number(approvedCOTotal));
   }
 
   async getCommittedPOLines(projectId: string, costCode: string): Promise<number> {
@@ -97,7 +157,7 @@ export class ContractForecastingService {
       .leftJoin(projectMaterials, eq(purchaseOrderLines.projectMaterialId, projectMaterials.id))
       .where(and(
         eq(purchaseOrders.projectId, projectId),
-        sql`${purchaseOrders.status} IN ('sent', 'acknowledged', 'received')`,
+        sql`${purchaseOrders.status} IN ('sent', 'acknowledged', 'pending_shipment', 'pending_delivery', 'delivered', 'matched_pending_payment', 'received_nbs_wh', 'closed')`,
         eq(projectMaterials.costCode, costCode)
       ));
     
@@ -145,14 +205,30 @@ export class ContractForecastingService {
   }
 
   private async getTotalProjectBudget(projectId: string): Promise<number> {
-    const result = await db
+    // Get base budget from contract estimates
+    const contractBudgetResult = await db
       .select({ 
         total: sql<number>`COALESCE(SUM(${contractEstimates.awardedValue}), 0)` 
       })
       .from(contractEstimates)
       .where(eq(contractEstimates.projectId, projectId));
     
-    return result[0]?.total || 0;
+    const baseBudget = contractBudgetResult[0]?.total || 0;
+
+    // Get approved Change Orders total for all cost codes
+    const approvedCOsResult = await db
+      .select({ 
+        total: sql<number>`COALESCE(SUM(${changeOrders.finalCost}), 0)` 
+      })
+      .from(changeOrders)
+      .where(and(
+        eq(changeOrders.projectId, projectId),
+        eq(changeOrders.status, 'approved')
+      ));
+
+    const approvedCOTotal = approvedCOsResult[0]?.total || 0;
+    
+    return Number(baseBudget) + Number(approvedCOTotal);
   }
 
   async computeRow(projectId: string, costCode: {id: string, code: string, description: string}, includePending = true): Promise<CMiCLine> {
