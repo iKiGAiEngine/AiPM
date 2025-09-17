@@ -110,8 +110,31 @@ export default function ContractForecastingCMiC() {
     }).format(numValue);
   };
 
-  const exportCSV = () => {
-    window.open(`/api/reporting/contract-forecasting/${projectId}/export.csv?include_pending=${includePending}`);
+  const exportCSV = async () => {
+    try {
+      const response = await fetch(`/api/reporting/contract-forecasting/${projectId}/export.csv?include_pending=${includePending}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to export CSV');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `contract_forecasting_${projectId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      // You could add a toast notification here if needed
+    }
   };
 
   if (isLoading) {
