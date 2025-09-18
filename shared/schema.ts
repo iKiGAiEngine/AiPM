@@ -381,14 +381,10 @@ export const changeOrders = pgTable("change_orders", {
   corNumber: text("cor_number").notNull(),
   title: text("title").notNull(),
   description: text("description"),
-  type: changeOrderTypeEnum("type").notNull(),
   originator: changeOrderOriginatorEnum("originator").notNull(),
   status: changeOrderStatusEnum("status").default('draft'),
-  estimatedCost: numeric("estimated_cost", { precision: 12, scale: 2 }),
-  finalCost: numeric("final_cost", { precision: 12, scale: 2 }),
-  existingCostCodeId: uuid("existing_cost_code_id").references(() => contractEstimates.id), // References contractEstimates.id for budget adjustments
-  newScopeCode: text("new_scope_code"),
-  newScopeDescription: text("new_scope_description"),
+  // Removed individual type, existingCostCodeId, newScopeCode fields - now in change_order_lines
+  // Removed estimatedCost, finalCost - calculated from line items
   approvedAt: timestamp("approved_at"),
   poCreatedAt: timestamp("po_created_at"),
   createdAt: timestamp("created_at").defaultNow(),

@@ -48,8 +48,6 @@ const changeOrderSchema = z.object({
   originator: z.enum(["rfi", "addendum", "email", "owner_directive", "other"], {
     required_error: "Originator is required"
   }),
-  estimatedCost: z.string().optional(),
-  finalCost: z.string().optional(),
   lines: z.array(changeOrderLineSchema).min(1, "At least one cost code line is required")
 });
 
@@ -68,8 +66,6 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
       title: "",
       description: "",
       originator: "owner_directive",
-      estimatedCost: "",
-      finalCost: "",
       lines: [{
         type: "budget_adjustment",
         existingCostCodeId: "",
@@ -166,8 +162,6 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
         title: existingChangeOrder.title,
         description: existingChangeOrder.description || "",
         originator: existingChangeOrder.originator,
-        estimatedCost: existingChangeOrder.estimatedCost?.toString() || "",
-        finalCost: existingChangeOrder.finalCost?.toString() || "",
         lines: existingChangeOrder.lines?.length > 0 ? existingChangeOrder.lines.map((line: any) => ({
           type: line.type,
           existingCostCodeId: line.existingCostCodeId || "",
@@ -228,8 +222,6 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
         ...dataWithoutCor,
         projectId: selectedProject.id,
         status: 'draft',
-        estimatedCost: data.estimatedCost ? parseFloat(data.estimatedCost) : undefined,
-        finalCost: data.finalCost ? parseFloat(data.finalCost) : undefined,
         lines: data.lines.map(line => ({
           ...line,
           quantity: line.quantity ? parseFloat(line.quantity) : undefined,
@@ -679,54 +671,6 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
               </CardContent>
             </Card>
 
-            {/* Financial Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Financial Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="estimatedCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estimated Cost</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0.00"
-                            data-testid="input-estimated-cost"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="finalCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Final Cost</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0.00"
-                            data-testid="input-final-cost"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Actions */}
             <div className="flex justify-end gap-4">
