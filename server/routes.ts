@@ -625,6 +625,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const nextNumber = Math.max(0, ...corNumbers) + 1;
       const generatedCorNumber = `COR-${nextNumber.toString().padStart(3, '0')}`;
+      
+      console.log(`[COR Gen] Existing CORs: ${existingCORs.map(c => c.corNumber).join(', ')}`);
+      console.log(`[COR Gen] Extracted numbers: ${corNumbers.join(', ')}`);
+      console.log(`[COR Gen] Generated next COR: ${generatedCorNumber}`);
 
       const changeOrderToCreate = {
         ...changeOrderData,
@@ -779,6 +783,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const nextNumber = Math.max(0, ...corNumbers) + 1;
       const nextCorNumber = `COR-${nextNumber.toString().padStart(3, '0')}`;
+      
+      console.log(`[Next COR API] Existing CORs: ${existingCORs.map(c => c.corNumber).join(', ')}`);
+      console.log(`[Next COR API] Extracted numbers: ${corNumbers.join(', ')}`);
+      console.log(`[Next COR API] Next COR: ${nextCorNumber}`);
 
       res.json({ nextCorNumber });
     } catch (error: any) {
