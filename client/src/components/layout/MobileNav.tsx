@@ -14,7 +14,8 @@ import {
   Building, 
   FolderOpen, 
   BarChart3, 
-  Settings
+  Settings,
+  GitBranch
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
@@ -55,6 +56,12 @@ const navigation = [
     href: "/purchase-orders",
     icon: FileText,
     roles: ["Admin", "PM", "Purchaser"]
+  },
+  {
+    name: "Change Orders",
+    href: "/change-orders",
+    icon: GitBranch,
+    roles: ["Admin", "PM"]
   },
   {
     name: "Deliveries",
