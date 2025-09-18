@@ -18,6 +18,9 @@ import RFQView from "@/pages/RFQView";
 import QuoteComparison from "@/pages/QuoteComparison";
 import NewRFQ from "@/pages/NewRFQ";
 import PurchaseOrders from "@/pages/PurchaseOrders";
+import ChangeOrders from "@/pages/ChangeOrders";
+import ChangeOrderDetail from "@/pages/ChangeOrderDetail";
+import NewChangeOrder from "@/pages/NewChangeOrder";
 import POTracking from "@/pages/POTracking";
 import Deliveries from "@/pages/Deliveries";
 import NewDelivery from "@/pages/NewDelivery";
@@ -197,6 +200,28 @@ export default function App() {
               <Route path="/purchase-orders" element={
                 <ProtectedRoute>
                   <PurchaseOrders />
+                </ProtectedRoute>
+              } />
+              
+              {/* Change Orders routes */}
+              <Route path="/change-orders/new" element={
+                <ProtectedRoute>
+                  <NewChangeOrder />
+                </ProtectedRoute>
+              } />
+              <Route path="/change-orders/:id/edit" element={
+                <ProtectedRoute>
+                  <NewChangeOrder isEdit={true} />
+                </ProtectedRoute>
+              } />
+              <Route path="/change-orders/:id" element={
+                <ProtectedRoute>
+                  <ChangeOrderDetail />
+                </ProtectedRoute>
+              } />
+              <Route path="/change-orders" element={
+                <ProtectedRoute>
+                  <ChangeOrders />
                 </ProtectedRoute>
               } />
               
