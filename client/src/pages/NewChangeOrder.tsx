@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Save, Upload } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,34 +19,38 @@ interface NewChangeOrderProps {
   isEdit?: boolean;
 }
 
-const changeOrderSchema = z.object({
-  corNumber: z.string().min(1, "COR number is required"),
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  type: z.enum(["budget_adjustment", "added_scope"], {
-    required_error: "Type is required"
-  }),
-  originator: z.enum(["rfi", "addendum", "email", "owner_directive", "other"], {
-    required_error: "Originator is required"
-  }),
-  estimatedCost: z.string().transform(val => val ? parseFloat(val) : undefined).optional(),
-  finalCost: z.string().transform(val => val ? parseFloat(val) : undefined).optional(),
+const changeOrderLineSchema = z.object({
+  type: z.enum(["budget_adjustment", "added_scope"]),
   existingCostCodeId: z.string().optional(),
   newScopeCode: z.string().optional(),
   newScopeDescription: z.string().optional(),
+  description: z.string().optional(),
+  quantity: z.string().optional(),
+  unit: z.string().optional(),
+  unitCost: z.string().optional(),
+  amount: z.string().refine(val => !isNaN(parseFloat(val)), "Amount is required and must be a valid number")
 }).refine((data) => {
-  // If type is budget_adjustment, existingCostCodeId is required
   if (data.type === "budget_adjustment" && !data.existingCostCodeId) {
     return false;
   }
-  // If type is added_scope, newScopeCode is required
   if (data.type === "added_scope" && !data.newScopeCode) {
     return false;
   }
   return true;
 }, {
-  message: "Cost code information is required based on the selected type",
-  path: ["existingCostCodeId"]
+  message: "Cost code information is required based on the selected type"
+});
+
+const changeOrderSchema = z.object({
+  corNumber: z.string().min(1, "COR number is required"),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  originator: z.enum(["rfi", "addendum", "email", "owner_directive", "other"], {
+    required_error: "Originator is required"
+  }),
+  estimatedCost: z.string().optional(),
+  finalCost: z.string().optional(),
+  lines: z.array(changeOrderLineSchema).min(1, "At least one cost code line is required")
 });
 
 type ChangeOrderForm = z.infer<typeof changeOrderSchema>;
@@ -63,9 +67,26 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
       corNumber: "",
       title: "",
       description: "",
-      type: "budget_adjustment",
-      originator: "owner_directive"
+      originator: "owner_directive",
+      estimatedCost: "",
+      finalCost: "",
+      lines: [{
+        type: "budget_adjustment",
+        existingCostCodeId: "",
+        newScopeCode: "",
+        newScopeDescription: "",
+        description: "",
+        quantity: "",
+        unit: "",
+        unitCost: "",
+        amount: "0"
+      }]
     }
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "lines"
   });
 
   // Query existing change order for edit mode
@@ -100,6 +121,43 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
     enabled: !!selectedProject
   });
 
+  // Query CSI codes for new scope items
+  const { data: csiCodes } = useQuery({
+    queryKey: ['/api/csi-codes'],
+    queryFn: async () => {
+      const response = await fetch('/api/csi-codes', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) return null;
+      return response.json();
+    }
+  });
+
+  // Query next COR number
+  const { data: nextCorData } = useQuery({
+    queryKey: ['/api/change-orders/next-cor-number', selectedProject?.id],
+    queryFn: async () => {
+      if (!selectedProject) return null;
+      const response = await fetch(`/api/change-orders/next-cor-number/${selectedProject.id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!selectedProject && !isEdit
+  });
+
+  // Auto-populate COR number for new change orders
+  useEffect(() => {
+    if (nextCorData && !isEdit) {
+      form.setValue('corNumber', nextCorData.nextCorNumber);
+    }
+  }, [nextCorData, isEdit, form]);
+
   // Load existing data for edit mode
   useEffect(() => {
     if (existingChangeOrder && isEdit) {
@@ -107,16 +165,54 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
         corNumber: existingChangeOrder.corNumber,
         title: existingChangeOrder.title,
         description: existingChangeOrder.description || "",
-        type: existingChangeOrder.type,
         originator: existingChangeOrder.originator,
         estimatedCost: existingChangeOrder.estimatedCost?.toString() || "",
         finalCost: existingChangeOrder.finalCost?.toString() || "",
-        existingCostCodeId: existingChangeOrder.existingCostCodeId || "",
-        newScopeCode: existingChangeOrder.newScopeCode || "",
-        newScopeDescription: existingChangeOrder.newScopeDescription || "",
+        lines: existingChangeOrder.lines?.length > 0 ? existingChangeOrder.lines.map((line: any) => ({
+          type: line.type,
+          existingCostCodeId: line.existingCostCodeId || "",
+          newScopeCode: line.newScopeCode || "",
+          newScopeDescription: line.newScopeDescription || "",
+          description: line.description || "",
+          quantity: line.quantity?.toString() || "",
+          unit: line.unit || "",
+          unitCost: line.unitCost?.toString() || "",
+          amount: line.amount?.toString() || "0"
+        })) : [{
+          type: "budget_adjustment",
+          existingCostCodeId: "",
+          newScopeCode: "",
+          newScopeDescription: "",
+          description: "",
+          quantity: "",
+          unit: "",
+          unitCost: "",
+          amount: "0"
+        }]
       });
     }
   }, [existingChangeOrder, isEdit, form]);
+
+  // Calculate total amount from all lines
+  const calculateTotal = () => {
+    const lines = form.watch("lines") || [];
+    return lines.reduce((total, line) => {
+      const amount = parseFloat(line.amount || "0");
+      return total + (isNaN(amount) ? 0 : amount);
+    }, 0);
+  };
+
+  // Auto-calculate amount when quantity and unit cost change
+  const calculateLineAmount = (index: number) => {
+    const line = form.watch(`lines.${index}`);
+    const quantity = parseFloat(line.quantity || "0");
+    const unitCost = parseFloat(line.unitCost || "0");
+    
+    if (!isNaN(quantity) && !isNaN(unitCost)) {
+      const amount = quantity * unitCost;
+      form.setValue(`lines.${index}.amount`, amount.toFixed(2));
+    }
+  };
 
   // Create/Update mutation
   const saveChangeOrder = useMutation({
@@ -126,17 +222,29 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
       const url = isEdit ? `/api/change-orders/${id}` : '/api/change-orders';
       const method = isEdit ? 'PUT' : 'POST';
       
+      // Transform data for API - NEVER send COR number (server generates it)
+      const { corNumber, ...dataWithoutCor } = data;
+      const transformedData = {
+        ...dataWithoutCor,
+        projectId: selectedProject.id,
+        status: 'draft',
+        estimatedCost: data.estimatedCost ? parseFloat(data.estimatedCost) : undefined,
+        finalCost: data.finalCost ? parseFloat(data.finalCost) : undefined,
+        lines: data.lines.map(line => ({
+          ...line,
+          quantity: line.quantity ? parseFloat(line.quantity) : undefined,
+          unitCost: line.unitCost ? parseFloat(line.unitCost) : undefined,
+          amount: parseFloat(line.amount)
+        }))
+      };
+      
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
-        body: JSON.stringify({
-          ...data,
-          projectId: selectedProject.id,
-          status: 'draft'
-        }),
+        body: JSON.stringify(transformedData),
       });
       
       if (!response.ok) {
@@ -165,8 +273,6 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
   const onSubmit = (data: ChangeOrderForm) => {
     saveChangeOrder.mutate(data);
   };
-
-  const watchedType = form.watch("type");
 
   if (!selectedProject) {
     return (
@@ -201,7 +307,7 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
         </div>
       </div>
 
-      <div className="max-w-2xl">
+      <div className="max-w-4xl">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Basic Information */}
@@ -218,8 +324,18 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
                       <FormItem>
                         <FormLabel>COR Number *</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="COR-001" data-testid="input-cor-number" />
+                          <Input 
+                            {...field} 
+                            placeholder="Loading..." 
+                            data-testid="input-cor-number"
+                            readOnly
+                            disabled
+                            className="bg-muted cursor-not-allowed"
+                          />
                         </FormControl>
+                        <FormDescription>
+                          Automatically generated consecutive number
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -285,94 +401,281 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
               </CardContent>
             </Card>
 
-            {/* Type & Scope */}
+            {/* Cost Code Line Items */}
             <Card>
               <CardHeader>
-                <CardTitle>Type & Scope</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Cost Code Line Items</CardTitle>
+                    <CardDescription>
+                      Add multiple cost codes with amounts. Similar to CMiC PCI Change Orders.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({
+                      type: "budget_adjustment",
+                      existingCostCodeId: "",
+                      newScopeCode: "",
+                      newScopeDescription: "",
+                      description: "",
+                      quantity: "",
+                      unit: "",
+                      unitCost: "",
+                      amount: "0"
+                    })}
+                    data-testid="button-add-line"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Line Item
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-type">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="budget_adjustment">Budget Adjustment</SelectItem>
-                          <SelectItem value="added_scope">Added Scope</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Budget Adjustment modifies existing cost codes, Added Scope creates new work
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <CardContent className="space-y-6">
+                {fields.map((field, index) => (
+                  <Card key={field.id} className="border-dashed">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">Line {index + 1}</CardTitle>
+                        {fields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => remove(index)}
+                            data-testid={`button-remove-line-${index}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name={`lines.${index}.type`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Type *</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid={`select-type-${index}`}>
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="budget_adjustment">Budget Adjustment</SelectItem>
+                                <SelectItem value="added_scope">Added Scope</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                {watchedType === "budget_adjustment" && (
-                  <FormField
-                    control={form.control}
-                    name="existingCostCodeId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Existing Cost Code *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-existing-cost-code">
-                              <SelectValue placeholder="Select cost code to adjust" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {contractEstimates?.map((estimate: any) => (
-                              <SelectItem key={estimate.id} value={estimate.id}>
-                                {estimate.costCode} - {estimate.description}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                      {form.watch(`lines.${index}.type`) === "budget_adjustment" && (
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.existingCostCodeId`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Existing Cost Code *</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid={`select-existing-cost-code-${index}`}>
+                                    <SelectValue placeholder="Select cost code to adjust" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {contractEstimates?.map((estimate: any) => (
+                                    <SelectItem key={estimate.id} value={estimate.id}>
+                                      {estimate.costCode} - {estimate.title}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
 
-                {watchedType === "added_scope" && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="newScopeCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Scope Cost Code *</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="K25479701-999999-71130" data-testid="input-new-scope-code" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                      {form.watch(`lines.${index}.type`) === "added_scope" && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name={`lines.${index}.newScopeCode`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>New Scope Cost Code *</FormLabel>
+                                <Select 
+                                  onValueChange={(value) => {
+                                    field.onChange(value);
+                                    // Auto-fill description when CSI code is selected
+                                    const selectedDivision = csiCodes?.divisions_list?.find((div: any) => div.csi === value);
+                                    if (selectedDivision) {
+                                      form.setValue(`lines.${index}.newScopeDescription`, selectedDivision.description);
+                                    }
+                                  }} 
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger data-testid={`select-new-scope-code-${index}`}>
+                                      <SelectValue placeholder="Select CSI code for new scope" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {csiCodes?.divisions_list?.map((division: any) => (
+                                      <SelectItem key={division.csi} value={division.csi}>
+                                        {division.code} - {division.description}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                  CSI MasterFormat codes for standardized categorization
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`lines.${index}.newScopeDescription`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>New Scope Description</FormLabel>
+                                <FormControl>
+                                  <Input {...field} placeholder="Description of the new scope work" data-testid={`input-new-scope-description-${index}`} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
                       )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="newScopeDescription"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Scope Description</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Description of the new scope work" data-testid="input-new-scope-description" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
+
+                      <FormField
+                        control={form.control}
+                        name={`lines.${index}.description`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Line Description</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Description of this line item" data-testid={`input-line-description-${index}`} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-4 gap-4">
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.quantity`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Quantity</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="number" 
+                                  step="0.01" 
+                                  placeholder="0"
+                                  data-testid={`input-quantity-${index}`}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    setTimeout(() => calculateLineAmount(index), 100);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.unit`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unit</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="EA, SF, LF" data-testid={`input-unit-${index}`} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.unitCost`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unit Cost</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="number" 
+                                  step="0.01" 
+                                  placeholder="0.00"
+                                  data-testid={`input-unit-cost-${index}`}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    setTimeout(() => calculateLineAmount(index), 100);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.amount`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Amount *</FormLabel>
+                              <div className="relative">
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type="number" 
+                                    step="0.01" 
+                                    placeholder="0.00"
+                                    data-testid={`input-amount-${index}`}
+                                  />
+                                </FormControl>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute right-1 top-1 h-6 w-6 p-0"
+                                  onClick={() => calculateLineAmount(index)}
+                                  data-testid={`button-calculate-${index}`}
+                                >
+                                  <Calculator className="w-3 h-3" />
+                                </Button>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {/* Total Amount */}
+                <div className="flex justify-end">
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">Total Amount</div>
+                    <div className="text-2xl font-semibold" data-testid="text-total-amount">
+                      ${calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

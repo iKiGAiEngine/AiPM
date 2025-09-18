@@ -12,8 +12,8 @@ import {
   type AuthenticatedRequest 
 } from "./middleware/auth";
 import { z } from "zod";
-import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, insertContractEstimateSchema, type InsertProject, invoices, contractEstimates, requisitionLines, purchaseOrders, purchaseOrderLines, invoiceLines, projectMaterials } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, insertContractEstimateSchema, type InsertProject, invoices, contractEstimates, requisitionLines, purchaseOrders, purchaseOrderLines, invoiceLines, projectMaterials, changeOrders, changeOrderLines } from "@shared/schema";
+import { eq, and, desc, asc } from "drizzle-orm";
 import { db } from "./db";
 import { threeWayMatchService } from "./services/three-way-match";
 import { emailService } from "./services/email";
@@ -483,6 +483,307 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to delete material" });
+    }
+  });
+
+  // Contract Estimates routes
+  app.get("/api/contract-estimates", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const projectId = req.query.projectId as string;
+      if (!projectId) {
+        return res.status(400).json({ error: "Project ID is required" });
+      }
+      
+      const estimates = await storage.getContractEstimatesByProject(projectId, req.user!.organizationId);
+      res.json(estimates);
+    } catch (error: any) {
+      console.error('Error fetching contract estimates:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // CSI Cost Codes routes
+  app.get("/api/csi-codes", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { getAvailableCategories, divisionToCsiMap } = await import('./config/cost-code-map.js');
+      
+      // Return comprehensive CSI code structure
+      const csiCodes = {
+        categories: getAvailableCategories(),
+        divisions: divisionToCsiMap,
+        // Common CSI divisions for dropdown
+        divisions_list: [
+          { code: "02-Site Work", csi: "020000", description: "Site Preparation" },
+          { code: "03-Concrete", csi: "033000", description: "Concrete" },
+          { code: "04-Masonry", csi: "042000", description: "Masonry" },
+          { code: "05-Metals", csi: "051200", description: "Structural Steel" },
+          { code: "06-Wood", csi: "061000", description: "Rough Carpentry" },
+          { code: "07-Thermal", csi: "072100", description: "Thermal Insulation" },
+          { code: "08-Openings", csi: "081400", description: "Doors and Frames" },
+          { code: "09-Finishes", csi: "096000", description: "Flooring" },
+          { code: "10-Specialties", csi: "102800", description: "Toilet and Bath Accessories" },
+          { code: "21-Fire Suppression", csi: "210000", description: "Fire Suppression" },
+          { code: "22-Plumbing", csi: "220000", description: "Plumbing" },
+          { code: "23-HVAC", csi: "230000", description: "HVAC" },
+          { code: "26-Electrical", csi: "260000", description: "Electrical" },
+          { code: "27-Communications", csi: "271500", description: "Communications" }
+        ]
+      };
+      
+      res.json(csiCodes);
+    } catch (error: any) {
+      console.error('Error fetching CSI codes:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Change Orders routes
+  app.get("/api/change-orders", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const projectId = req.query.projectId as string;
+      const selectedProjectId = req.headers['x-selected-project-id'] as string;
+      const effectiveProjectId = selectedProjectId || projectId;
+
+      let changeOrders;
+      if (effectiveProjectId) {
+        changeOrders = await db.select()
+          .from(changeOrders)
+          .where(and(
+            eq(changeOrders.projectId, effectiveProjectId),
+            eq(changeOrders.organizationId, req.user!.organizationId)
+          ))
+          .orderBy(desc(changeOrders.createdAt));
+      } else {
+        changeOrders = await db.select()
+          .from(changeOrders)
+          .where(eq(changeOrders.organizationId, req.user!.organizationId))
+          .orderBy(desc(changeOrders.createdAt));
+      }
+
+      res.json(changeOrders);
+    } catch (error: any) {
+      console.error('Error fetching change orders:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/change-orders/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get change order with lines
+      const changeOrder = await db.select()
+        .from(changeOrders)
+        .where(and(
+          eq(changeOrders.id, id),
+          eq(changeOrders.organizationId, req.user!.organizationId)
+        ))
+        .limit(1);
+
+      if (changeOrder.length === 0) {
+        return res.status(404).json({ error: "Change order not found" });
+      }
+
+      // Get change order lines
+      const lines = await db.select()
+        .from(changeOrderLines)
+        .where(eq(changeOrderLines.changeOrderId, id))
+        .orderBy(asc(changeOrderLines.lineNumber));
+
+      res.json({
+        ...changeOrder[0],
+        lines
+      });
+    } catch (error: any) {
+      console.error('Error fetching change order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/change-orders", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { lines, ...changeOrderData } = req.body;
+      
+      // SECURITY: Always generate COR number server-side, ignore any client input
+      delete changeOrderData.corNumber; // Remove any client-sent COR number
+      
+      const projectId = changeOrderData.projectId;
+      const existingCORs = await db.select({ corNumber: changeOrders.corNumber })
+        .from(changeOrders)
+        .where(and(
+          eq(changeOrders.projectId, projectId),
+          eq(changeOrders.organizationId, req.user!.organizationId)
+        ));
+
+      // Extract numeric parts and find the highest
+      const corNumbers = existingCORs
+        .map(cor => {
+          const match = cor.corNumber.match(/COR[–-]?(\d+)/i);
+          return match ? parseInt(match[1]) : 0;
+        })
+        .filter(num => !isNaN(num));
+
+      const nextNumber = Math.max(0, ...corNumbers) + 1;
+      const generatedCorNumber = `COR-${nextNumber.toString().padStart(3, '0')}`;
+
+      const changeOrderToCreate = {
+        ...changeOrderData,
+        corNumber: generatedCorNumber, // Use server-generated COR number
+        organizationId: req.user!.organizationId,
+        createdById: req.user!.id,
+        status: 'draft'
+      };
+
+      // Start transaction
+      const result = await db.transaction(async (tx) => {
+        // Create change order
+        const [newChangeOrder] = await tx.insert(changeOrders)
+          .values(changeOrderToCreate)
+          .returning();
+
+        // Create lines if provided
+        if (lines && lines.length > 0) {
+          const linesToCreate = lines.map((line: any, index: number) => ({
+            ...line,
+            changeOrderId: newChangeOrder.id,
+            lineNumber: index + 1
+          }));
+
+          await tx.insert(changeOrderLines).values(linesToCreate);
+        }
+
+        return newChangeOrder;
+      });
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error('Error creating change order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/change-orders/:id", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { lines, ...changeOrderData } = req.body;
+
+      // SECURITY: Never allow updates to COR number
+      delete changeOrderData.corNumber;
+
+      // Check if change order exists and user has access
+      const existingChangeOrder = await db.select()
+        .from(changeOrders)
+        .where(and(
+          eq(changeOrders.id, id),
+          eq(changeOrders.organizationId, req.user!.organizationId)
+        ))
+        .limit(1);
+
+      if (existingChangeOrder.length === 0) {
+        return res.status(404).json({ error: "Change order not found" });
+      }
+
+      // Start transaction
+      const result = await db.transaction(async (tx) => {
+        // Update change order
+        const [updatedChangeOrder] = await tx.update(changeOrders)
+          .set({
+            ...changeOrderData,
+            updatedAt: new Date()
+          })
+          .where(eq(changeOrders.id, id))
+          .returning();
+
+        // Update lines if provided
+        if (lines) {
+          // Delete existing lines
+          await tx.delete(changeOrderLines)
+            .where(eq(changeOrderLines.changeOrderId, id));
+
+          // Create new lines
+          if (lines.length > 0) {
+            const linesToCreate = lines.map((line: any, index: number) => ({
+              ...line,
+              changeOrderId: id,
+              lineNumber: index + 1
+            }));
+
+            await tx.insert(changeOrderLines).values(linesToCreate);
+          }
+        }
+
+        return updatedChangeOrder;
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error updating change order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/change-orders/:id", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+
+      // Check if change order exists and user has access
+      const existingChangeOrder = await db.select()
+        .from(changeOrders)
+        .where(and(
+          eq(changeOrders.id, id),
+          eq(changeOrders.organizationId, req.user!.organizationId)
+        ))
+        .limit(1);
+
+      if (existingChangeOrder.length === 0) {
+        return res.status(404).json({ error: "Change order not found" });
+      }
+
+      // Start transaction to delete change order and its lines
+      await db.transaction(async (tx) => {
+        // Delete lines first (foreign key constraint)
+        await tx.delete(changeOrderLines)
+          .where(eq(changeOrderLines.changeOrderId, id));
+
+        // Delete change order
+        await tx.delete(changeOrders)
+          .where(eq(changeOrders.id, id));
+      });
+
+      res.json({ message: "Change order deleted successfully" });
+    } catch (error: any) {
+      console.error('Error deleting change order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get next COR number for a project
+  app.get("/api/change-orders/next-cor-number/:projectId", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { projectId } = req.params;
+      
+      const existingCORs = await db.select({ corNumber: changeOrders.corNumber })
+        .from(changeOrders)
+        .where(and(
+          eq(changeOrders.projectId, projectId),
+          eq(changeOrders.organizationId, req.user!.organizationId)
+        ));
+
+      // Extract numeric parts and find the highest
+      const corNumbers = existingCORs
+        .map(cor => {
+          const match = cor.corNumber.match(/COR[–-]?(\d+)/i);
+          return match ? parseInt(match[1]) : 0;
+        })
+        .filter(num => !isNaN(num));
+
+      const nextNumber = Math.max(0, ...corNumbers) + 1;
+      const nextCorNumber = `COR-${nextNumber.toString().padStart(3, '0')}`;
+
+      res.json({ nextCorNumber });
+    } catch (error: any) {
+      console.error('Error generating next COR number:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

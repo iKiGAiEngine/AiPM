@@ -399,6 +399,29 @@ export const changeOrders = pgTable("change_orders", {
   uniqueCorNumber: uniqueIndex("change_orders_project_cor_number_unique").on(table.projectId, table.corNumber)
 }));
 
+// Change Order Lines (for multiple cost code line items)
+export const changeOrderLines = pgTable("change_order_lines", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  changeOrderId: uuid("change_order_id").references(() => changeOrders.id).notNull(),
+  lineNumber: integer("line_number").notNull(),
+  type: changeOrderTypeEnum("type").notNull(), // 'budget_adjustment' or 'added_scope'
+  // For budget adjustments
+  existingCostCodeId: uuid("existing_cost_code_id").references(() => contractEstimates.id),
+  // For added scope
+  newScopeCode: text("new_scope_code"),
+  newScopeDescription: text("new_scope_description"),
+  // Common fields
+  description: text("description"),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }),
+  unit: text("unit"),
+  unitCost: numeric("unit_cost", { precision: 12, scale: 2 }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  changeOrderIdx: index("change_order_lines_cor_idx").on(table.changeOrderId),
+  lineNumberIdx: index("change_order_lines_line_number_idx").on(table.changeOrderId, table.lineNumber)
+}));
+
 // Change Order Documents
 export const changeOrderDocs = pgTable("change_order_docs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1054,6 +1077,11 @@ export const insertChangeOrderSchema = createInsertSchema(changeOrders).omit({
   poCreatedAt: true
 });
 
+export const insertChangeOrderLineSchema = createInsertSchema(changeOrderLines).omit({
+  id: true,
+  createdAt: true
+});
+
 export const insertChangeOrderDocSchema = createInsertSchema(changeOrderDocs).omit({
   id: true,
   createdAt: true
@@ -1152,6 +1180,9 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
 export type ChangeOrder = typeof changeOrders.$inferSelect;
 export type InsertChangeOrder = z.infer<typeof insertChangeOrderSchema>;
+
+export type ChangeOrderLine = typeof changeOrderLines.$inferSelect;
+export type InsertChangeOrderLine = z.infer<typeof insertChangeOrderLineSchema>;
 
 export type ChangeOrderDoc = typeof changeOrderDocs.$inferSelect;
 export type InsertChangeOrderDoc = z.infer<typeof insertChangeOrderDocSchema>;
