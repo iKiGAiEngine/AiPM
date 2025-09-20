@@ -544,9 +544,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedProjectId = req.headers['x-selected-project-id'] as string;
       const effectiveProjectId = selectedProjectId || projectId;
 
-      let changeOrders;
+      let result;
       if (effectiveProjectId) {
-        changeOrders = await db.select()
+        result = await db.select()
           .from(changeOrders)
           .where(and(
             eq(changeOrders.projectId, effectiveProjectId),
@@ -554,13 +554,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ))
           .orderBy(desc(changeOrders.createdAt));
       } else {
-        changeOrders = await db.select()
+        result = await db.select()
           .from(changeOrders)
           .where(eq(changeOrders.organizationId, req.user!.organizationId))
           .orderBy(desc(changeOrders.createdAt));
       }
 
-      res.json(changeOrders);
+      res.json(result);
     } catch (error: any) {
       console.error('Error fetching change orders:', error);
       res.status(500).json({ error: error.message });
