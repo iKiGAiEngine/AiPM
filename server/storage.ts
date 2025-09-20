@@ -25,7 +25,7 @@ import {
   quotes, quoteLines, purchaseOrders, purchaseOrderLines,
   deliveries, deliveryLines, invoices, invoiceLines,
   notifications, projectMaterials, contractEstimates,
-  changeOrders, changeOrderDocs
+  changeOrders, changeOrderLines, changeOrderDocs
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, or, inArray, sql, ne } from "drizzle-orm";
@@ -139,17 +139,22 @@ export interface IStorage {
   createInvoiceLine(line: InsertInvoiceLine): Promise<InvoiceLine>;
   getInvoiceLines(invoiceId: string): Promise<InvoiceLine[]>;
   
-  // Change Orders
+  // Change Orders (with versioning support)
   createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder>;
-  getChangeOrder(id: string): Promise<ChangeOrder | undefined>;
+  getChangeOrder(id: string, versionId?: string): Promise<ChangeOrder | undefined>;
   getChangeOrdersByProject(projectId: string): Promise<ChangeOrder[]>;
   getChangeOrdersByOrganization(organizationId: string): Promise<ChangeOrder[]>;
   updateChangeOrder(id: string, updates: Partial<ChangeOrder>): Promise<void>;
   updateChangeOrderStatus(id: string, status: string): Promise<void>;
   
+  // Change Order Versioning
+  createNewChangeOrderVersion(changeOrderId: string, organizationId: string): Promise<{ versionId: string; version: number }>;
+  getChangeOrderVersionHistory(changeOrderId: string): Promise<Array<{ id: string; version: number; status: string; createdAt: Date }>>;
+  getChangeOrderWithLines(id: string, versionId?: string): Promise<{ changeOrder: ChangeOrder; lines: any[] } | undefined>;
+  
   // Change Order Documents
   createChangeOrderDoc(doc: InsertChangeOrderDoc): Promise<ChangeOrderDoc>;
-  getChangeOrderDocs(changeOrderId: string): Promise<ChangeOrderDoc[]>;
+  getChangeOrderDocs(changeOrderId: string, versionId?: string): Promise<ChangeOrderDoc[]>;
 
   // Notifications
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -1035,13 +1040,21 @@ export class DatabaseStorage implements IStorage {
     await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
   }
 
-  // Change Orders
+  // Change Orders (with versioning support)
   async createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder> {
-    const [newChangeOrder] = await db.insert(changeOrders).values(changeOrder).returning();
+    const [newChangeOrder] = await db.insert(changeOrders).values({
+      ...changeOrder,
+      // Initialize versioning fields for new change orders
+      currentVersion: 1,
+      latestTitle: changeOrder.title,
+      latestStatus: changeOrder.status || 'draft'
+    }).returning();
     return newChangeOrder;
   }
 
-  async getChangeOrder(id: string): Promise<ChangeOrder | undefined> {
+  async getChangeOrder(id: string, versionId?: string): Promise<ChangeOrder | undefined> {
+    // For now, during migration, always read from original table
+    // TODO: Add dual-read logic when versioning tables are ready
     const [changeOrder] = await db.select().from(changeOrders).where(eq(changeOrders.id, id));
     return changeOrder || undefined;
   }
@@ -1063,7 +1076,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateChangeOrderStatus(id: string, status: string): Promise<void> {
-    const updateData: any = { status: status as any, updatedAt: new Date() };
+    const updateData: any = { 
+      status: status as any, 
+      updatedAt: new Date(),
+      // Update latest status for version tracking
+      latestStatus: status as any
+    };
     
     if (status === 'approved') {
       updateData.approvedAt = new Date();
@@ -1074,13 +1092,50 @@ export class DatabaseStorage implements IStorage {
     await db.update(changeOrders).set(updateData).where(eq(changeOrders.id, id));
   }
 
+  // Change Order Versioning Methods
+  async createNewChangeOrderVersion(changeOrderId: string, organizationId: string): Promise<{ versionId: string; version: number }> {
+    // TODO: Implement when versioning tables are available
+    // For now, return placeholder values during migration period
+    throw new Error('Versioning not yet implemented - coming soon');
+  }
+
+  async getChangeOrderVersionHistory(changeOrderId: string): Promise<Array<{ id: string; version: number; status: string; createdAt: Date }>> {
+    // TODO: Implement when versioning tables are available  
+    // For now, return current change order as single version
+    const changeOrder = await this.getChangeOrder(changeOrderId);
+    if (!changeOrder) return [];
+    
+    return [{
+      id: changeOrder.id,
+      version: changeOrder.currentVersion || 1,
+      status: changeOrder.status || 'draft',
+      createdAt: changeOrder.createdAt || new Date()
+    }];
+  }
+
+  async getChangeOrderWithLines(id: string, versionId?: string): Promise<{ changeOrder: ChangeOrder; lines: any[] } | undefined> {
+    // Get change order
+    const changeOrder = await this.getChangeOrder(id, versionId);
+    if (!changeOrder) return undefined;
+    
+    // Get lines - for now read from original table structure
+    // TODO: Add dual-read logic when versioning tables are ready
+    const lines = await db.select().from(changeOrderLines)
+      .where(eq(changeOrderLines.changeOrderId, id))
+      .orderBy(changeOrderLines.lineNumber);
+    
+    return { changeOrder, lines };
+  }
+
   // Change Order Documents
   async createChangeOrderDoc(doc: InsertChangeOrderDoc): Promise<ChangeOrderDoc> {
     const [newDoc] = await db.insert(changeOrderDocs).values(doc).returning();
     return newDoc;
   }
 
-  async getChangeOrderDocs(changeOrderId: string): Promise<ChangeOrderDoc[]> {
+  async getChangeOrderDocs(changeOrderId: string, versionId?: string): Promise<ChangeOrderDoc[]> {
+    // For now, during migration, always read from original table structure
+    // TODO: Add dual-read logic when versioning tables are ready
     return await db.select().from(changeOrderDocs)
       .where(eq(changeOrderDocs.changeOrderId, changeOrderId))
       .orderBy(desc(changeOrderDocs.createdAt));
