@@ -372,7 +372,7 @@ export const deliveryLines = pgTable("delivery_lines", {
   deliveryIdx: index("delivery_lines_delivery_idx").on(table.deliveryId)
 }));
 
-// Change Orders
+// Change Orders (Keep existing structure, add versioning fields)
 export const changeOrders = pgTable("change_orders", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
@@ -383,10 +383,12 @@ export const changeOrders = pgTable("change_orders", {
   description: text("description"),
   originator: changeOrderOriginatorEnum("originator").notNull(),
   status: changeOrderStatusEnum("status").default('draft'),
-  // Removed individual type, existingCostCodeId, newScopeCode fields - now in change_order_lines
-  // Removed estimatedCost, finalCost - calculated from line items
   approvedAt: timestamp("approved_at"),
   poCreatedAt: timestamp("po_created_at"),
+  // New versioning fields (nullable initially for safe migration)
+  currentVersion: integer("current_version"),
+  latestTitle: text("latest_title"),
+  latestStatus: changeOrderStatusEnum("latest_status"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 }, (table) => ({
@@ -395,7 +397,26 @@ export const changeOrders = pgTable("change_orders", {
   uniqueCorNumber: uniqueIndex("change_orders_project_cor_number_unique").on(table.projectId, table.corNumber)
 }));
 
-// Change Order Lines (for multiple cost code line items)
+// Change Order Versions (Version-specific data)
+export const changeOrderVersions = pgTable("change_order_versions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  changeOrderId: uuid("change_order_id").references(() => changeOrders.id).notNull(),
+  version: integer("version").notNull(), // 1, 2, 3, etc.
+  title: text("title").notNull(),
+  description: text("description"),
+  originator: changeOrderOriginatorEnum("originator").notNull(),
+  status: changeOrderStatusEnum("status").default('draft'),
+  approvedAt: timestamp("approved_at"),
+  poCreatedAt: timestamp("po_created_at"),
+  createdById: uuid("created_by_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => ({
+  changeOrderIdx: index("change_order_versions_cor_idx").on(table.changeOrderId),
+  uniqueVersion: uniqueIndex("change_order_versions_cor_version_unique").on(table.changeOrderId, table.version)
+}));
+
+// Change Order Lines (Original structure - keep during migration)
 export const changeOrderLines = pgTable("change_order_lines", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   changeOrderId: uuid("change_order_id").references(() => changeOrders.id).notNull(),
@@ -418,7 +439,30 @@ export const changeOrderLines = pgTable("change_order_lines", {
   lineNumberIdx: index("change_order_lines_line_number_idx").on(table.changeOrderId, table.lineNumber)
 }));
 
-// Change Order Documents
+// Change Order Line Versions (New versioning structure)
+export const changeOrderLineVersions = pgTable("change_order_line_versions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  changeOrderVersionId: uuid("change_order_version_id").references(() => changeOrderVersions.id).notNull(),
+  lineNumber: integer("line_number").notNull(),
+  type: changeOrderTypeEnum("type").notNull(), // 'budget_adjustment' or 'added_scope'
+  // For budget adjustments
+  existingCostCodeId: uuid("existing_cost_code_id").references(() => contractEstimates.id),
+  // For added scope
+  newScopeCode: text("new_scope_code"),
+  newScopeDescription: text("new_scope_description"),
+  // Common fields
+  description: text("description"),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }),
+  unit: text("unit"),
+  unitCost: numeric("unit_cost", { precision: 12, scale: 2 }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  versionIdx: index("change_order_line_versions_version_idx").on(table.changeOrderVersionId),
+  lineNumberIdx: index("change_order_line_versions_line_number_idx").on(table.changeOrderVersionId, table.lineNumber)
+}));
+
+// Change Order Documents (Keep original structure during migration)
 export const changeOrderDocs = pgTable("change_order_docs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   changeOrderId: uuid("change_order_id").references(() => changeOrders.id).notNull(),
@@ -1068,12 +1112,18 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export const insertChangeOrderSchema = createInsertSchema(changeOrders).omit({
   id: true,
   createdAt: true,
+  updatedAt: true
+});
+
+export const insertChangeOrderVersionSchema = createInsertSchema(changeOrderVersions).omit({
+  id: true,
+  createdAt: true,
   updatedAt: true,
   approvedAt: true,
   poCreatedAt: true
 });
 
-export const insertChangeOrderLineSchema = createInsertSchema(changeOrderLines).omit({
+export const insertChangeOrderLineVersionSchema = createInsertSchema(changeOrderLineVersions).omit({
   id: true,
   createdAt: true
 });
@@ -1082,6 +1132,9 @@ export const insertChangeOrderDocSchema = createInsertSchema(changeOrderDocs).om
   id: true,
   createdAt: true
 });
+
+// Legacy schemas for backward compatibility during migration
+export const insertChangeOrderLineSchema = insertChangeOrderLineVersionSchema;
 
 export const insertMaterialImportRunSchema = createInsertSchema(materialImportRuns).omit({
   id: true,
@@ -1177,11 +1230,18 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type ChangeOrder = typeof changeOrders.$inferSelect;
 export type InsertChangeOrder = z.infer<typeof insertChangeOrderSchema>;
 
-export type ChangeOrderLine = typeof changeOrderLines.$inferSelect;
-export type InsertChangeOrderLine = z.infer<typeof insertChangeOrderLineSchema>;
+export type ChangeOrderVersion = typeof changeOrderVersions.$inferSelect;
+export type InsertChangeOrderVersion = z.infer<typeof insertChangeOrderVersionSchema>;
+
+export type ChangeOrderLineVersion = typeof changeOrderLineVersions.$inferSelect;
+export type InsertChangeOrderLineVersion = z.infer<typeof insertChangeOrderLineVersionSchema>;
 
 export type ChangeOrderDoc = typeof changeOrderDocs.$inferSelect;
 export type InsertChangeOrderDoc = z.infer<typeof insertChangeOrderDocSchema>;
+
+// Legacy types for backward compatibility during migration
+export type ChangeOrderLine = ChangeOrderLineVersion;
+export type InsertChangeOrderLine = InsertChangeOrderLineVersion;
 
 export type MaterialImportRun = typeof materialImportRuns.$inferSelect;
 export type InsertMaterialImportRun = z.infer<typeof insertMaterialImportRunSchema>;

@@ -12,7 +12,7 @@ import {
   type AuthenticatedRequest 
 } from "./middleware/auth";
 import { z } from "zod";
-import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, insertContractEstimateSchema, type InsertProject, invoices, contractEstimates, requisitionLines, purchaseOrders, purchaseOrderLines, invoiceLines, projectMaterials, changeOrders, changeOrderLines } from "@shared/schema";
+import { insertUserSchema, insertProjectSchema, insertVendorSchema, insertMaterialSchema, insertRequisitionSchema, insertRfqSchema, insertPurchaseOrderSchema, insertDeliverySchema, insertInvoiceSchema, insertContractEstimateSchema, type InsertProject, invoices, contractEstimates, requisitionLines, purchaseOrders, purchaseOrderLines, invoiceLines, projectMaterials, changeOrders, changeOrderVersions, changeOrderLineVersions, changeOrderLines } from "@shared/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { db } from "./db";
 import { threeWayMatchService } from "./services/three-way-match";
