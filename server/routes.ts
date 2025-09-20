@@ -546,18 +546,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let result;
       if (effectiveProjectId) {
-        result = await db.select()
-          .from(changeOrders)
-          .where(and(
-            eq(changeOrders.projectId, effectiveProjectId),
-            eq(changeOrders.organizationId, req.user!.organizationId)
-          ))
-          .orderBy(desc(changeOrders.createdAt));
+        result = await storage.getChangeOrdersByProject(effectiveProjectId);
+        // Filter by organization for security
+        result = result.filter(co => co.organizationId === req.user!.organizationId);
       } else {
-        result = await db.select()
-          .from(changeOrders)
-          .where(eq(changeOrders.organizationId, req.user!.organizationId))
-          .orderBy(desc(changeOrders.createdAt));
+        result = await storage.getChangeOrdersByOrganization(req.user!.organizationId);
       }
 
       res.json(result);
@@ -570,29 +563,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/change-orders/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
+      const versionId = req.query.versionId as string; // Support optional version parameter
       
-      // Get change order with lines
-      const changeOrder = await db.select()
-        .from(changeOrders)
-        .where(and(
-          eq(changeOrders.id, id),
-          eq(changeOrders.organizationId, req.user!.organizationId)
-        ))
-        .limit(1);
-
-      if (changeOrder.length === 0) {
+      // Get change order with lines using storage layer
+      const result = await storage.getChangeOrderWithLines(id, versionId);
+      
+      if (!result) {
         return res.status(404).json({ error: "Change order not found" });
       }
 
-      // Get change order lines
-      const lines = await db.select()
-        .from(changeOrderLines)
-        .where(eq(changeOrderLines.changeOrderId, id))
-        .orderBy(asc(changeOrderLines.lineNumber));
+      // Security check: ensure user has access to this organization's data
+      if (result.changeOrder.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Change order not found" });
+      }
 
       res.json({
-        ...changeOrder[0],
-        lines
+        ...result.changeOrder,
+        lines: result.lines
       });
     } catch (error: any) {
       console.error('Error fetching change order:', error);
@@ -608,12 +595,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete changeOrderData.corNumber; // Remove any client-sent COR number
       
       const projectId = changeOrderData.projectId;
-      const existingCORs = await db.select({ corNumber: changeOrders.corNumber })
-        .from(changeOrders)
-        .where(and(
-          eq(changeOrders.projectId, projectId),
-          eq(changeOrders.organizationId, req.user!.organizationId)
-        ));
+      
+      // Get existing change orders to generate next COR number
+      const existingChangeOrders = await storage.getChangeOrdersByProject(projectId);
+      const existingCORs = existingChangeOrders.filter(co => co.organizationId === req.user!.organizationId);
 
       // Extract numeric parts and find the highest
       const corNumbers = existingCORs
@@ -638,11 +623,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'draft'
       };
 
-      // Start transaction
+      // TODO: For now, create using direct transaction until storage layer supports line creation
+      // Future enhancement: Add createChangeOrderWithLines method to storage layer
       const result = await db.transaction(async (tx) => {
-        // Create change order
+        // Create change order using storage layer approach
         const [newChangeOrder] = await tx.insert(changeOrders)
-          .values(changeOrderToCreate)
+          .values({
+            ...changeOrderToCreate,
+            // Initialize versioning fields
+            currentVersion: 1,
+            latestTitle: changeOrderToCreate.title,
+            latestStatus: 'draft'
+          })
           .returning();
 
         // Create lines if provided
@@ -674,25 +666,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SECURITY: Never allow updates to COR number
       delete changeOrderData.corNumber;
 
-      // Check if change order exists and user has access
-      const existingChangeOrder = await db.select()
-        .from(changeOrders)
-        .where(and(
-          eq(changeOrders.id, id),
-          eq(changeOrders.organizationId, req.user!.organizationId)
-        ))
-        .limit(1);
-
-      if (existingChangeOrder.length === 0) {
+      // Check if change order exists and user has access using storage layer
+      const existingChangeOrder = await storage.getChangeOrder(id);
+      
+      if (!existingChangeOrder || existingChangeOrder.organizationId !== req.user!.organizationId) {
         return res.status(404).json({ error: "Change order not found" });
       }
 
-      // Start transaction
+      // TODO: For now, update using direct transaction until storage layer supports line updates
+      // Future enhancement: Add updateChangeOrderWithLines method to storage layer
       const result = await db.transaction(async (tx) => {
-        // Update change order
+        // Update change order using storage layer approach
         const [updatedChangeOrder] = await tx.update(changeOrders)
           .set({
             ...changeOrderData,
+            // Update versioning fields
+            latestTitle: changeOrderData.title || existingChangeOrder.title,
+            latestStatus: changeOrderData.status || existingChangeOrder.status,
             updatedAt: new Date()
           })
           .where(eq(changeOrders.id, id))
@@ -791,6 +781,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ nextCorNumber });
     } catch (error: any) {
       console.error('Error generating next COR number:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Change Order Versioning endpoints
+  app.get("/api/change-orders/:id/versions", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Security check: ensure user has access to this change order
+      const changeOrder = await storage.getChangeOrder(id);
+      if (!changeOrder || changeOrder.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Change order not found" });
+      }
+      
+      // Get version history
+      const versions = await storage.getChangeOrderVersionHistory(id);
+      res.json(versions);
+    } catch (error: any) {
+      console.error('Error fetching change order versions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/change-orders/:id/versions", requireRole(['Admin', 'PM']), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Security check: ensure user has access to this change order
+      const changeOrder = await storage.getChangeOrder(id);
+      if (!changeOrder || changeOrder.organizationId !== req.user!.organizationId) {
+        return res.status(404).json({ error: "Change order not found" });
+      }
+      
+      // Business rule: Only create new versions for submitted/approved change orders
+      if (changeOrder.status === 'draft') {
+        return res.status(400).json({ 
+          error: "Cannot create new version for draft change orders. Please edit the current version instead." 
+        });
+      }
+      
+      try {
+        // Create new version
+        const newVersion = await storage.createNewChangeOrderVersion(id, req.user!.organizationId);
+        res.status(201).json(newVersion);
+      } catch (error: any) {
+        if (error.message.includes('not yet implemented')) {
+          res.status(501).json({ 
+            error: "Versioning feature is coming soon. Please check back later." 
+          });
+        } else {
+          throw error;
+        }
+      }
+    } catch (error: any) {
+      console.error('Error creating change order version:', error);
       res.status(500).json({ error: error.message });
     }
   });
