@@ -1,26 +1,51 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Edit, FileText, Calendar, User, DollarSign } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Edit, FileText, Calendar, User, DollarSign, GitBranch, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ChangeOrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // State for version selection
+  const [selectedVersionId, setSelectedVersionId] = useState<string | undefined>(undefined);
 
-  // Query change order details
+  // Query change order details (with optional version)
   const { data: changeOrder, isLoading, error } = useQuery({
-    queryKey: ['/api/change-orders', id],
+    queryKey: ['/api/change-orders', id, selectedVersionId],
     queryFn: async () => {
       if (!id) throw new Error('Change Order ID is required');
-      const response = await fetch(`/api/change-orders/${id}`, {
+      const versionParam = selectedVersionId ? `?versionId=${selectedVersionId}` : '';
+      const response = await fetch(`/api/change-orders/${id}${versionParam}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (!response.ok) throw new Error('Failed to fetch change order details');
+      return response.json();
+    },
+    enabled: !!id
+  });
+
+  // Query version history
+  const { data: versions } = useQuery({
+    queryKey: ['/api/change-orders', id, 'versions'],
+    queryFn: async () => {
+      if (!id) return [];
+      const response = await fetch(`/api/change-orders/${id}/versions`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) return [];
       return response.json();
     },
     enabled: !!id
@@ -41,6 +66,53 @@ export default function ChangeOrderDetail() {
     },
     enabled: !!id
   });
+
+  // Mutation for creating new version
+  const createVersionMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error('Change Order ID is required');
+      const response = await fetch(`/api/change-orders/${id}/versions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create new version');
+      }
+      return response.json();
+    },
+    onSuccess: (newVersion) => {
+      toast({
+        title: "New Version Created",
+        description: `Version ${newVersion.version} has been created and is ready for editing.`,
+      });
+      
+      // Invalidate and refetch queries
+      queryClient.invalidateQueries({ queryKey: ['/api/change-orders', id, 'versions'] });
+      
+      // Navigate to the new version for editing
+      setSelectedVersionId(newVersion.versionId);
+      navigate(`/change-orders/${newVersion.versionId}/edit`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Create Version",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateNewVersion = () => {
+    createVersionMutation.mutate();
+  };
+
+  const formatVersionDisplay = (version: number) => {
+    return version === 1 ? 'v1.00' : `v1.${version.toString().padStart(2, '0')}`;
+  };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -132,14 +204,55 @@ export default function ChangeOrderDetail() {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">{changeOrder.corNumber}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-foreground">{changeOrder.corNumber}</h1>
+              {/* Version Badge */}
+              <Badge variant="outline" className="text-xs">
+                <GitBranch className="w-3 h-3 mr-1" />
+                {formatVersionDisplay(changeOrder.currentVersion || 1)}
+              </Badge>
+            </div>
             <p className="text-muted-foreground">{changeOrder.title}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Version Dropdown */}
+          {versions && versions.length > 1 && (
+            <Select
+              value={selectedVersionId || changeOrder.id}
+              onValueChange={setSelectedVersionId}
+            >
+              <SelectTrigger className="w-32" data-testid="select-version">
+                <SelectValue placeholder="Version" />
+              </SelectTrigger>
+              <SelectContent>
+                {versions.map((version: any) => (
+                  <SelectItem key={version.id} value={version.id}>
+                    {formatVersionDisplay(version.version)}
+                    {version.status === 'draft' && ' (Draft)'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          {/* New Version Button */}
+          {changeOrder.status !== 'draft' && (
+            <Button
+              variant="outline"
+              onClick={handleCreateNewVersion}
+              disabled={createVersionMutation.isPending}
+              data-testid="button-new-version"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {createVersionMutation.isPending ? 'Creating...' : 'New Version'}
+            </Button>
+          )}
+          
+          {/* Edit Button */}
           {changeOrder.status === 'draft' && (
             <Button 
-              onClick={() => navigate(`/change-orders/${id}/edit`)}
+              onClick={() => navigate(`/change-orders/${selectedVersionId || id}/edit`)}
               data-testid="button-edit-change-order"
             >
               <Edit className="w-4 h-4 mr-2" />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Filter, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +66,10 @@ export default function ChangeOrders() {
       default:
         return type;
     }
+  };
+
+  const formatVersionDisplay = (version: number) => {
+    return version === 1 ? 'v1.00' : `v1.${version.toString().padStart(2, '0')}`;
   };
 
   const filteredChangeOrders = changeOrders?.filter((co: any) => {
@@ -170,6 +174,10 @@ export default function ChangeOrders() {
                       </Badge>
                       <Badge variant="outline">
                         {getTypeLabel(changeOrder.type)}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        <GitBranch className="w-3 h-3 mr-1" />
+                        {formatVersionDisplay(changeOrder.currentVersion || 1)}
                       </Badge>
                     </div>
                     <p className="text-muted-foreground mb-2">{changeOrder.title}</p>
