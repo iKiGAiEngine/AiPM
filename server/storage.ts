@@ -1094,23 +1094,105 @@ export class DatabaseStorage implements IStorage {
 
   // Change Order Versioning Methods
   async createNewChangeOrderVersion(changeOrderId: string, organizationId: string): Promise<{ versionId: string; version: number }> {
-    // TODO: Implement when versioning tables are available
-    // For now, return placeholder values during migration period
-    throw new Error('Versioning not yet implemented - coming soon');
+    // Transitional implementation: Clone change order within existing table structure
+    // This provides basic versioning until full versioning tables are migrated
+    
+    return await db.transaction(async (tx) => {
+      // Get the original change order
+      const [originalCO] = await tx.select()
+        .from(changeOrders)
+        .where(and(
+          eq(changeOrders.id, changeOrderId),
+          eq(changeOrders.organizationId, organizationId)
+        ));
+      
+      if (!originalCO) {
+        throw new Error('Change order not found');
+      }
+      
+      // Business rule: Only create versions for submitted/approved change orders
+      if (originalCO.status === 'draft') {
+        throw new Error('Cannot create new version for draft change orders');
+      }
+      
+      // Get existing lines
+      const originalLines = await tx.select()
+        .from(changeOrderLines)
+        .where(eq(changeOrderLines.changeOrderId, changeOrderId))
+        .orderBy(changeOrderLines.lineNumber);
+      
+      // Create new change order (clone) with incremented version
+      const newVersion = (originalCO.currentVersion || 1) + 1;
+      const newCorNumber = originalCO.corNumber.includes('.') 
+        ? originalCO.corNumber.replace(/\.(\d+)$/, `.${newVersion.toString().padStart(2, '0')}`)
+        : `${originalCO.corNumber}.${newVersion.toString().padStart(2, '0')}`;
+      
+      const [newChangeOrder] = await tx.insert(changeOrders)
+        .values({
+          ...originalCO,
+          id: undefined, // Let DB generate new ID
+          corNumber: newCorNumber,
+          currentVersion: newVersion,
+          latestTitle: originalCO.title,
+          latestStatus: 'draft', // Reset to draft
+          status: 'draft', // Reset to draft
+          approvedAt: null,
+          poCreatedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      // Clone lines to new change order
+      if (originalLines.length > 0) {
+        const clonedLines = originalLines.map(line => ({
+          ...line,
+          id: undefined, // Let DB generate new ID
+          changeOrderId: newChangeOrder.id,
+          createdAt: new Date()
+        }));
+        
+        await tx.insert(changeOrderLines).values(clonedLines);
+      }
+      
+      return {
+        versionId: newChangeOrder.id,
+        version: newVersion
+      };
+    });
   }
 
   async getChangeOrderVersionHistory(changeOrderId: string): Promise<Array<{ id: string; version: number; status: string; createdAt: Date }>> {
-    // TODO: Implement when versioning tables are available  
-    // For now, return current change order as single version
-    const changeOrder = await this.getChangeOrder(changeOrderId);
-    if (!changeOrder) return [];
+    // Get the base change order to find the base COR number
+    const baseChangeOrder = await this.getChangeOrder(changeOrderId);
+    if (!baseChangeOrder) return [];
     
-    return [{
-      id: changeOrder.id,
-      version: changeOrder.currentVersion || 1,
-      status: changeOrder.status || 'draft',
-      createdAt: changeOrder.createdAt || new Date()
-    }];
+    // Extract base COR number (remove version suffix if present)
+    const baseCORNumber = baseChangeOrder.corNumber.split('.')[0];
+    
+    // Find all change orders with the same base COR number (all versions)
+    const allVersions = await db.select({
+      id: changeOrders.id,
+      corNumber: changeOrders.corNumber,
+      currentVersion: changeOrders.currentVersion,
+      status: changeOrders.status,
+      createdAt: changeOrders.createdAt
+    })
+    .from(changeOrders)
+    .where(and(
+      like(changeOrders.corNumber, `${baseCORNumber}%`),
+      eq(changeOrders.organizationId, baseChangeOrder.organizationId),
+      eq(changeOrders.projectId, baseChangeOrder.projectId)
+    ))
+    .orderBy(asc(changeOrders.currentVersion));
+    
+    // Transform to expected format
+    return allVersions.map(co => ({
+      id: co.id,
+      version: co.currentVersion || 1,
+      status: co.status || 'draft',
+      createdAt: co.createdAt || new Date()
+    }));
   }
 
   async getChangeOrderWithLines(id: string, versionId?: string): Promise<{ changeOrder: ChangeOrder; lines: any[] } | undefined> {
