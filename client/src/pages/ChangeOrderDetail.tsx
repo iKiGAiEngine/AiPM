@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Edit, FileText, Calendar, User, DollarSign, GitBranch, Plus } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Calendar, User, DollarSign, GitBranch, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -109,6 +109,66 @@ export default function ChangeOrderDetail() {
   const handleCreateNewVersion = () => {
     createVersionMutation.mutate();
   };
+
+  // Query current user for role checking
+  const { data: currentUser } = useQuery({
+    queryKey: ['/api/users/me'],
+    queryFn: async () => {
+      const response = await fetch('/api/users/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch user');
+      return response.json();
+    }
+  });
+
+  // Mutation for approving change order
+  const approveChangeOrderMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error('Change Order ID is required');
+      const response = await fetch(`/api/change-orders/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'approved' }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to approve change order');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Change Order Approved",
+        description: `${changeOrder?.corNumber} has been approved successfully.`,
+      });
+      
+      // Invalidate and refetch the change order
+      queryClient.invalidateQueries({ queryKey: ['/api/change-orders', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/change-orders'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Approve",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleApproveChangeOrder = () => {
+    if (window.confirm(`Are you sure you want to approve ${changeOrder?.corNumber}? This action cannot be undone.`)) {
+      approveChangeOrderMutation.mutate();
+    }
+  };
+
+  // Check if user can approve (PM or Admin role)
+  const canApprove = currentUser && ['PM', 'Admin'].includes(currentUser.role);
 
   const formatVersionDisplay = (version: number) => {
     return version === 1 ? 'v1.00' : `v1.${version.toString().padStart(2, '0')}`;
@@ -236,6 +296,19 @@ export default function ChangeOrderDetail() {
             </Select>
           )}
           
+          {/* Approve Button */}
+          {canApprove && changeOrder.status === 'pending_approval' && (
+            <Button
+              onClick={handleApproveChangeOrder}
+              disabled={approveChangeOrderMutation.isPending}
+              data-testid="button-approve-change-order"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              {approveChangeOrderMutation.isPending ? 'Approving...' : 'Approve'}
+            </Button>
+          )}
+
           {/* New Version Button */}
           {changeOrder.status !== 'draft' && (
             <Button
