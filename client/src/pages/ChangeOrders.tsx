@@ -72,12 +72,35 @@ export default function ChangeOrders() {
     return version === 1 ? 'v1.00' : `v1.${version.toString().padStart(2, '0')}`;
   };
 
-  const filteredChangeOrders = changeOrders?.filter((co: any) => {
-    const matchesSearch = co.corNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         co.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || co.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  }) || [];
+  // First filter by search and status, then show only latest versions
+  const filteredChangeOrders = (() => {
+    if (!changeOrders) return [];
+    
+    // Step 1: Filter by search and status
+    const initialFiltered = changeOrders.filter((co: any) => {
+      const matchesSearch = co.corNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           co.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || co.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+    
+    // Step 2: Group by base COR number and keep only latest version
+    const latestVersionsMap = new Map();
+    
+    initialFiltered.forEach((co: any) => {
+      // Extract base COR number (e.g., "COR-001" from both "COR-001" and "COR-001.02")
+      const baseCor = co.corNumber.split('.')[0]; // This handles both "COR-001" and "COR-001.02"
+      const currentVersion = co.currentVersion || 1;
+      
+      if (!latestVersionsMap.has(baseCor) || 
+          latestVersionsMap.get(baseCor).currentVersion < currentVersion) {
+        latestVersionsMap.set(baseCor, co);
+      }
+    });
+    
+    // Return only the latest versions
+    return Array.from(latestVersionsMap.values());
+  })();
 
   if (!selectedProject) {
     return (

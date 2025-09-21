@@ -124,6 +124,43 @@ export default function ChangeOrderDetail() {
     }
   });
 
+  // Mutation for submitting change order for approval
+  const submitForApprovalMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error('Change Order ID is required');
+      const response = await fetch(`/api/change-orders/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'pending_approval' }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit for approval');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Submitted for Approval",
+        description: `${changeOrder?.corNumber} has been submitted for approval.`,
+      });
+      
+      // Invalidate and refetch the change order
+      queryClient.invalidateQueries({ queryKey: ['/api/change-orders', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/change-orders'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Submit",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Mutation for approving change order
   const approveChangeOrderMutation = useMutation({
     mutationFn: async () => {
@@ -160,6 +197,12 @@ export default function ChangeOrderDetail() {
       });
     },
   });
+
+  const handleSubmitForApproval = () => {
+    if (window.confirm(`Are you sure you want to submit ${changeOrder?.corNumber} for approval? You will not be able to edit it after submission.`)) {
+      submitForApprovalMutation.mutate();
+    }
+  };
 
   const handleApproveChangeOrder = () => {
     if (window.confirm(`Are you sure you want to approve ${changeOrder?.corNumber}? This action cannot be undone.`)) {
@@ -319,6 +362,20 @@ export default function ChangeOrderDetail() {
             >
               <Plus className="w-4 h-4 mr-2" />
               {createVersionMutation.isPending ? 'Creating...' : 'New Version'}
+            </Button>
+          )}
+          
+          {/* Submit for Approval Button */}
+          {changeOrder.status === 'draft' && (
+            <Button
+              variant="outline"
+              onClick={handleSubmitForApproval}
+              disabled={submitForApprovalMutation.isPending}
+              data-testid="button-submit-for-approval"
+              className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              {submitForApprovalMutation.isPending ? 'Submitting...' : 'Submit for Approval'}
             </Button>
           )}
           
