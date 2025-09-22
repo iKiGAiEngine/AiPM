@@ -41,7 +41,7 @@ export const invoiceStatusEnum = pgEnum('invoice_status', ['pending', 'approved'
 export const matchStatusEnum = pgEnum('match_status', ['matched', 'price_variance', 'qty_variance', 'missing_po', 'tax_variance', 'freight_variance']);
 
 // Change Order Enums
-export const changeOrderStatusEnum = pgEnum('change_order_status', ['draft', 'submitted', 'approved', 'rejected', 'po_created']);
+export const changeOrderStatusEnum = pgEnum('change_order_status', ['draft', 'submitted', 'pending_approval', 'approved', 'rejected', 'po_created']);
 export const changeOrderTypeEnum = pgEnum('change_order_type', ['budget_adjustment', 'added_scope']);
 export const changeOrderOriginatorEnum = pgEnum('change_order_originator', ['rfi', 'addendum', 'email', 'owner_directive', 'other']);
 export const changeOrderDocKindEnum = pgEnum('change_order_doc_kind', ['originator_backup', 'approval_backup', 'other']);
