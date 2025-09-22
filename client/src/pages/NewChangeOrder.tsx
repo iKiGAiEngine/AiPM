@@ -210,7 +210,7 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
 
   // Create/Update mutation
   const saveChangeOrder = useMutation({
-    mutationFn: async (data: ChangeOrderForm) => {
+    mutationFn: async ({ data, status }: { data: ChangeOrderForm; status: 'draft' | 'pending_approval' }) => {
       if (!selectedProject) throw new Error("No project selected");
       
       const url = isEdit ? `/api/change-orders/${id}` : '/api/change-orders';
@@ -221,7 +221,7 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
       const transformedData = {
         ...dataWithoutCor,
         projectId: selectedProject.id,
-        status: 'draft',
+        status: status,
         lines: data.lines.map(line => ({
           ...line,
           quantity: line.quantity ? parseFloat(line.quantity) : undefined,
@@ -245,10 +245,11 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
       
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      const statusText = variables.status === 'draft' ? 'saved as draft' : 'submitted for approval';
       toast({
         title: `Change Order ${isEdit ? 'Updated' : 'Created'}`,
-        description: `${data.corNumber} has been ${isEdit ? 'updated' : 'created'} successfully.`,
+        description: `${data.corNumber} has been ${statusText} successfully.`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/change-orders'] });
       navigate(`/change-orders/${data.id}`);
@@ -262,8 +263,12 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
     },
   });
 
-  const onSubmit = (data: ChangeOrderForm) => {
-    saveChangeOrder.mutate(data);
+  const onSaveDraft = (data: ChangeOrderForm) => {
+    saveChangeOrder.mutate({ data, status: 'draft' });
+  };
+
+  const onSubmitForApproval = (data: ChangeOrderForm) => {
+    saveChangeOrder.mutate({ data, status: 'pending_approval' });
   };
 
   if (!selectedProject) {
@@ -301,7 +306,7 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
 
       <div className="max-w-4xl">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form className="space-y-6">
             {/* Basic Information */}
             <Card>
               <CardHeader>
@@ -682,20 +687,45 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
               >
                 Cancel
               </Button>
+              
+              {/* Save Draft Button */}
               <Button 
-                type="submit" 
+                type="button"
+                variant="outline"
+                onClick={form.handleSubmit(onSaveDraft)}
                 disabled={saveChangeOrder.isPending}
-                data-testid="button-save"
+                data-testid="button-save-draft"
               >
                 {saveChangeOrder.isPending ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                    {isEdit ? 'Updating...' : 'Creating...'}
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    Saving...
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    {isEdit ? 'Update Change Order' : 'Create Change Order'}
+                    Save Draft
+                  </>
+                )}
+              </Button>
+              
+              {/* Submit for Approval Button */}
+              <Button 
+                type="button"
+                onClick={form.handleSubmit(onSubmitForApproval)}
+                disabled={saveChangeOrder.isPending}
+                data-testid="button-submit-for-approval"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {saveChangeOrder.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Submit for Approval
                   </>
                 )}
               </Button>
