@@ -208,9 +208,23 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
     }
   };
 
-  // Create/Update mutation
+  // Query current user to check if they're Admin/PM for auto-approval
+  const { data: currentUser } = useQuery({
+    queryKey: ['/api/users/me'],
+    queryFn: async () => {
+      const response = await fetch('/api/users/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch user');
+      return response.json();
+    }
+  });
+
+  // Create/Update mutation for save draft and regular updates
   const saveChangeOrder = useMutation({
-    mutationFn: async ({ data, status }: { data: ChangeOrderForm; status: 'draft' | 'pending_approval' }) => {
+    mutationFn: async ({ data, status }: { data: ChangeOrderForm; status: 'draft' | 'pending_approval' | 'approved' }) => {
       if (!selectedProject) throw new Error("No project selected");
       
       const url = isEdit ? `/api/change-orders/${id}` : '/api/change-orders';
@@ -263,12 +277,73 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
     },
   });
 
+  // Create new version mutation for edit mode submit for approval
+  const createVersionMutation = useMutation({
+    mutationFn: async ({ data, autoApprove }: { data: ChangeOrderForm; autoApprove: boolean }) => {
+      if (!id) throw new Error("Change Order ID is required");
+      if (!selectedProject) throw new Error("No project selected");
+      
+      // Transform data for API - NEVER send COR number (server generates it)
+      const { corNumber, ...dataWithoutCor } = data;
+      const transformedData = {
+        ...dataWithoutCor,
+        projectId: selectedProject.id,
+        status: autoApprove ? 'approved' : 'pending_approval',
+        lines: data.lines.map(line => ({
+          ...line,
+          quantity: line.quantity ? parseFloat(line.quantity) : undefined,
+          unitCost: line.unitCost ? parseFloat(line.unitCost) : undefined,
+          amount: parseFloat(line.amount)
+        }))
+      };
+      
+      const response = await fetch(`/api/change-orders/${id}/versions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify(transformedData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create new version');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      const statusText = variables.autoApprove ? 'approved automatically' : 'submitted for approval';
+      toast({
+        title: "New Version Created",
+        description: `${data.corNumber} has been ${statusText} successfully.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/change-orders'] });
+      navigate(`/change-orders/${data.id}`);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSaveDraft = (data: ChangeOrderForm) => {
     saveChangeOrder.mutate({ data, status: 'draft' });
   };
 
   const onSubmitForApproval = (data: ChangeOrderForm) => {
-    saveChangeOrder.mutate({ data, status: 'pending_approval' });
+    if (isEdit) {
+      // For edit mode, create a new version with next version number
+      const isAdminOrPM = currentUser && ['Admin', 'PM'].includes(currentUser.role);
+      createVersionMutation.mutate({ data, autoApprove: isAdminOrPM });
+    } else {
+      // For new change orders, use regular creation
+      const isAdminOrPM = currentUser && ['Admin', 'PM'].includes(currentUser.role);
+      saveChangeOrder.mutate({ data, status: isAdminOrPM ? 'approved' : 'pending_approval' });
+    }
   };
 
   if (!selectedProject) {
@@ -713,19 +788,19 @@ export default function NewChangeOrder({ isEdit = false }: NewChangeOrderProps) 
               <Button 
                 type="button"
                 onClick={form.handleSubmit(onSubmitForApproval)}
-                disabled={saveChangeOrder.isPending}
+                disabled={saveChangeOrder.isPending || createVersionMutation.isPending}
                 data-testid="button-submit-for-approval"
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {saveChangeOrder.isPending ? (
+                {(saveChangeOrder.isPending || createVersionMutation.isPending) ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Submitting...
+                    {isEdit ? 'Creating Version...' : 'Submitting...'}
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Submit for Approval
+                    {isEdit ? 'Submit for Approval (New Version)' : 'Submit for Approval'}
                   </>
                 )}
               </Button>
