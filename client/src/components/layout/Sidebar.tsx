@@ -172,6 +172,10 @@ export default function Sidebar() {
   };
 
   const isActive = (href: string) => {
+    // Special handling for Projects link - show as active when viewing any project detail
+    if (href === "/projects") {
+      return location.pathname === href || location.pathname.startsWith("/projects/");
+    }
     return location.pathname === href;
   };
 
