@@ -181,19 +181,28 @@ export default function Sidebar() {
 
   const handleNavigation = (href: string) => {
     // Special handling for Projects link - redirect to current project details
-    if (href === "/projects" && selectedProject) {
-      const projectDetailsHref = `/projects/${selectedProject.id}`;
-      // Don't navigate if already on the target project details page
-      if (location.pathname === projectDetailsHref) {
+    if (href === "/projects") {
+      if (selectedProject && selectedProject.id) {
+        const projectDetailsHref = `/projects/${selectedProject.id}`;
+        // Don't navigate if already on the target project details page
+        if (location.pathname === projectDetailsHref) {
+          console.log(`Already on project details page: ${projectDetailsHref}`);
+          return;
+        }
+        console.log(`Navigation clicked: Projects -> redirecting to current project details: ${projectDetailsHref}`);
+        navigate(projectDetailsHref);
+        return;
+      } else {
+        // No project selected - go to project list
+        console.log(`Navigation clicked: Projects -> no project selected, going to project list`);
+        navigate("/projects");
         return;
       }
-      console.log(`Navigation clicked: from ${location.pathname} to ${projectDetailsHref} (Projects -> Project Details)`);
-      navigate(projectDetailsHref);
-      return;
     }
     
     // Don't navigate if already on the target page
     if (location.pathname === href) {
+      console.log(`Already on target page: ${href}`);
       return;
     }
     
