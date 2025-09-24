@@ -122,16 +122,45 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
   };
 
   const isActive = (href: string) => {
+    // Special handling for Projects link - show as active when viewing any project detail
+    if (href === "/projects") {
+      return location.pathname === href || location.pathname.startsWith("/projects/");
+    }
     return location.pathname === href;
   };
 
   const handleNavigation = (href: string) => {
+    // Special handling for Projects link - redirect to current project details
+    if (href === "/projects") {
+      if (selectedProject && selectedProject.id) {
+        const projectDetailsHref = `/projects/${selectedProject.id}`;
+        // Don't navigate if already on the target project details page
+        if (location.pathname === projectDetailsHref) {
+          console.log(`Mobile Nav: Already on project details page: ${projectDetailsHref}`);
+          onClose();
+          return;
+        }
+        console.log(`Mobile Nav: Projects -> redirecting to current project details: ${projectDetailsHref}`);
+        navigate(projectDetailsHref);
+        onClose();
+        return;
+      } else {
+        // No project selected - go to project list
+        console.log(`Mobile Nav: Projects -> no project selected, going to project list`);
+        navigate("/projects");
+        onClose();
+        return;
+      }
+    }
+    
     // Don't navigate if already on the target page
     if (location.pathname === href) {
+      console.log(`Mobile Nav: Already on target page: ${href}`);
       onClose();
       return;
     }
     
+    console.log(`Mobile Nav: Navigation clicked: from ${location.pathname} to ${href}`);
     navigate(href);
     onClose();
   };
