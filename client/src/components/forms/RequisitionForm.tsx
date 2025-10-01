@@ -152,11 +152,11 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
   const projectMaterials = materialsResponse?.items || [];
 
   // Get unique scope types for filtering
-  const scopeTypes = useMemo(() => {
+  const scopeTypes = useMemo<string[]>(() => {
     const types = Array.from(new Set(projectMaterials
       .map((m: any) => m.category)
       .filter(Boolean)
-    )).sort();
+    )).sort() as string[];
     return types;
   }, [projectMaterials]);
 
@@ -239,6 +239,23 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
       setSelectedProject(existingRequisition.projectId || "");
     }
   }, [existingRequisition, existingLines, isEdit]);
+
+  // Auto-populate materials when they are loaded (for new requisitions only)
+  useEffect(() => {
+    if (!isEdit && projectMaterials.length > 0 && form.getValues('lines').length === 0) {
+      const materialLines = projectMaterials.map((material: any) => ({
+        materialId: material.id,
+        description: material.description,
+        quantity: 1,
+        unit: material.unit,
+        estimatedCost: parseFloat(material.unitPrice || '0'),
+        notes: "",
+        model: material.model || ""
+      }));
+      
+      form.setValue('lines', materialLines);
+    }
+  }, [projectMaterials, isEdit]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -487,24 +504,14 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
           {/* Project and Basic Info */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="projectId">Project *</Label>
-              <Select 
-                value={form.watch('projectId') || ''} 
-                onValueChange={(value) => {
-                  form.setValue('projectId', value);
-                  setSelectedProject(value);
-                }}>
-                <SelectTrigger data-testid="select-project" className="h-12 text-base">
-                  <SelectValue placeholder="Select project..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="projectId">Project</Label>
+              <Input
+                value={contextProject?.name || 'No project selected'}
+                disabled
+                className="h-12 text-base bg-muted cursor-not-allowed"
+                data-testid="input-project-readonly"
+              />
+              <input type="hidden" {...form.register('projectId')} />
             </div>
             
             <div className="space-y-2">
@@ -589,8 +596,8 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Scope Types</SelectItem>
-                          {scopeTypes.map((type) => (
-                            <SelectItem key={type} value={type || ""}>
+                          {scopeTypes.map((type: string) => (
+                            <SelectItem key={type} value={type}>
                               {type}
                             </SelectItem>
                           ))}
@@ -604,7 +611,7 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
                     <div className="max-h-96 overflow-y-auto">
                       {filteredMaterials.length > 0 ? (
                         <div className="divide-y divide-border">
-                          {filteredMaterials.map((material) => (
+                          {filteredMaterials.map((material: any) => (
                             <div 
                               key={material.id} 
                               className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors"
