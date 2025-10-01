@@ -1071,11 +1071,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create requisition lines
       if (lines && lines.length > 0) {
         for (const line of lines) {
-          // Always set materialId to null to avoid foreign key constraint issues
-          // The description field contains the material information
           await storage.createRequisitionLine({
             requisitionId: requisition.id,
-            materialId: null, // Temporarily set to null to avoid foreign key issues
+            materialId: null,
+            projectMaterialId: line.materialId || null,
             description: line.description,
             quantity: line.quantity.toString(),
             unit: line.unit,

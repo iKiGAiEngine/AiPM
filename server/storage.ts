@@ -1297,7 +1297,7 @@ export class DatabaseStorage implements IStorage {
       // Get all requisition lines for this project that are in active status
       const usedMaterials = await db
         .select({
-          description: requisitionLines.description,
+          projectMaterialId: requisitionLines.projectMaterialId,
           quantity: requisitionLines.quantity
         })
         .from(requisitionLines)
@@ -1313,18 +1313,11 @@ export class DatabaseStorage implements IStorage {
           )
         ));
 
-      // Match requisition lines to project materials by description and sum quantities
+      // Sum quantities by project material ID
       usedMaterials.forEach(item => {
-        if (item.description) {
-          // Find matching project material by description
-          const matchingMaterial = allMaterials.find(pm => 
-            pm.description.toLowerCase().trim() === item.description.toLowerCase().trim()
-          );
-          
-          if (matchingMaterial) {
-            const currentUsed = usedQuantities[matchingMaterial.id] || 0;
-            usedQuantities[matchingMaterial.id] = currentUsed + parseFloat(item.quantity?.toString() || '0');
-          }
+        if (item.projectMaterialId) {
+          const currentUsed = usedQuantities[item.projectMaterialId] || 0;
+          usedQuantities[item.projectMaterialId] = currentUsed + parseFloat(item.quantity?.toString() || '0');
         }
       });
 
