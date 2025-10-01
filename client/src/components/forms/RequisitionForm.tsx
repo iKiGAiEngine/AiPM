@@ -195,7 +195,7 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
   const form = useForm<RequisitionFormData>({
     resolver: zodResolver(requisitionSchema),
     defaultValues: {
-      projectId: contextProject?.id || "",
+      projectId: "",
       title: "",
       targetDeliveryDate: "",
       deliveryLocation: "",
@@ -204,13 +204,14 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
     }
   });
 
-  // Auto-select context project when available (for new requisitions)
+  // Initialize project selection from context (for new requisitions only)
   useEffect(() => {
-    if (!isEdit && contextProject && !form.getValues("projectId")) {
+    if (!isEdit && contextProject) {
+      // Always use the context project for new requisitions
       form.setValue("projectId", contextProject.id);
       setSelectedProject(contextProject.id);
     }
-  }, [contextProject, isEdit, form]);
+  }, [contextProject, isEdit]);
 
   // Update form values when existing requisition data is loaded
   useEffect(() => {
@@ -240,9 +241,12 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
     }
   }, [existingRequisition, existingLines, isEdit]);
 
+  // Track if materials have been auto-populated
+  const [materialsPopulated, setMaterialsPopulated] = useState(false);
+
   // Auto-populate materials when they are loaded (for new requisitions only)
   useEffect(() => {
-    if (!isEdit && projectMaterials.length > 0 && form.getValues('lines').length === 0) {
+    if (!isEdit && projectMaterials.length > 0 && !materialsPopulated && selectedProject) {
       const materialLines = projectMaterials.map((material: any) => ({
         materialId: material.id,
         description: material.description,
@@ -254,8 +258,9 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
       }));
       
       form.setValue('lines', materialLines);
+      setMaterialsPopulated(true);
     }
-  }, [projectMaterials, isEdit]);
+  }, [projectMaterials, isEdit, materialsPopulated, selectedProject]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
