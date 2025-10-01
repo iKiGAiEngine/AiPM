@@ -2839,23 +2839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Project Materials routes
-  app.get("/api/projects/:projectId/materials", authenticateToken, async (req: AuthenticatedRequest, res) => {
-    try {
-      const { projectId } = req.params;
-      const { category, costCode, search } = req.query;
-      
-      const materials = await storage.getProjectMaterialsByProject(projectId, req.user!.organizationId, {
-        category: category as string,
-        costCode: costCode as string,
-        search: search as string
-      });
-      
-      res.json(materials);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch project materials" });
-    }
-  });
+  // Project Materials routes - removed duplicate, using comprehensive route at line 350
 
   // Material Imports routes
   app.use("/api", materialImportsRouter);
