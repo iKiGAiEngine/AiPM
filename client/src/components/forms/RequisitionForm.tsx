@@ -331,6 +331,9 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
         description: isEdit ? "Requisition updated successfully" : "Requisition created successfully",
       });
       
+      // Invalidate requisitions cache to refresh the list
+      await queryClient.invalidateQueries({ queryKey: ['/api/requisitions'] });
+      
       // Navigate back to requisitions list or the requisition view
       if (isEdit) {
         navigate(`/requisitions/${requisitionId}`);
