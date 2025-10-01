@@ -214,16 +214,7 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
 
   // Update form values when existing requisition data is loaded
   useEffect(() => {
-    console.log('Form update effect triggered:', { 
-      isEdit, 
-      hasRequisition: !!existingRequisition, 
-      hasLines: !!existingLines,
-      linesLength: existingLines?.length 
-    });
-    
     if (isEdit && existingRequisition && existingLines !== undefined) {
-      console.log('Updating form with existing data');
-      
       const formattedLines = existingLines.map((line: any) => ({
         materialId: line.materialId || "",
         description: line.description || "",
@@ -233,8 +224,6 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
         notes: line.notes || "",
         model: line.model || ""
       }));
-      
-      console.log('Formatted lines for form:', formattedLines);
       
       const formData = {
         projectId: existingRequisition.projectId || "",
@@ -246,14 +235,10 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
         lines: formattedLines
       };
       
-      console.log('Form data to reset:', formData);
       form.reset(formData);
-      
-      // Set the selected project for materials loading
       setSelectedProject(existingRequisition.projectId || "");
-      console.log('Set selected project to:', existingRequisition.projectId);
     }
-  }, [existingRequisition, existingLines, form, isEdit]);
+  }, [existingRequisition, existingLines, isEdit]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
