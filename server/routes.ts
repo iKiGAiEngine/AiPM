@@ -369,7 +369,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate query parameters
       const { available, search, category, limit = "100", offset = "0" } = req.query;
       const availableFlag = available === 'true';
-      console.log(`GET /api/projects/${projectId}/materials - available=${available}, availableFlag=${availableFlag}`);
       const limitNum = Math.max(1, Math.min(200, parseInt(limit as string) || 100));
       const offsetNum = Math.max(0, parseInt(offset as string) || 0);
 

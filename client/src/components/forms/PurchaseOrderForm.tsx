@@ -115,7 +115,7 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
             quantity: quantity,
             unitPrice: unitPrice,
             unit: line.unit,
-            projectMaterialId: line.materialId || undefined
+            projectMaterialId: line.projectMaterialId || undefined
           };
         });
         
