@@ -241,32 +241,6 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
     }
   }, [existingRequisition, existingLines, isEdit]);
 
-  // Track if materials have been auto-populated
-  const [materialsPopulated, setMaterialsPopulated] = useState(false);
-
-  // Reset materials populated flag when project changes
-  useEffect(() => {
-    setMaterialsPopulated(false);
-  }, [selectedProject]);
-
-  // Auto-populate materials when they are loaded (for new requisitions only)
-  useEffect(() => {
-    if (!isEdit && projectMaterials.length > 0 && !materialsPopulated && selectedProject) {
-      const materialLines = projectMaterials.map((material: any) => ({
-        materialId: material.id,
-        description: material.description,
-        quantity: 1,
-        unit: material.unit,
-        estimatedCost: parseFloat(material.unitPrice || '0'),
-        notes: "",
-        model: material.model || ""
-      }));
-      
-      form.setValue('lines', materialLines);
-      setMaterialsPopulated(true);
-    }
-  }, [projectMaterials, isEdit, materialsPopulated, selectedProject]);
-
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'lines'
