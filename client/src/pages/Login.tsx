@@ -29,11 +29,11 @@ export default function Login() {
 
   // Demo user credentials for different roles
   const demoUsers = {
-    admin: { email: "admin@metro-construction.com", password: "admin123", role: "Admin", name: "Sarah Admin" },
-    pm: { email: "pm@metro-construction.com", password: "pm123", role: "PM", name: "Mike PM" },
-    purchaser: { email: "purchaser@metro-construction.com", password: "purchaser123", role: "Purchaser", name: "Lisa Purchaser" },
-    field: { email: "field@metro-construction.com", password: "field123", role: "Field", name: "Tom Field" },
-    ap: { email: "ap@metro-construction.com", password: "ap123", role: "AP", name: "Jennifer AP" }
+    admin: { email: "admin@metro-construction.com", password: "admin123", role: "Admin", name: "John Admin" },
+    pm: { email: "pm@metro-construction.com", password: "pm123", role: "PM", name: "Sarah Johnson" },
+    purchaser: { email: "purchaser@metro-construction.com", password: "purchaser123", role: "Purchaser", name: "Mike Chen" },
+    field: { email: "field@metro-construction.com", password: "field123", role: "Field", name: "David Rodriguez" },
+    ap: { email: "ap@metro-construction.com", password: "ap123", role: "AP", name: "Lisa Thompson" }
   };
 
   const form = useForm<LoginFormData>({
