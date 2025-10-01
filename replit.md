@@ -2,7 +2,15 @@
 
 This is AiPM, a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract budgets, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
-## Recent Updates (September 13, 2025)
+## Recent Updates (October 1, 2025)
+- **DEPLOYMENT CONFIGURATION FIXED**: Successfully resolved Autoscale deployment failures caused by port binding conflicts
+- **Server Port Configuration**: Removed problematic `reusePort: true` option that was causing deployment initialization failures
+- **Error Handling Enhanced**: Added comprehensive startup error handling with EADDRINUSE detection and graceful process exit
+- **Production Stability**: Updated error middleware to prevent crash loops in production while maintaining debug visibility in development
+- **Health Check Endpoint**: Added `/healthz` endpoint for deployment monitoring and health verification
+- **Navigation Fix Applied**: Fixed Projects sidebar navigation to properly redirect to current project details instead of project selection page (both desktop and mobile)
+
+## Previous Updates (September 13, 2025)
 - **DASHBOARD DEMO DATA REPLACEMENT COMPLETED**: Successfully replaced all hardcoded demo data across 4 dashboard components with real-time API-driven data
 - **Dashboard Stats API Enhanced**: Added dynamic change calculations including weekly requisition trends, pending PO totals, and exception status indicators
 - **Budget Overview API Created**: New `/api/dashboard/budget-overview` endpoint provides real contract estimate data with committed/actual spending by cost code
