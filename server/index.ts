@@ -2,6 +2,12 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { jobScheduler } from "./jobs";
+import { storage } from "./storage";
+import { hashPassword } from "./middleware/auth";
+import type { InsertOrganization, InsertUser } from "@shared/schema";
+import { db } from "./db";
+import { organizations } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const app = express();
 app.use(express.json());
@@ -37,8 +43,114 @@ app.use((req, res, next) => {
   next();
 });
 
+// Auto-seed production database on startup if admin doesn't exist
+async function autoSeedProduction() {
+  try {
+    // Only run auto-seed in production or when explicitly enabled
+    if (app.get("env") === "development" && !process.env.ENABLE_AUTO_SEED) {
+      return;
+    }
+
+    const adminEmail = process.env.AIPM_ADMIN_EMAIL;
+    const adminPassword = process.env.AIPM_ADMIN_PASSWORD;
+
+    if (!adminEmail || !adminPassword) {
+      // No admin credentials configured, skip auto-seed
+      return;
+    }
+
+    // Check if admin user already exists
+    const existingUser = await storage.getUserByEmail(adminEmail);
+    if (existingUser) {
+      // Admin already exists, no action needed
+      return;
+    }
+
+    console.log('🔄 Auto-seeding: Admin user not found, creating...');
+    console.log(`📧 Admin email: ${adminEmail}`);
+
+    // Get or create organization
+    const domain = adminEmail.split('@')[1];
+    let organization;
+
+    try {
+      const orgName = domain?.split('.')[0] || 'Default';
+      const capitalizedOrgName = orgName.charAt(0).toUpperCase() + orgName.slice(1);
+
+      const org: InsertOrganization = {
+        name: `${capitalizedOrgName} Construction`,
+        domain: domain,
+        settings: {
+          tolerances: {
+            pricePercentage: 2.0,
+            quantityPercentage: 1.0,
+            taxFreightCap: 50.0
+          },
+          defaultSettings: {
+            usepeenedGrabBars: false,
+            currency: "USD",
+            timezone: "America/New_York"
+          }
+        },
+        demoMode: false
+      };
+
+      organization = await storage.createOrganization(org);
+      console.log(`✅ Created organization: ${organization.name}`);
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        // Organization exists, fetch it
+        const [existingOrg] = await db
+          .select()
+          .from(organizations)
+          .where(eq(organizations.domain, domain))
+          .limit(1);
+        
+        if (existingOrg) {
+          organization = existingOrg;
+          console.log(`✅ Using existing organization: ${organization.name}`);
+        } else {
+          throw new Error("Organization conflict but not found");
+        }
+      } else {
+        throw error;
+      }
+    }
+
+    // Create admin user
+    const hashedPassword = await hashPassword(adminPassword);
+    const adminUser: InsertUser = {
+      email: adminEmail,
+      password: hashedPassword,
+      firstName: "Admin",
+      lastName: "User",
+      role: "Admin",
+      organizationId: organization.id,
+      isActive: true
+    };
+
+    try {
+      await storage.createUser(adminUser);
+      console.log(`✅ Auto-seed complete: Admin user created`);
+    } catch (userError: any) {
+      // Handle concurrent creation - if user already exists from parallel startup, treat as success
+      if (userError?.code === '23505') {
+        console.log(`✅ Auto-seed: Admin user already exists (created by concurrent process)`);
+      } else {
+        throw userError;
+      }
+    }
+  } catch (error) {
+    console.error('❌ Auto-seed failed:', error);
+    // Don't crash the server, just log the error
+  }
+}
+
 (async () => {
   const server = await registerRoutes(app);
+
+  // Run auto-seed before starting server
+  await autoSeedProduction();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

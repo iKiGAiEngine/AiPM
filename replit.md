@@ -3,6 +3,10 @@
 This is AiPM, a full-stack construction materials procurement application that replicates the core functionality of Field Materials. The system provides AI-driven procurement management for construction projects, including field requisitions linked to awarded contract budgets, vendor management, RFQ processing, purchase order management, delivery tracking, and invoice processing with three-way matching capabilities. The application is designed as a multi-tenant platform supporting organizations with role-based access control.
 
 ## Recent Updates (October 1, 2025)
+- **AUTO-SEED ON STARTUP IMPLEMENTED**: Server now automatically creates admin user on first start if AIPM_ADMIN_EMAIL/PASSWORD secrets are set and admin doesn't exist
+- **Zero-Config Production Setup**: Production deployments now self-initialize - no manual seeding required, just set secrets and publish
+- **Idempotent Database Initialization**: Auto-seed safely checks for existing admin/organization and only creates if missing
+- **Production Login Fixed**: Resolved 401 authentication issues by ensuring production database is properly seeded on deployment
 - **PRODUCTION DEPLOYMENT SETUP COMPLETED**: Created comprehensive production database seeding and deployment configuration system
 - **Production Seed Script**: Added `server/seed-production.ts` with idempotent organization and admin user creation using environment secrets
 - **Deployment Guide Created**: Comprehensive `DEPLOYMENT_GUIDE.md` with all required secrets (JWT_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, admin credentials)
