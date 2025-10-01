@@ -1328,14 +1328,26 @@ export class DatabaseStorage implements IStorage {
           const budgetedQty = parseFloat(material.qty?.toString() || '0');
           const availableQty = budgetedQty - usedQty;
           
-          return {
+          const materialWithQty = {
             ...material,
             availableQuantity: Math.max(0, availableQty),
             usedQuantity: usedQty
           };
+          
+          // Debug log
+          console.log(`Material ${material.description}: budgeted=${budgetedQty}, used=${usedQty}, available=${materialWithQty.availableQuantity}`);
+          
+          return materialWithQty;
         })
-        .filter(material => material.availableQuantity > 0); // Only return materials with available quantity
+        .filter(material => {
+          const shouldInclude = material.availableQuantity > 0;
+          if (!shouldInclude) {
+            console.log(`Filtering out ${material.description} with availableQuantity=${material.availableQuantity}`);
+          }
+          return shouldInclude;
+        }); // Only return materials with available quantity
 
+      console.log(`getAvailableProjectMaterialsByProject returning ${availableMaterials.length} materials (filtered from ${allMaterials.length})`);
       return availableMaterials;
 
     } catch (error) {

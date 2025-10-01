@@ -172,8 +172,11 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
 
   // Filter materials based on search and scope type
   const filteredMaterials = useMemo(() => {
-    // Server already filters out materials with 0 available quantity
-    let filtered = projectMaterials;
+    // Filter out materials with 0 available quantity (defensive check)
+    let filtered = projectMaterials.filter((m: any) => {
+      const availQty = parseFloat(m.availableQuantity || m.qty || '0');
+      return availQty > 0;
+    });
     
     if (materialSearch) {
       const searchLower = materialSearch.toLowerCase();
