@@ -244,6 +244,11 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
   // Track if materials have been auto-populated
   const [materialsPopulated, setMaterialsPopulated] = useState(false);
 
+  // Reset materials populated flag when project changes
+  useEffect(() => {
+    setMaterialsPopulated(false);
+  }, [selectedProject]);
+
   // Auto-populate materials when they are loaded (for new requisitions only)
   useEffect(() => {
     if (!isEdit && projectMaterials.length > 0 && !materialsPopulated && selectedProject) {
