@@ -726,6 +726,27 @@ export default function RequisitionForm({ isEdit = false, requisitionId }: Requi
               </Button>
             </div>
             
+            {/* Show validation error when no line items */}
+            {form.formState.errors.lines?.root && (
+              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md p-3" data-testid="error-no-line-items">
+                {form.formState.errors.lines.root.message}
+              </div>
+            )}
+            {form.formState.errors.lines && !form.formState.errors.lines.root && (
+              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md p-3" data-testid="error-no-line-items">
+                At least one line item is required
+              </div>
+            )}
+            
+            {fields.length === 0 && (
+              <div className="border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 text-center bg-muted/5">
+                <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  No line items added yet. Click "Add Item" above to add materials manually, or select materials from the "Available Project Materials" section below.
+                </p>
+              </div>
+            )}
+            
             {fields.length > 0 ? (
               <div className="border rounded-lg bg-background">
                 {/* Header Row for Desktop */}
