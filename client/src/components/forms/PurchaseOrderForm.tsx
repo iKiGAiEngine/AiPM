@@ -76,7 +76,10 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
 
   // Update form and lines when data loads - this handles both existing PO and requisition data
   useEffect(() => {
-    
+    if (!existingPO && fromRequisition === undefined) {
+      return;
+    }
+
     // Handle existing PO editing
     if (existingPO && !isInitialized) {
       form.setValue("vendorId", existingPO.vendorId);
@@ -124,7 +127,7 @@ export default function PurchaseOrderForm({ fromRequisition, isEdit = false, exi
       setIsInitialized(true);
     }
     // Handle new PO creation (no existing data)
-    else if (!existingPO && !fromRequisition && !isInitialized) {
+    else if (!existingPO && fromRequisition === null && !isInitialized) {
       setIsInitialized(true);
     }
   }, [existingPO, fromRequisition, form, isInitialized]);
