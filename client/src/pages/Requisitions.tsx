@@ -106,6 +106,7 @@ export default function Requisitions() {
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/requisitions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       toast({
         title: 'Success',
         description: `Requisition ${status === 'approved' ? 'approved' : 'rejected'} successfully`,
@@ -147,6 +148,7 @@ export default function Requisitions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/requisitions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       toast({
         title: 'Success',
         description: 'Requisition deleted successfully',
